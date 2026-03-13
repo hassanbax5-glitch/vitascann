@@ -665,6 +665,60 @@ function Result({result,zone,onNewScan,onHome}){
   );
 }
 
+// ─── PAYWALL ───
+const STRIPE_PRICE_ID = "price_1TAd31C4YmUeoFrhAKUzpnPf";
+
+function Paywall({user, onBack, onSuccess}){
+  const[load,setLoad]=useState(false);
+
+  const handleCheckout=async()=>{
+    setLoad(true);
+    try{
+      // Charger Stripe dynamiquement
+      const {loadStripe}=await import("https://esm.sh/@stripe/stripe-js");
+      const stripe=await loadStripe(STRIPE_PK);
+      await stripe.redirectToCheckout({
+        lineItems:[{price:STRIPE_PRICE_ID,quantity:1}],
+        mode:"subscription",
+        successUrl:`${window.location.origin}?premium=success&uid=${user?.uid}`,
+        cancelUrl:`${window.location.origin}?premium=cancel`,
+        customerEmail:user?.email,
+      });
+    }catch(e){
+      console.error(e);
+      setLoad(false);
+    }
+  };
+
+  return(
+    <div style={{minHeight:"100vh",padding:"52px 24px 40px",textAlign:"center"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:24,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
+      <div style={{fontSize:56,marginBottom:16}}>👑</div>
+      <div className="serif fu" style={{fontSize:28,fontWeight:700,color:GOLD,marginBottom:8}}>VitaScann Premium</div>
+      <div className="fu1" style={{color:MUT,fontSize:14,marginBottom:32}}>Débloquez toutes les fonctionnalités</div>
+      
+      <div className="fu2 card" style={{textAlign:"left",marginBottom:24,border:`1px solid ${GOLD}33`}}>
+        <div style={{color:GOLD,fontSize:11,fontWeight:700,letterSpacing:.8,marginBottom:14}}>✨ INCLUS DANS PREMIUM</div>
+        {["🔬 Scans illimités","📊 8+ zones d'analyse (pieds, ventre, etc.)","📄 Rapport PDF téléchargeable","📈 Historique complet","🥗 Recommandations halal & Maghrébi","💊 Compléments alimentaires personnalisés"].map((f,i)=>(
+          <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,fontSize:13,color:"#b0c8b8"}}>
+            <span style={{color:EM,fontSize:16}}>✓</span>{f}
+          </div>
+        ))}
+      </div>
+
+      <div style={{marginBottom:24}}>
+        <div className="serif" style={{fontSize:42,fontWeight:700,color:GOLD}}>9,99<span style={{fontSize:20}}>$ CAD</span></div>
+        <div style={{color:MUT,fontSize:13}}>par mois · Annulez à tout moment</div>
+      </div>
+
+      <button className="bgold" onClick={handleCheckout} disabled={load} style={{marginBottom:12}}>
+        {load?<Spin/>:"💳 S'abonner maintenant →"}
+      </button>
+      <div style={{color:MUT,fontSize:11,lineHeight:1.6}}>🔒 Paiement sécurisé par Stripe · SSL · Aucun engagement</div>
+    </div>
+  );
+}
+
 // ─── MAIN APP ───
 export default function VitaScann(){
   const[screen,setScreen]=useState("splash");
@@ -674,6 +728,19 @@ export default function VitaScann(){
   const[prev,setPrev]=useState(null);
   const[result,setResult]=useState(null);
   const[history,setHistory]=useState([]);
+
+  // Gérer le retour Stripe
+  useEffect(()=>{
+    const params=new URLSearchParams(window.location.search);
+    if(params.get("premium")==="success"){
+      const uid=params.get("uid");
+      if(uid){
+        setDoc(doc(db,"users",uid),{plan:"premium"},{merge:true});
+        setUser(u=>u?{...u,plan:"premium"}:u);
+      }
+      window.history.replaceState({},"",window.location.pathname);
+    }
+  },[]);
 
   // Écouter l'état Firebase Auth au démarrage
   useEffect(()=>{
@@ -697,7 +764,7 @@ export default function VitaScann(){
     try{
       const res=await fetch("https://api.anthropic.com/v1/messages",{
         method:"POST",
-        headers:{"Content-Type":"application/json"},
+        headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
         body:JSON.stringify({
           model:"claude-sonnet-4-20250514",
           max_tokens:1000,
@@ -753,14 +820,7 @@ export default function VitaScann(){
         {screen==="preview"   && zone && <Preview zone={zone} preview={prev} onAnalyze={analyze} onRetake={()=>setScreen("capture")}/>}
         {screen==="analyzing" && zone && <Analyzing zone={zone}/>}
         {screen==="result"    && result && zone && <Result result={result} zone={zone} onNewScan={()=>setScreen("zones")} onHome={()=>setScreen("dashboard")}/>}
-        {screen==="paywall"   && (
-          <div style={{minHeight:"100vh",padding:"52px 24px 40px",textAlign:"center"}}>
-            <div style={{fontSize:48,marginBottom:16}}>👑</div>
-            <div className="serif" style={{fontSize:24,fontWeight:700,color:GOLD,marginBottom:8}}>Premium à venir</div>
-            <div style={{color:MUT,fontSize:14,lineHeight:1.7,marginBottom:28}}>L'intégration Stripe sera activée lors du lancement officiel. Revenez bientôt !</div>
-            <button className="bgh" onClick={()=>setScreen("dashboard")}>← Retour</button>
-          </div>
-        )}
+        {screen==="paywall" && <Paywall user={user} onBack={()=>setScreen("dashboard")} onSuccess={()=>{setUser(u=>({...u,plan:"premium"}));setScreen("dashboard");}}/>}
       </div>
     </>
   );
