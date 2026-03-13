@@ -671,7 +671,10 @@ const STRIPE_PRICE_ID = "price_1TAd31C4YmUeoFrhAKUzpnPf";
 function Paywall({user, onBack, onSuccess}){
   const[load,setLoad]=useState(false);
 
-const handleCheckout=()=>{window.location.href="https://buy.stripe.com/test_7sY8wObvB8GV8hBcIaeQM00";};
+  const handleCheckout=()=>{
+    const url=`https://buy.stripe.com/test_7sY8wObvB8GV8hBcIaeQM00?prefilled_email=${encodeURIComponent(user?.email||"")}&client_reference_id=${user?.uid||""}`;
+    window.location.href=url;
+  };
 
   return(
     <div style={{minHeight:"100vh",padding:"52px 24px 40px",textAlign:"center"}}>
