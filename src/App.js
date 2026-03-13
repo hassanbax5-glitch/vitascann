@@ -671,24 +671,7 @@ const STRIPE_PRICE_ID = "price_1TAd31C4YmUeoFrhAKUzpnPf";
 function Paywall({user, onBack, onSuccess}){
   const[load,setLoad]=useState(false);
 
-  const handleCheckout=async()=>{
-    setLoad(true);
-    try{
-      // Charger Stripe dynamiquement
-      const {loadStripe}=await import("https://esm.sh/@stripe/stripe-js");
-      const stripe=await loadStripe(STRIPE_PK);
-      await stripe.redirectToCheckout({
-        lineItems:[{price:STRIPE_PRICE_ID,quantity:1}],
-        mode:"subscription",
-        successUrl:`${window.location.origin}?premium=success&uid=${user?.uid}`,
-        cancelUrl:`${window.location.origin}?premium=cancel`,
-        customerEmail:user?.email,
-      });
-    }catch(e){
-      console.error(e);
-      setLoad(false);
-    }
-  };
+const handleCheckout=()=>{window.location.href="https://buy.stripe.com/test_7sY8wObvB8GV8hBcIaeQM00";};
 
   return(
     <div style={{minHeight:"100vh",padding:"52px 24px 40px",textAlign:"center"}}>
