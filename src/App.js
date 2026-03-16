@@ -151,12 +151,18 @@ html,body{background:#060d08;}
 const EM="#00ff88",GOLD="#e2b84a",MUT="#4a6e52",DANGER="#ff5555",WARN="#ffaa33";
 const CARD="#0c1810",BDR="#192c1d";
 
+// ─── 8 ZONES : 2 gratuites + 6 Premium ───
 const ZONES=[
-  {id:"nails",icon:"💅",label:"Ongles",hint:"Posez votre main à plat",vitamins:"B12 · C · Fer · Zinc",color:"#c084fc"},
-  {id:"skin", icon:"🖐️",label:"Peau",  hint:"Face interne du poignet",vitamins:"D · B3 · Zinc",color:"#fb923c"},
-  {id:"hair", icon:"💇",label:"Cheveux",hint:"Cuir chevelu, racines",vitamins:"Biotine · Fer · B7",color:"#f472b6"},
-  {id:"eyes", icon:"👁️",label:"Yeux",  hint:"Blanc de l'œil visible",vitamins:"A · Fer",color:"#38bdf8"},
-  {id:"tongue",icon:"👅",label:"Langue",hint:"Tirée, bonne lumière",vitamins:"B2 · B3 · B12",color:"#f87171"},
+  // ✅ Zones gratuites (2)
+  {id:"nails", icon:"💅", label:"Ongles",      hint:"Posez votre main à plat",          vitamins:"B12 · C · Fer · Zinc",       color:"#c084fc", premium:false},
+  {id:"eyes",  icon:"👁️", label:"Yeux",        hint:"Blanc de l'œil visible",           vitamins:"A · Fer",                    color:"#38bdf8", premium:false},
+  // 🔒 Zones Premium (6)
+  {id:"skin",  icon:"🖐️", label:"Peau",        hint:"Face interne du poignet",          vitamins:"D · B3 · Zinc",              color:"#fb923c", premium:true},
+  {id:"hair",  icon:"💇", label:"Cheveux",     hint:"Cuir chevelu, racines",            vitamins:"Biotine · Fer · B7",         color:"#f472b6", premium:true},
+  {id:"tongue",icon:"👅", label:"Langue",      hint:"Tirée, bonne lumière",             vitamins:"B2 · B3 · B12",              color:"#f87171", premium:true},
+  {id:"feet",  icon:"🦶", label:"Pieds",       hint:"Plante du pied, talons",           vitamins:"B3 · E · Zinc",              color:"#a3e635", premium:true},
+  {id:"belly", icon:"🫃", label:"Ventre",      hint:"Zone abdominale",                  vitamins:"D · Magnésium · B12",        color:"#fbbf24", premium:true},
+  {id:"scalp", icon:"🧠", label:"Cuir chev.",  hint:"Zones de chute ou irritation",     vitamins:"Biotine · Zinc · B5",        color:"#e879f9", premium:true},
 ];
 
 const AI_PROMPT=`Tu es VitaScann, IA médicale spécialisée en détection visuelle de carences nutritionnelles.
@@ -447,8 +453,8 @@ function Dashboard({user,onScan,onPaywall,onLogout,history}){
           <div className="fu4" style={{background:"linear-gradient(135deg,#181005,#100b03)",border:`1.5px solid ${GOLD}38`,borderRadius:18,padding:18,marginBottom:14}}>
             <div style={{fontSize:28,marginBottom:8}}>👑</div>
             <div className="serif" style={{fontSize:18,fontWeight:700,color:GOLD,marginBottom:5}}>Passez Premium</div>
-            <div style={{color:MUT,fontSize:13,lineHeight:1.6,marginBottom:14}}>Scans illimités, 5 zones, rapport PDF et conseils IA.</div>
-            <button className="bgold" onClick={onPaywall}>Essai 7 jours gratuit →</button>
+            <div style={{color:MUT,fontSize:13,lineHeight:1.6,marginBottom:14}}>Scans illimités, 8 zones, rapport PDF et conseils IA.</div>
+            <button className="bgold" onClick={onPaywall}>Passer Premium →</button>
           </div>
         )}
 
@@ -474,28 +480,54 @@ function Dashboard({user,onScan,onPaywall,onLogout,history}){
 }
 
 // ─── SCAN SCREENS ───
-function ZonePick({onSelect,onBack}){
+
+// ✅ CORRIGÉ : 8 zones avec verrouillage Premium
+function ZonePick({onSelect, onBack, user, onPaywall}){
   return(
     <div style={{minHeight:"100vh",padding:"52px 20px 40px"}}>
       <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
       <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>Choisir une zone</div>
-      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>Sélectionnez la zone à analyser</div>
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {ZONES.map((z,i)=>(
-          <button key={z.id} onClick={()=>onSelect(z)}
-            style={{display:"flex",alignItems:"center",gap:14,background:CARD,border:`1px solid ${BDR}`,borderRadius:16,padding:"15px 16px",cursor:"pointer",textAlign:"left",width:"100%",transition:"all .2s"}}
-            onMouseEnter={e=>{e.currentTarget.style.border=`1px solid ${z.color}55`;e.currentTarget.style.background=`${z.color}08`;}}
-            onMouseLeave={e=>{e.currentTarget.style.border=`1px solid ${BDR}`;e.currentTarget.style.background=CARD;}}>
-            <div style={{width:50,height:50,borderRadius:14,background:`${z.color}18`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>{z.icon}</div>
-            <div style={{flex:1}}>
-              <div style={{fontWeight:700,fontSize:15}}>{z.label}</div>
-              <div style={{fontSize:11,color:MUT,marginTop:2}}>{z.hint}</div>
-              <div style={{fontSize:10,color:z.color,marginTop:4,fontWeight:600}}>Détecte : {z.vitamins}</div>
-            </div>
-            <div style={{color:MUT,fontSize:18}}>›</div>
-          </button>
-        ))}
+      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>
+        {user?.plan==="premium"
+          ? <span style={{color:GOLD}}>👑 Toutes les zones débloquées</span>
+          : <span><span style={{color:EM,fontWeight:600}}>2 zones gratuites</span> · <span style={{color:GOLD}}>6 zones Premium 🔒</span></span>
+        }
       </div>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {ZONES.map((z)=>{
+          const locked = z.premium && user?.plan !== "premium";
+          return(
+            <button key={z.id}
+              onClick={()=> locked ? onPaywall() : onSelect(z)}
+              style={{display:"flex",alignItems:"center",gap:14,background:locked?"#0a0e0b":CARD,border:`1px solid ${locked?"#1a2e1e":BDR}`,borderRadius:16,padding:"15px 16px",cursor:"pointer",textAlign:"left",width:"100%",transition:"all .2s",opacity:locked?.75:1}}
+              onMouseEnter={e=>{if(!locked){e.currentTarget.style.border=`1px solid ${z.color}55`;e.currentTarget.style.background=`${z.color}08`;}else{e.currentTarget.style.border=`1px solid ${GOLD}44`;}}}
+              onMouseLeave={e=>{e.currentTarget.style.border=`1px solid ${locked?"#1a2e1e":BDR}`;e.currentTarget.style.background=locked?"#0a0e0b":CARD;}}>
+              <div style={{width:50,height:50,borderRadius:14,background:locked?`${GOLD}10`:`${z.color}18`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>
+                {locked ? "🔒" : z.icon}
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:15,color:locked?MUT:"#edf5ef"}}>{z.label}</div>
+                <div style={{fontSize:11,color:MUT,marginTop:2}}>{locked ? "Zone Premium — Débloquez pour analyser" : z.hint}</div>
+                {!locked && <div style={{fontSize:10,color:z.color,marginTop:4,fontWeight:600}}>Détecte : {z.vitamins}</div>}
+                {locked  && <div style={{fontSize:10,color:GOLD,marginTop:4,fontWeight:600}}>✨ Premium · 9,99$/mois</div>}
+              </div>
+              <div style={{color:locked?GOLD:MUT,fontSize:locked?13:18,fontWeight:locked?700:400}}>
+                {locked ? "👑" : "›"}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* CTA Premium si user gratuit */}
+      {user?.plan !== "premium" && (
+        <div style={{marginTop:20,background:"linear-gradient(135deg,#181005,#100b03)",border:`1.5px solid ${GOLD}38`,borderRadius:18,padding:18}}>
+          <div style={{fontSize:22,marginBottom:6}}>👑</div>
+          <div className="serif" style={{fontSize:16,fontWeight:700,color:GOLD,marginBottom:5}}>Débloquez les 6 zones Premium</div>
+          <div style={{color:MUT,fontSize:12,lineHeight:1.6,marginBottom:14}}>Peau, Cheveux, Langue, Pieds, Ventre, Cuir chevelu — analyse complète de votre corps.</div>
+          <button className="bgold" onClick={onPaywall}>Passer Premium · 9,99$/mois →</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -578,7 +610,267 @@ function Analyzing({zone}){
   );
 }
 
-function Result({result,zone,onNewScan,onHome}){
+async function generatePDF(result, zone, user) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  const W = 210;
+  const MARGIN = 18;
+  const COL = W - MARGIN * 2;
+  let y = 0;
+
+  const GREEN  = [0, 200, 100];
+  const GOLD   = [220, 175, 60];
+  const DARK   = [6, 13, 8];
+  const WHITE  = [237, 245, 239];
+  const GRAY   = [74, 110, 82];
+  const RED    = [255, 85, 85];
+  const ORANGE = [255, 170, 51];
+  const PURPLE = [192, 132, 252];
+
+  const rgb  = (c) => doc.setTextColor(...c);
+  const fill = (c) => doc.setFillColor(...c);
+  const line = (c) => doc.setDrawColor(...c);
+
+  fill(DARK);
+  doc.rect(0, 0, W, 297, "F");
+
+  y = 0;
+  fill([0, 30, 15]);
+  doc.rect(0, 0, W, 44, "F");
+
+  doc.setFontSize(26);
+  doc.setFont("helvetica", "bold");
+  rgb(WHITE);
+  doc.text("VitaScann", MARGIN + 4, 16);
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  rgb(GRAY);
+  doc.text("INTELLIGENCE NUTRITIONNELLE", MARGIN + 4, 22);
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("fr-CA", { day: "2-digit", month: "long", year: "numeric" });
+  doc.setFontSize(8);
+  rgb(GRAY);
+  doc.text(`Rapport généré le ${dateStr}`, W - MARGIN, 12, { align: "right" });
+  doc.text(`Patient : ${user?.name || "Utilisateur"}`, W - MARGIN, 18, { align: "right" });
+
+  const isPremium = user?.plan === "premium";
+  fill(isPremium ? GOLD : GREEN);
+  doc.roundedRect(W - MARGIN - 28, 24, 28, 8, 2, 2, "F");
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  rgb(DARK);
+  doc.text(isPremium ? "PREMIUM" : "GRATUIT", W - MARGIN - 14, 29.5, { align: "center" });
+
+  y = 50;
+
+  fill([12, 24, 16]);
+  doc.roundedRect(MARGIN, y, COL, 28, 3, 3, "F");
+  line(GREEN);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(MARGIN, y, COL, 28, 3, 3, "S");
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  rgb(GRAY);
+  doc.text("ZONE ANALYSEE", MARGIN + 8, y + 7);
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  rgb(WHITE);
+  doc.text(`${zone?.label || ""}`, MARGIN + 8, y + 17);
+
+  const score = result?.score || 0;
+  const scoreColor = score >= 75 ? GREEN : score >= 50 ? ORANGE : RED;
+  fill(scoreColor);
+  doc.circle(W - MARGIN - 20, y + 14, 12, "F");
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  rgb(DARK);
+  doc.text(`${score}`, W - MARGIN - 20, y + 15.5, { align: "center" });
+  doc.setFontSize(6);
+  doc.text("/100", W - MARGIN - 20, y + 20, { align: "center" });
+
+  const urgColor = result?.urgence === "urgent" ? RED : result?.urgence === "attention" ? ORANGE : GREEN;
+  const urgLabel = result?.urgence === "urgent" ? "URGENT" : result?.urgence === "attention" ? "ATTENTION" : "NORMAL";
+  fill(urgColor);
+  doc.roundedRect(W - MARGIN - 60, y + 6, 32, 8, 2, 2, "F");
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  rgb(DARK);
+  doc.text(urgLabel, W - MARGIN - 44, y + 11.2, { align: "center" });
+
+  y += 35;
+
+  if (result?.carences?.length > 0) {
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    rgb(WHITE);
+    doc.text("Carences identifiees", MARGIN, y);
+    y += 6;
+
+    result.carences.forEach((c) => {
+      if (y > 250) {
+        doc.addPage();
+        fill(DARK);
+        doc.rect(0, 0, W, 297, "F");
+        y = 20;
+      }
+
+      const niveauColor = c.niveau === "critique" ? RED : c.niveau === "faible" ? ORANGE : c.niveau === "limite" ? [251, 191, 36] : GREEN;
+
+      fill([12, 24, 16]);
+      doc.roundedRect(MARGIN, y, COL, 40, 3, 3, "F");
+      line(niveauColor);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(MARGIN, y, COL, 40, 3, 3, "S");
+
+      fill(niveauColor);
+      doc.roundedRect(MARGIN, y, 3, 40, 1, 1, "F");
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      rgb(WHITE);
+      doc.text(`${c.nom}`, MARGIN + 8, y + 9);
+
+      fill(niveauColor);
+      doc.roundedRect(W - MARGIN - 30, y + 3, 28, 7, 2, 2, "F");
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "bold");
+      rgb(DARK);
+      doc.text((c.niveau || "").toUpperCase(), W - MARGIN - 16, y + 7.8, { align: "center" });
+
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      rgb(GRAY);
+      const signesLines = doc.splitTextToSize(c.signes || "", COL - 20);
+      doc.text(signesLines[0] || "", MARGIN + 8, y + 17);
+
+      fill([20, 32, 24]);
+      doc.roundedRect(MARGIN + 8, y + 21, COL - 16, 3, 1, 1, "F");
+      fill(niveauColor);
+      doc.roundedRect(MARGIN + 8, y + 21, (COL - 16) * ((c.pct || 50) / 100), 3, 1, 1, "F");
+
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "bold");
+      rgb(GREEN);
+      const alimText = (c.aliments || []).slice(0, 4).join(" - ");
+      doc.text(`Aliments : ${alimText}`, MARGIN + 8, y + 30);
+
+      if (c.complement) {
+        rgb(PURPLE);
+        doc.text(`Complement : ${c.complement}${c.dose ? " — " + c.dose : ""}`, MARGIN + 8, y + 37);
+      }
+
+      y += 46;
+    });
+  }
+
+  if (result?.positifs?.length > 0) {
+    if (y > 240) {
+      doc.addPage();
+      fill(DARK);
+      doc.rect(0, 0, W, 297, "F");
+      y = 20;
+    }
+
+    const boxH = 10 + result.positifs.length * 7;
+    fill([8, 20, 8]);
+    doc.roundedRect(MARGIN, y, COL, boxH, 3, 3, "F");
+    line(GREEN);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(MARGIN, y, COL, boxH, 3, 3, "S");
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    rgb(GREEN);
+    doc.text("POINTS POSITIFS", MARGIN + 6, y + 6);
+    y += 10;
+
+    result.positifs.forEach((p) => {
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      rgb([176, 200, 184]);
+      doc.text(`• ${p}`, MARGIN + 6, y);
+      y += 7;
+    });
+    y += 4;
+  }
+
+  if (result?.conseil) {
+    if (y > 240) {
+      doc.addPage();
+      fill(DARK);
+      doc.rect(0, 0, W, 297, "F");
+      y = 20;
+    }
+
+    const conseilLines = doc.splitTextToSize(result.conseil, COL - 12);
+    const conseilH = 12 + conseilLines.length * 6;
+
+    fill([24, 16, 6]);
+    doc.roundedRect(MARGIN, y, COL, conseilH, 3, 3, "F");
+    line(GOLD);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(MARGIN, y, COL, conseilH, 3, 3, "S");
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    rgb(GOLD);
+    doc.text("CONSEIL PERSONNALISE", MARGIN + 6, y + 6);
+
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "normal");
+    rgb([160, 188, 170]);
+    doc.text(conseilLines, MARGIN + 6, y + 13);
+    y += conseilH + 6;
+
+    if (result?.prochain) {
+      doc.setFontSize(8);
+      rgb(GRAY);
+      doc.text(`Prochain scan recommande : `, MARGIN, y);
+      doc.setFont("helvetica", "bold");
+      rgb(GOLD);
+      doc.text(result.prochain, MARGIN + 52, y);
+      y += 8;
+    }
+  }
+
+  if (y > 260) {
+    doc.addPage();
+    fill(DARK);
+    doc.rect(0, 0, W, 297, "F");
+    y = 20;
+  }
+
+  fill([18, 15, 6]);
+  doc.roundedRect(MARGIN, y + 4, COL, 14, 2, 2, "F");
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "normal");
+  rgb([128, 96, 64]);
+  const disclaimer = "Ce rapport est indicatif et ne remplace pas un avis medical professionnel. Consultez un medecin ou nutritionniste pour tout diagnostic.";
+  const dLines = doc.splitTextToSize(disclaimer, COL - 8);
+  doc.text(dLines, MARGIN + 4, y + 10);
+
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    fill([0, 20, 10]);
+    doc.rect(0, 285, W, 12, "F");
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    rgb(GRAY);
+    doc.text("vitascann.vercel.app", MARGIN, 291);
+    doc.text(`Page ${i} / ${pageCount}`, W / 2, 291, { align: "center" });
+    doc.text("© 2026 VitaScann", W - MARGIN, 291, { align: "right" });
+  }
+
+  const fileName = `VitaScann_${zone?.label || "rapport"}_${now.toISOString().slice(0, 10)}.pdf`;
+  doc.save(fileName);
+}
+
+function Result({result,zone,user,onNewScan,onHome}){
   const[exp,setExp]=useState(null);
   const uc=result?.urgence==="urgent"?DANGER:result?.urgence==="attention"?WARN:EM;
   return(
@@ -658,9 +950,50 @@ function Result({result,zone,onNewScan,onHome}){
         <div style={{background:"#120f06",border:"1px solid #2a2010",borderRadius:12,padding:"10px 14px",fontSize:11,color:"#806040",lineHeight:1.6,marginBottom:16}}>
           ⚠️ Rapport indicatif. Consultez un professionnel de santé pour tout diagnostic médical.
         </div>
+        <button className="bem" onClick={()=>generatePDF(result,zone,user)} style={{marginBottom:10,background:"linear-gradient(135deg,#e2b84a,#c49a2e)",color:"#080400"}}>📄 Télécharger le rapport PDF</button>
         <button className="bem" onClick={onNewScan} style={{marginBottom:10}}>🔬 Scanner une autre zone</button>
         <button className="bgh" onClick={onHome}>🏠 Retour à l'accueil</button>
       </div>
+    </div>
+  );
+}
+
+// ─── PAYWALL ───
+const STRIPE_PRICE_ID = "price_1TAd31C4YmUeoFrhAKUzpnPf";
+
+function Paywall({user, onBack, onSuccess}){
+  const[load,setLoad]=useState(false);
+
+  const handleCheckout=()=>{
+    const url=`https://buy.stripe.com/test_7sY8wObvB8GV8hBcIaeQM00?prefilled_email=${encodeURIComponent(user?.email||"")}&client_reference_id=${user?.uid||""}`;
+    window.location.href=url;
+  };
+
+  return(
+    <div style={{minHeight:"100vh",padding:"52px 24px 40px",textAlign:"center"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:24,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
+      <div style={{fontSize:56,marginBottom:16}}>👑</div>
+      <div className="serif fu" style={{fontSize:28,fontWeight:700,color:GOLD,marginBottom:8}}>VitaScann Premium</div>
+      <div className="fu1" style={{color:MUT,fontSize:14,marginBottom:32}}>Débloquez toutes les fonctionnalités</div>
+      
+      <div className="fu2 card" style={{textAlign:"left",marginBottom:24,border:`1px solid ${GOLD}33`}}>
+        <div style={{color:GOLD,fontSize:11,fontWeight:700,letterSpacing:.8,marginBottom:14}}>✨ INCLUS DANS PREMIUM</div>
+        {["🔬 Scans illimités","📊 8 zones d'analyse (peau, cheveux, pieds, ventre...)", "🔒 6 zones exclusives débloquées","📄 Rapport PDF téléchargeable","📈 Historique complet","🥗 Recommandations halal & Maghrébi","💊 Compléments alimentaires personnalisés"].map((f,i)=>(
+          <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,fontSize:13,color:"#b0c8b8"}}>
+            <span style={{color:EM,fontSize:16}}>✓</span>{f}
+          </div>
+        ))}
+      </div>
+
+      <div style={{marginBottom:24}}>
+        <div className="serif" style={{fontSize:42,fontWeight:700,color:GOLD}}>9,99<span style={{fontSize:20}}>$ CAD</span></div>
+        <div style={{color:MUT,fontSize:13}}>par mois · Annulez à tout moment</div>
+      </div>
+
+      <button className="bgold" onClick={handleCheckout} disabled={load} style={{marginBottom:12}}>
+        {load?<Spin/>:"💳 S'abonner maintenant →"}
+      </button>
+      <div style={{color:MUT,fontSize:11,lineHeight:1.6}}>🔒 Paiement sécurisé par Stripe · SSL · Aucun engagement</div>
     </div>
   );
 }
@@ -674,6 +1007,19 @@ export default function VitaScann(){
   const[prev,setPrev]=useState(null);
   const[result,setResult]=useState(null);
   const[history,setHistory]=useState([]);
+
+  // Gérer le retour Stripe
+  useEffect(()=>{
+    const params=new URLSearchParams(window.location.search);
+    if(params.get("premium")==="success"){
+      const uid=params.get("uid");
+      if(uid){
+        setDoc(doc(db,"users",uid),{plan:"premium"},{merge:true});
+        setUser(u=>u?{...u,plan:"premium"}:u);
+      }
+      window.history.replaceState({},"",window.location.pathname);
+    }
+  },[]);
 
   // Écouter l'état Firebase Auth au démarrage
   useEffect(()=>{
@@ -748,19 +1094,12 @@ export default function VitaScann(){
         {screen==="login"     && <Login onSuccess={handleAuthSuccess} onRegister={()=>setScreen("register")} onForgot={()=>setScreen("forgot")}/>}
         {screen==="forgot"    && <ForgotPassword onBack={()=>setScreen("login")}/>}
         {screen==="dashboard" && user && <Dashboard user={user} onScan={()=>setScreen("zones")} onPaywall={()=>setScreen("paywall")} onLogout={handleLogout} history={history}/>}
-        {screen==="zones"     && <ZonePick onSelect={z=>{setZone(z);setScreen("capture");}} onBack={()=>setScreen("dashboard")}/>}
+        {screen==="zones"     && <ZonePick onSelect={z=>{setZone(z);setScreen("capture");}} onBack={()=>setScreen("dashboard")} user={user} onPaywall={()=>setScreen("paywall")}/>}
         {screen==="capture"   && zone && <Capture zone={zone} onCapture={(b,p)=>{setB64(b);setPrev(p);setScreen("preview");}} onBack={()=>setScreen("zones")}/>}
         {screen==="preview"   && zone && <Preview zone={zone} preview={prev} onAnalyze={analyze} onRetake={()=>setScreen("capture")}/>}
         {screen==="analyzing" && zone && <Analyzing zone={zone}/>}
-        {screen==="result"    && result && zone && <Result result={result} zone={zone} onNewScan={()=>setScreen("zones")} onHome={()=>setScreen("dashboard")}/>}
-        {screen==="paywall"   && (
-          <div style={{minHeight:"100vh",padding:"52px 24px 40px",textAlign:"center"}}>
-            <div style={{fontSize:48,marginBottom:16}}>👑</div>
-            <div className="serif" style={{fontSize:24,fontWeight:700,color:GOLD,marginBottom:8}}>Premium à venir</div>
-            <div style={{color:MUT,fontSize:14,lineHeight:1.7,marginBottom:28}}>L'intégration Stripe sera activée lors du lancement officiel. Revenez bientôt !</div>
-            <button className="bgh" onClick={()=>setScreen("dashboard")}>← Retour</button>
-          </div>
-        )}
+        {screen==="result"    && result && zone && <Result result={result} zone={zone} user={user} onNewScan={()=>setScreen("zones")} onHome={()=>setScreen("dashboard")}/>}
+        {screen==="paywall" && <Paywall user={user} onBack={()=>setScreen("dashboard")} onSuccess={()=>{setUser(u=>({...u,plan:"premium"}));setScreen("dashboard");}}/>}
       </div>
     </>
   );
