@@ -1243,7 +1243,7 @@ export default function VitaScann() {
   };
 
   const handleMealScan=()=>{
-    if(user?.plan!=="premium"&&!user?.isDemo){setScreen("paywall");return;}
+    if(user?.plan!=="premium"&&!user?.isDemo&&history.length>=2){setScreen("paywall");return;}
     setIsMeal(true);
     setScreen("meal_capture");
   };
