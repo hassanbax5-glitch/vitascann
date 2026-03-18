@@ -1,11 +1,14 @@
 // ============================================
-// VITASCANN — APP.JS v3.0
+// VITASCANN — APP.JS v3.1
 // ✅ Scan corporel (8 zones)
 // ✅ Scan repas (photo assiette → calories + carences)
 // ✅ Profil santé complet (âge, poids, objectifs)
 // ✅ Onboarding WOW + Démo 1 scan gratuit
 // ✅ Paywall honnête — 7,99$/mois (14,99$ barré)
 // ✅ Partage résultats + Compte à rebours
+// ✅ Galerie photo (caméra OU galerie)
+// ✅ Scan % gras corporel + abdos visibles
+// ✅ Fix bouton back Android PWA
 // ============================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -109,18 +112,21 @@ const EM="#00ff88",GOLD="#e2b84a",MUT="#4a6e52",DANGER="#ff5555",WARN="#ffaa33";
 const CARD="#0c1810",BDR="#192c1d";
 
 const ZONES = [
-  {id:"nails", icon:"💅", label:"Ongles",     hint:"Posez votre main à plat",       vitamins:"B12 · C · Fer · Zinc",   color:"#c084fc", premium:false},
-  {id:"eyes",  icon:"👁️", label:"Yeux",       hint:"Blanc de l'œil visible",        vitamins:"A · Fer",                color:"#38bdf8", premium:false},
-  {id:"skin",  icon:"🖐️", label:"Peau",       hint:"Face interne du poignet",       vitamins:"D · B3 · Zinc",          color:"#fb923c", premium:true},
-  {id:"hair",  icon:"💇", label:"Cheveux",    hint:"Cuir chevelu, racines",         vitamins:"Biotine · Fer · B7",     color:"#f472b6", premium:true},
-  {id:"tongue",icon:"👅", label:"Langue",     hint:"Tirée, bonne lumière",          vitamins:"B2 · B3 · B12",          color:"#f87171", premium:true},
-  {id:"feet",  icon:"🦶", label:"Pieds",      hint:"Plante du pied, talons",        vitamins:"B3 · E · Zinc",          color:"#a3e635", premium:true},
-  {id:"belly", icon:"🫃", label:"Ventre",     hint:"Zone abdominale",               vitamins:"D · Magnésium · B12",    color:"#fbbf24", premium:true},
-  {id:"scalp", icon:"🧠", label:"Cuir chev.", hint:"Zones de chute ou irritation",  vitamins:"Biotine · Zinc · B5",    color:"#e879f9", premium:true},
+  {id:"nails",    icon:"💅", label:"Ongles",          hint:"Posez votre main à plat",              vitamins:"B12 · C · Fer · Zinc",        color:"#c084fc", premium:false},
+  {id:"eyes",     icon:"👁️", label:"Yeux",            hint:"Blanc de l'œil visible",               vitamins:"A · Fer",                     color:"#38bdf8", premium:false},
+  {id:"skin",     icon:"🖐️", label:"Peau",            hint:"Face interne du poignet",              vitamins:"D · B3 · Zinc",               color:"#fb923c", premium:true},
+  {id:"hair",     icon:"💇", label:"Cheveux",         hint:"Cuir chevelu, racines",                vitamins:"Biotine · Fer · B7",          color:"#f472b6", premium:true},
+  {id:"tongue",   icon:"👅", label:"Langue",          hint:"Tirée, bonne lumière",                 vitamins:"B2 · B3 · B12",               color:"#f87171", premium:true},
+  {id:"feet",     icon:"🦶", label:"Pieds",           hint:"Plante du pied, talons",               vitamins:"B3 · E · Zinc",               color:"#a3e635", premium:true},
+  {id:"belly",    icon:"🫃", label:"Ventre",          hint:"Zone abdominale, torse visible",        vitamins:"D · Magnésium · B12",         color:"#fbbf24", premium:true},
+  {id:"scalp",    icon:"🧠", label:"Cuir chev.",      hint:"Zones de chute ou irritation",         vitamins:"Biotine · Zinc · B5",         color:"#e879f9", premium:true},
+  {id:"body_fat", icon:"💪", label:"% Gras corporel", hint:"Torse ou abdomen visible, bonne lumière", vitamins:"Composition corporelle",   color:"#f97316", premium:true},
 ];
 
-const BODY_PROMPT = `Tu es VitaScann, assistant visuel en nutrition. Tu analyses des photos et donnes des PISTES nutritionnelles indicatives — pas un diagnostic médical.
-Retourne UNIQUEMENT ce JSON valide (sans markdown) :
+const BODY_PROMPT = `Tu es VitaScann, assistant visuel en nutrition. Tu analyses des photos et donnes des PISTES indicatives — pas un diagnostic médical.
+Si la zone analysée est "% Gras corporel", retourne UNIQUEMENT ce JSON valide (sans markdown) :
+{"score":0-100,"urgence":"normal|attention|urgent","type_analyse":"body_fat","pct_gras_estime":5-45,"categorie_gras":"essentiel|athlete|fitness|acceptable|obesite","abdos_visibles":"oui|partiellement|non","morphologie":"ectomorphe|mesomorphe|endomorphe","carences":[{"nom":"Protéines","niveau":"critique|faible|limite|normal","pct":0-100,"emoji":"💪","signes":"observation","aliments":["a1","a2"],"complement":"Whey Protéine","dose":"25g/j"}],"positifs":["p1"],"conseil":"Conseil nutrition et sport en 2 phrases.","prochain":"zone suivante recommandée"}
+Sinon retourne UNIQUEMENT ce JSON valide (sans markdown) :
 {"score":0-100,"urgence":"normal|attention|urgent","carences":[{"nom":"Vitamine X","niveau":"critique|faible|limite|normal","pct":0-100,"emoji":"🟡","signes":"observation visuelle","aliments":["a1","a2","a3"],"complement":"Nom","dose":"500mg/j"}],"positifs":["p1","p2"],"conseil":"Conseil pratique en 2 phrases.","prochain":"zone suivante recommandée"}`;
 
 const MEAL_PROMPT = `Tu es VitaScann, assistant nutrition. Analyse cette photo de repas et retourne UNIQUEMENT ce JSON valide (sans markdown) :
@@ -677,7 +683,7 @@ function Capture({zone,onCapture,onBack}) {
         ))}
       </div>
       <button className="bem fu4" onClick={()=>ref.current?.click()}>📷 Prendre la photo</button>
-      <input ref={ref} type="file" accept="image/*" capture="environment" onChange={handle} style={{display:"none"}}/>
+      <input ref={ref} type="file" accept="image/*" onChange={handle} style={{display:"none"}}/>
     </div>
   );
 }
@@ -733,7 +739,7 @@ function MealCapture({onCapture,onBack,user,onPaywall}) {
         ))}
       </div>
       <button className="bem fu4" onClick={()=>ref.current?.click()} style={{background:`linear-gradient(135deg,${GOLD},#c49a2e)`,color:"#080400"}}>📷 Photographier mon repas</button>
-      <input ref={ref} type="file" accept="image/*" capture="environment" onChange={handle} style={{display:"none"}}/>
+      <input ref={ref} type="file" accept="image/*" onChange={handle} style={{display:"none"}}/>
     </div>
   );
 }
@@ -944,6 +950,7 @@ function Result({result,zone,user,onNewScan,onHome}) {
   const [exp,setExp]=useState(null);
   const [sharing,setSharing]=useState(false);
   const uc=result?.urgence==="urgent"?DANGER:result?.urgence==="attention"?WARN:EM;
+  const isBodyFat=result?.type_analyse==="body_fat";
   return (
     <div style={{minHeight:"100vh",paddingBottom:80,overflowY:"auto"}}>
       <div style={{padding:"52px 22px 22px",background:"radial-gradient(ellipse at 50% 0%,#071c0c 0%,#060d08 70%)"}}>
@@ -958,15 +965,54 @@ function Result({result,zone,user,onNewScan,onHome}) {
           <div>
             <div style={{color:MUT,fontSize:11,marginBottom:3}}>Zone analysée</div>
             <div style={{fontWeight:700,fontSize:15}}>{zone.icon} {zone.label}</div>
-            <div style={{color:MUT,fontSize:11,marginTop:8}}>Carences</div>
-            <div style={{color:result?.carences?.length>0?DANGER:EM,fontWeight:700,fontSize:24}}>{result?.carences?.length||0}</div>
+            {isBodyFat?(
+              <>
+                <div style={{color:MUT,fontSize:11,marginTop:8}}>Gras estimé</div>
+                <div style={{color:"#f97316",fontWeight:700,fontSize:24}}>{result.pct_gras_estime}<span style={{fontSize:13}}>%</span></div>
+              </>
+            ):(
+              <>
+                <div style={{color:MUT,fontSize:11,marginTop:8}}>Carences</div>
+                <div style={{color:result?.carences?.length>0?DANGER:EM,fontWeight:700,fontSize:24}}>{result?.carences?.length||0}</div>
+              </>
+            )}
           </div>
         </div>
       </div>
       <div style={{padding:"0 18px"}}>
+
+        {/* BLOC % GRAS */}
+        {isBodyFat&&(
+          <div className="fu2 card" style={{marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:14}}>💪 Composition corporelle</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+              <div style={{background:"#0a140c",borderRadius:12,padding:"14px",textAlign:"center"}}>
+                <div style={{fontSize:28,fontWeight:700,color:"#f97316"}}>{result.pct_gras_estime}<span style={{fontSize:14}}>%</span></div>
+                <div style={{fontSize:11,color:MUT,marginTop:2}}>Gras corporel estimé</div>
+              </div>
+              <div style={{background:"#0a140c",borderRadius:12,padding:"14px",textAlign:"center"}}>
+                <div style={{fontSize:28,fontWeight:700,color:result.abdos_visibles==="oui"?EM:result.abdos_visibles==="partiellement"?WARN:MUT}}>
+                  {result.abdos_visibles==="oui"?"✅":result.abdos_visibles==="partiellement"?"〰️":"❌"}
+                </div>
+                <div style={{fontSize:11,color:MUT,marginTop:2}}>Abdos visibles</div>
+              </div>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0a140c",borderRadius:12,padding:"10px 14px",marginBottom:8}}>
+              <span style={{fontSize:12,color:MUT}}>Catégorie</span>
+              <span style={{fontWeight:700,fontSize:13,color:"#f97316",textTransform:"capitalize"}}>{result.categorie_gras}</span>
+            </div>
+            {result.morphologie&&(
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0a140c",borderRadius:12,padding:"10px 14px"}}>
+                <span style={{fontSize:12,color:MUT}}>Morphologie</span>
+                <span style={{fontWeight:700,fontSize:13,color:EM,textTransform:"capitalize"}}>{result.morphologie}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {result?.carences?.length>0&&(
           <div className="fu2 card" style={{marginBottom:14}}>
-            <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>🔍 Carences identifiées</div>
+            <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>🔍 {isBodyFat?"Nutriments à optimiser":"Carences identifiées"}</div>
             {result.carences.map((c,i)=>(
               <div key={i} style={{marginBottom:14,borderBottom:i<result.carences.length-1?`1px solid ${BDR}`:"none",paddingBottom:i<result.carences.length-1?14:0}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
@@ -1133,26 +1179,26 @@ export default function VitaScann() {
   const [profile,setProfile]=useState(null);
   const [demoUsed,setDemoUsed]=useState(false);
   const [isMeal,setIsMeal]=useState(false);
-  useEffect(()=>{
-  const handleBack=(e)=>{
-    e.preventDefault();
-    if(screen==="dashboard")return;
-    if(screen==="result"||screen==="meal_result")setScreen("dashboard");
-    else if(screen==="zones"||screen==="meal_capture")setScreen("dashboard");
-    else if(screen==="capture")setScreen("zones");
-    else if(screen==="preview")setScreen("capture");
-    else if(screen==="meal_preview")setScreen("meal_capture");
-    else if(screen==="paywall")setScreen("dashboard");
-    else if(screen==="profile")setScreen("dashboard");
-    else if(screen==="analyzing")return;
-    else setScreen("dashboard");
-  };
-  window.addEventListener("popstate",handleBack);
-  window.history.pushState(null,"",window.location.href);
-  return()=>window.removeEventListener("popstate",handleBack);
-},[screen]);
 
+  // Fix bouton back Android PWA
   useEffect(()=>{
+    const handleBack=(e)=>{
+      e.preventDefault();
+      if(screen==="dashboard")return;
+      if(screen==="result"||screen==="meal_result")setScreen("dashboard");
+      else if(screen==="zones"||screen==="meal_capture")setScreen("dashboard");
+      else if(screen==="capture")setScreen("zones");
+      else if(screen==="preview")setScreen("capture");
+      else if(screen==="meal_preview")setScreen("meal_capture");
+      else if(screen==="paywall")setScreen("dashboard");
+      else if(screen==="profile")setScreen("dashboard");
+      else if(screen==="analyzing")return;
+      else setScreen("dashboard");
+    };
+    window.addEventListener("popstate",handleBack);
+    window.history.pushState(null,"",window.location.href);
+    return()=>window.removeEventListener("popstate",handleBack);
+  },[screen]);
     const params=new URLSearchParams(window.location.search);
     if(params.get("premium")==="success"){
       const uid=params.get("uid");
@@ -1261,7 +1307,7 @@ export default function VitaScann() {
   };
 
   const handleMealScan=()=>{
-    if(user?.plan!=="premium"&&!user?.isDemo&&history.length>=2){setScreen("paywall");return;}
+    if(user?.plan!=="premium"&&!user?.isDemo){setScreen("paywall");return;}
     setIsMeal(true);
     setScreen("meal_capture");
   };
