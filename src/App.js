@@ -1,13 +1,18 @@
 // ============================================
-// VITASCANN — APP.JS v3.1
-// ✅ Scan corporel (8 zones)
-// ✅ Scan repas (photo assiette → calories + carences)
-// ✅ Profil santé complet (âge, poids, objectifs)
-// ✅ Onboarding WOW + Démo 1 scan gratuit
-// ✅ Paywall honnête — 7,99$/mois (14,99$ barré)
-// ✅ Partage résultats + Compte à rebours
-// ✅ Galerie photo (caméra OU galerie)
-// ✅ Scan % gras corporel + abdos visibles
+// VITASCANN — APP.JS v4.0
+// ✅ 11 zones : Ongles, Yeux, Peau, Cheveux, Langue,
+//    Pieds, Ventre, Cuir chev., % Gras, Dents, Barbe
+// ✅ Scan Repas (calories + macros + carences)
+// ✅ Profil santé complet + mode halal
+// ✅ Onboarding WOW (Sarah ongles + Sarah % gras)
+// ✅ Double option photo : Caméra OU Galerie
+// ✅ Chat IA nutritionniste post-scan
+// ✅ Suivi progression (courbe scores)
+// ✅ Plan repas personnalisé
+// ✅ Rappels intelligents
+// ✅ Profils famille (multi-profils)
+// ✅ Défi communauté 30 jours
+// ✅ Paywall 7,99$/mois honnête
 // ✅ Fix bouton back Android PWA
 // ============================================
 
@@ -22,7 +27,6 @@ import {
   query, where, getDocs, orderBy, serverTimestamp
 } from "firebase/firestore";
 
-// ─── FIREBASE ───
 const firebaseConfig = {
   apiKey: "AIzaSyC6P_gy_ZKyU-GuvisD5wweAVeUhGhrOcg",
   authDomain: "vitascann.firebaseapp.com",
@@ -41,9 +45,7 @@ const AuthService = {
   register: async (email, password, name) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(cred.user, { displayName: name });
-    await setDoc(doc(db, "users", cred.user.uid), {
-      name, email, plan: "free", scansCount: 0, createdAt: serverTimestamp()
-    });
+    await setDoc(doc(db, "users", cred.user.uid), { name, email, plan: "free", scansCount: 0, createdAt: serverTimestamp() });
     return cred.user;
   },
   login: async (email, password) => {
@@ -69,9 +71,8 @@ const ScanService = {
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   },
-  saveProfile: async (userId, profile) => {
-    await setDoc(doc(db, "users", userId), { profile }, { merge: true });
-  }
+  saveProfile: async (userId, profile) => { await setDoc(doc(db, "users", userId), { profile }, { merge: true }); },
+  saveFamily: async (userId, family) => { await setDoc(doc(db, "users", userId), { family }, { merge: true }); },
 };
 
 // ─── STYLES ───
@@ -90,6 +91,7 @@ html,body{background:#060d08;}
 @keyframes pop{0%{transform:scale(0)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 @keyframes slideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+@keyframes progressFill{from{width:0}to{width:var(--w)}}
 .fu{animation:fadeUp .5s ease both;}
 .fu1{animation:fadeUp .5s .07s ease both;}
 .fu2{animation:fadeUp .5s .14s ease both;}
@@ -108,33 +110,50 @@ html,body{background:#060d08;}
 .card{background:#0c1810;border:1px solid #192c1d;border-radius:18px;padding:18px;}
 `;
 
-const EM="#00ff88",GOLD="#e2b84a",MUT="#4a6e52",DANGER="#ff5555",WARN="#ffaa33";
+const EM="#00ff88",GOLD="#e2b84a",MUT="#4a6e52",DANGER="#ff5555",WARN="#ffaa33",VIKING="#8b5cf6";
 const CARD="#0c1810",BDR="#192c1d";
 
+// ─── ZONES ───
 const ZONES = [
-  {id:"nails",    icon:"💅", label:"Ongles",          hint:"Posez votre main à plat",              vitamins:"B12 · C · Fer · Zinc",        color:"#c084fc", premium:false},
-  {id:"eyes",     icon:"👁️", label:"Yeux",            hint:"Blanc de l'œil visible",               vitamins:"A · Fer",                     color:"#38bdf8", premium:false},
-  {id:"skin",     icon:"🖐️", label:"Peau",            hint:"Face interne du poignet",              vitamins:"D · B3 · Zinc",               color:"#fb923c", premium:true},
-  {id:"hair",     icon:"💇", label:"Cheveux",         hint:"Cuir chevelu, racines",                vitamins:"Biotine · Fer · B7",          color:"#f472b6", premium:true},
-  {id:"tongue",   icon:"👅", label:"Langue",          hint:"Tirée, bonne lumière",                 vitamins:"B2 · B3 · B12",               color:"#f87171", premium:true},
-  {id:"feet",     icon:"🦶", label:"Pieds",           hint:"Plante du pied, talons",               vitamins:"B3 · E · Zinc",               color:"#a3e635", premium:true},
-  {id:"belly",    icon:"🫃", label:"Ventre",          hint:"Zone abdominale, torse visible",        vitamins:"D · Magnésium · B12",         color:"#fbbf24", premium:true},
-  {id:"scalp",    icon:"🧠", label:"Cuir chev.",      hint:"Zones de chute ou irritation",         vitamins:"Biotine · Zinc · B5",         color:"#e879f9", premium:true},
-  {id:"body_fat", icon:"💪", label:"% Gras corporel", hint:"Torse ou abdomen visible, bonne lumière", vitamins:"Composition corporelle",   color:"#f97316", premium:true},
+  {id:"nails",    icon:"💅", label:"Ongles",          hint:"Posez votre main à plat",                  vitamins:"B12 · C · Fer · Zinc",      color:"#c084fc", premium:false},
+  {id:"eyes",     icon:"👁️", label:"Yeux",            hint:"Blanc de l'œil visible",                   vitamins:"A · Fer",                   color:"#38bdf8", premium:false},
+  {id:"skin",     icon:"🖐️", label:"Peau",            hint:"Face interne du poignet",                  vitamins:"D · B3 · Zinc",             color:"#fb923c", premium:true},
+  {id:"hair",     icon:"💇", label:"Cheveux",         hint:"Cuir chevelu, racines visibles",           vitamins:"Biotine · Fer · B7",        color:"#f472b6", premium:true},
+  {id:"tongue",   icon:"👅", label:"Langue",          hint:"Tirée, bonne lumière",                     vitamins:"B2 · B3 · B12",             color:"#f87171", premium:true},
+  {id:"feet",     icon:"🦶", label:"Pieds",           hint:"Plante du pied, talons",                   vitamins:"B3 · E · Zinc",             color:"#a3e635", premium:true},
+  {id:"belly",    icon:"🫃", label:"Ventre",          hint:"Zone abdominale, torse visible",           vitamins:"D · Magnésium · B12",       color:"#fbbf24", premium:true},
+  {id:"scalp",    icon:"🧠", label:"Cuir chev.",      hint:"Zones de chute ou irritation",             vitamins:"Biotine · Zinc · B5",       color:"#e879f9", premium:true},
+  {id:"body_fat", icon:"💪", label:"% Gras corporel", hint:"Torse ou abdomen visible, bonne lumière",  vitamins:"Composition corporelle",    color:"#f97316", premium:true},
+  {id:"teeth",    icon:"🦷", label:"Dents",           hint:"Sourire large, bonne lumière",             vitamins:"Calcium · D · K2",          color:"#e2e8f0", premium:true},
+  {id:"beard",    icon:"🧔", label:"Barbe",           hint:"Visage entier, barbe visible",             vitamins:"Biotine · Zinc · B7 · Fer", color:"#92400e", premium:true},
 ];
 
-const BODY_PROMPT = `Tu es VitaScann, assistant visuel en nutrition. Tu analyses des photos et donnes des PISTES indicatives — pas un diagnostic médical.
-Si la zone analysée est "% Gras corporel", retourne UNIQUEMENT ce JSON valide (sans markdown) :
-{"score":0-100,"urgence":"normal|attention|urgent","type_analyse":"body_fat","pct_gras_estime":5-45,"categorie_gras":"essentiel|athlete|fitness|acceptable|obesite","abdos_visibles":"oui|partiellement|non","morphologie":"ectomorphe|mesomorphe|endomorphe","carences":[{"nom":"Protéines","niveau":"critique|faible|limite|normal","pct":0-100,"emoji":"💪","signes":"observation","aliments":["a1","a2"],"complement":"Whey Protéine","dose":"25g/j"}],"positifs":["p1"],"conseil":"Conseil nutrition et sport en 2 phrases.","prochain":"zone suivante recommandée"}
-Sinon retourne UNIQUEMENT ce JSON valide (sans markdown) :
-{"score":0-100,"urgence":"normal|attention|urgent","carences":[{"nom":"Vitamine X","niveau":"critique|faible|limite|normal","pct":0-100,"emoji":"🟡","signes":"observation visuelle","aliments":["a1","a2","a3"],"complement":"Nom","dose":"500mg/j"}],"positifs":["p1","p2"],"conseil":"Conseil pratique en 2 phrases.","prochain":"zone suivante recommandée"}`;
+// ─── PROMPTS IA ───
+const BODY_PROMPT = `Tu es VitaScann, assistant visuel en nutrition. Analyses de photos — PISTES indicatives uniquement, pas un diagnostic médical.
 
-const MEAL_PROMPT = `Tu es VitaScann, assistant nutrition. Analyse cette photo de repas et retourne UNIQUEMENT ce JSON valide (sans markdown) :
-{"nom_repas":"Nom du plat","calories_estimees":0-2000,"proteines_g":0-100,"glucides_g":0-200,"lipides_g":0-100,"score_nutrition":0-100,"carences_comblees":[{"nutriment":"Vitamine X","emoji":"🟢","niveau":"bien|moyen|faible"}],"manque":[{"nutriment":"Zinc","conseil":"Ajouter des graines de courge"}],"conseil_global":"Conseil en 2 phrases.","note_halal":"halal|inconnu|attention"}`;
+Si zone = "% Gras corporel" → JSON :
+{"score":0-100,"urgence":"normal|attention|urgent","type_analyse":"body_fat","pct_gras_estime":5-45,"categorie_gras":"essentiel|athlete|fitness|acceptable|obesite","abdos_visibles":"oui|partiellement|non","morphologie":"ectomorphe|mesomorphe|endomorphe","carences":[{"nom":"Protéines","niveau":"faible","pct":40,"emoji":"💪","signes":"masse musculaire visible","aliments":["poulet","oeufs","légumineuses"],"complement":"Whey Protéine","dose":"25g après entraînement"}],"positifs":["p1"],"conseil":"2 phrases nutrition+sport.","prochain":"zone suivante"}
+
+Si zone = "Dents" → JSON :
+{"score":0-100,"urgence":"normal|attention|urgent","type_analyse":"teeth","etat_email":"excellent|bon|abime|critique","couleur":"blanc|jaunâtre|tache","carences":[{"nom":"Calcium","niveau":"faible","pct":45,"emoji":"🦷","signes":"observation","aliments":["lait","amandes","sardines"],"complement":"Calcium + D3","dose":"500mg/j"}],"astuces_grand_mere":["Rincer bouche huile coco 10min à jeun","Pâte bicarbonate+citron 1x/sem","Curcuma + eau chaude rincement"],"positifs":["p1"],"conseil":"2 phrases.","prochain":"zone"}
+
+Si zone = "Barbe" → JSON :
+{"score":0-100,"urgence":"normal|attention|urgent","type_analyse":"beard","densite":"faible|moyenne|dense","zones_clairsemees":["joues","menton","moustache"],"potentiel_viking":"faible|moyen|fort|légendaire","carences":[{"nom":"Biotine","niveau":"faible","pct":35,"emoji":"🧔","signes":"zones clairsemées","aliments":["oeufs","noix","avocats"],"complement":"Biotine 5000mcg","dose":"1 gélule/matin"}],"astuces_grand_mere":["Huile de ricin + massage 5min/soir","Cannelle + miel de Manuka application 20min","Citron frais + huile d'argan 2x/semaine","Eau de rose + gingembre frais"],"positifs":["p1"],"conseil":"2 phrases croissance barbe.","prochain":"zone"}
+
+Sinon → JSON :
+{"score":0-100,"urgence":"normal|attention|urgent","carences":[{"nom":"Vitamine X","niveau":"critique|faible|limite|normal","pct":0-100,"emoji":"🟡","signes":"observation visuelle","aliments":["a1","a2","a3"],"complement":"Nom","dose":"500mg/j"}],"positifs":["p1","p2"],"conseil":"Conseil pratique en 2 phrases.","prochain":"zone suivante"}`;
+
+const MEAL_PROMPT = `Tu es VitaScann nutritionniste. Analyse cette photo de repas. Retourne UNIQUEMENT ce JSON valide (sans markdown) :
+{"nom_repas":"Nom","calories_estimees":0-2000,"proteines_g":0-100,"glucides_g":0-200,"lipides_g":0-100,"score_nutrition":0-100,"carences_comblees":[{"nutriment":"Vitamine X","emoji":"🟢","niveau":"bien|moyen|faible"}],"manque":[{"nutriment":"Zinc","conseil":"Ajouter graines de courge"}],"conseil_global":"2 phrases.","note_halal":"halal|inconnu|attention"}`;
+
+const CHAT_SYSTEM = `Tu es le nutritionniste IA de VitaScann. Réponds en français, de façon concise (max 3 phrases), bienveillante et pratique. Contexte du scan fourni dans le message. Pas de diagnostic médical.`;
+
+const MEAL_PLAN_PROMPT = `Tu es nutritionniste VitaScann. Basé sur ce profil et ces carences, génère un plan repas 7 jours. Retourne UNIQUEMENT ce JSON (sans markdown) :
+{"semaine":[{"jour":"Lundi","petit_dej":"...","dejeuner":"...","diner":"...","snack":"...","nutriments_cibles":["Fer","VitD"]}]}`;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// ─── COMPOSANTS ───
+// ─── COMPOSANTS UI ───
 function Spin() {
   return <div style={{width:18,height:18,border:"2.5px solid #00000033",borderTopColor:"#000",borderRadius:"50%",animation:"spin .7s linear infinite",display:"inline-block"}}/>;
 }
@@ -212,6 +231,42 @@ function ErrorBanner({msg,onClose}) {
   );
 }
 
+// ─── DOUBLE OPTION PHOTO ───
+function PhotoPicker({onCapture,color,icon,hint,label}) {
+  const camRef = useRef();
+  const galRef = useRef();
+  const handle = (e) => {
+    const file = e.target.files[0]; if(!file)return;
+    const r = new FileReader();
+    r.onload = ev => onCapture(ev.target.result.split(",")[1], ev.target.result);
+    r.readAsDataURL(file);
+  };
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+        <button onClick={()=>camRef.current?.click()}
+          style={{background:`${color}12`,border:`2px solid ${color}44`,borderRadius:18,padding:"20px 12px",cursor:"pointer",textAlign:"center",transition:"all .2s"}}
+          onMouseEnter={e=>e.currentTarget.style.background=`${color}22`}
+          onMouseLeave={e=>e.currentTarget.style.background=`${color}12`}>
+          <div style={{fontSize:32,marginBottom:8}}>📷</div>
+          <div style={{fontWeight:700,fontSize:13,color:"#edf5ef"}}>Caméra</div>
+          <div style={{color:MUT,fontSize:11,marginTop:2}}>Prendre en photo</div>
+        </button>
+        <button onClick={()=>galRef.current?.click()}
+          style={{background:`${color}12`,border:`2px solid ${color}44`,borderRadius:18,padding:"20px 12px",cursor:"pointer",textAlign:"center",transition:"all .2s"}}
+          onMouseEnter={e=>e.currentTarget.style.background=`${color}22`}
+          onMouseLeave={e=>e.currentTarget.style.background=`${color}12`}>
+          <div style={{fontSize:32,marginBottom:8}}>🖼️</div>
+          <div style={{fontWeight:700,fontSize:13,color:"#edf5ef"}}>Galerie</div>
+          <div style={{color:MUT,fontSize:11,marginTop:2}}>Choisir une photo</div>
+        </button>
+      </div>
+      <input ref={camRef} type="file" accept="image/*" capture="environment" onChange={handle} style={{display:"none"}}/>
+      <input ref={galRef} type="file" accept="image/*" onChange={handle} style={{display:"none"}}/>
+    </div>
+  );
+}
+
 // ─── SPLASH ───
 function Splash({onDone}) {
   useEffect(()=>{const t=setTimeout(onDone,2400);return()=>clearTimeout(t);},[]);
@@ -223,7 +278,7 @@ function Splash({onDone}) {
       <div className="serif fu" style={{fontSize:48,fontWeight:700,color:"#edf5ef",letterSpacing:-1}}>VitaScann</div>
       <div className="fu1" style={{color:MUT,fontSize:13,letterSpacing:2,marginTop:6}}>INTELLIGENCE NUTRITIONNELLE</div>
       <div className="fu2" style={{marginTop:32,display:"flex",gap:16}}>
-        {["Corps","Repas","Santé"].map((l,i)=>(
+        {["Corps","Repas","Famille"].map((l,i)=>(
           <div key={i} style={{display:"flex",alignItems:"center",gap:5,color:MUT,fontSize:12}}>
             <div style={{width:6,height:6,borderRadius:3,background:EM}}/>{l}
           </div>
@@ -234,60 +289,117 @@ function Splash({onDone}) {
 }
 
 // ─── ONBOARDING WOW ───
-const SARAH = {
-  score:68,urgence:"attention",zone:"💅 Ongles",
+const SARAH_NAILS = {
+  score:68, urgence:"attention", zone:"💅 Ongles",
   carences:[
     {nom:"Vitamine D",niveau:"faible",pct:32,emoji:"☀️",signes:"Stries verticales sur les ongles, légère fragilité"},
     {nom:"Fer",niveau:"limite",pct:52,emoji:"🔴",signes:"Lit de l'ongle légèrement pâle"},
   ],
-  positifs:["Bonne hydratation","Kératine saine"],
   conseil:"Exposez-vous 15 min au soleil le matin et ajoutez des lentilles 3x/semaine.",
+};
+
+const SARAH_FAT = {
+  score:78, zone:"💪 % Gras corporel",
+  pct_gras_estime:24, categorie_gras:"fitness",
+  abdos_visibles:"partiellement", morphologie:"mesomorphe",
+  carences:[{nom:"Protéines",niveau:"limite",pct:55,emoji:"💪",signes:"Légère perte musculaire visible"}],
+  conseil:"Augmenter les protéines à 1,8g/kg de poids. Ajouter 2 séances musculation par semaine.",
+  evolution:"Score amélioré de +10 points en 3 mois 📈",
 };
 
 function Onboarding({onDemo,onRegister,onLogin}) {
   const [step,setStep] = useState(0);
+  const [example,setExample] = useState("nails");
 
   if(step===3) return (
     <div style={{minHeight:"100vh",paddingBottom:100,overflowY:"auto"}}>
       <div style={{padding:"52px 22px 18px",background:"radial-gradient(ellipse at 50% 0%,#071c0c 0%,#060d08 70%)"}}>
         <div style={{textAlign:"center",marginBottom:14}}>
           <span style={{background:"#00ff8818",color:EM,borderRadius:20,padding:"4px 14px",fontSize:11,fontWeight:700}}>
-            👁 EXEMPLE RÉEL — Résultat de Sarah, 28 ans
+            👁 EXEMPLES RÉELS — Sarah, 28 ans
           </span>
         </div>
-        <div className="fu" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-          <div className="serif" style={{fontSize:22,fontWeight:700}}>Rapport de Sarah</div>
-          <span style={{background:`${WARN}14`,color:WARN,borderRadius:20,padding:"3px 12px",fontSize:11,fontWeight:700}}>👁 Attention</span>
-        </div>
-        <div className="fu1" style={{display:"flex",alignItems:"center",gap:18,marginBottom:8}}>
-          <ScoreRing score={68} size={100}/>
-          <div>
-            <div style={{color:MUT,fontSize:11}}>Zone · {SARAH.zone}</div>
-            <div style={{color:MUT,fontSize:11,marginTop:8}}>Carences détectées</div>
-            <div style={{color:WARN,fontWeight:700,fontSize:28}}>2</div>
-          </div>
-        </div>
-      </div>
-      <div style={{padding:"14px 18px"}}>
-        <div className="card" style={{marginBottom:12}}>
-          <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>🔍 Ce que VitaScann a détecté</div>
-          {SARAH.carences.map((c,i)=>(
-            <div key={i} style={{marginBottom:i<1?12:0,paddingBottom:i<1?12:0,borderBottom:i<1?`1px solid ${BDR}`:"none"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                <span style={{fontWeight:700,fontSize:13}}>{c.emoji} {c.nom}</span>
-                <NivPill n={c.niveau}/>
-              </div>
-              <div style={{fontSize:11,color:MUT,marginBottom:4}}>{c.signes}</div>
-              <Bar v={c.pct} c={c.niveau==="faible"?WARN:DANGER}/>
-            </div>
+        {/* Toggle */}
+        <div style={{display:"flex",gap:8,marginBottom:16}}>
+          {[["nails","💅 Ongles"],["fat","💪 % Gras"]].map(([k,l])=>(
+            <button key={k} onClick={()=>setExample(k)}
+              style={{flex:1,background:example===k?`${EM}20`:"transparent",border:`1.5px solid ${example===k?EM:BDR}`,borderRadius:12,padding:"8px",fontFamily:"'Outfit',sans-serif",fontSize:12,fontWeight:700,color:example===k?EM:MUT,cursor:"pointer",transition:"all .2s"}}>
+              {l}
+            </button>
           ))}
         </div>
-        <div style={{background:"#0a1a0c",border:`1.5px solid ${EM}33`,borderRadius:14,padding:14,marginBottom:12,fontSize:12,color:"#a0bcaa",lineHeight:1.7}}>
-          💬 <strong style={{color:EM}}>Conseil :</strong> {SARAH.conseil}
-        </div>
+
+        {example==="nails"?(
+          <>
+            <div className="fu" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div className="serif" style={{fontSize:20,fontWeight:700}}>Scan Ongles — Sarah</div>
+              <span style={{background:`${WARN}14`,color:WARN,borderRadius:20,padding:"3px 10px",fontSize:10,fontWeight:700}}>👁 Attention</span>
+            </div>
+            <div className="fu1" style={{display:"flex",alignItems:"center",gap:16,marginBottom:8}}>
+              <ScoreRing score={68} size={90}/>
+              <div>
+                <div style={{color:MUT,fontSize:11}}>2 carences détectées</div>
+                <div style={{color:WARN,fontWeight:700,fontSize:26}}>Vitamine D · Fer</div>
+                <div style={{fontSize:11,color:MUT,marginTop:4}}>Via analyse visuelle ongles</div>
+              </div>
+            </div>
+          </>
+        ):(
+          <>
+            <div className="fu" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div className="serif" style={{fontSize:20,fontWeight:700}}>% Gras — Sarah +3 mois</div>
+              <span style={{background:`${EM}14`,color:EM,borderRadius:20,padding:"3px 10px",fontSize:10,fontWeight:700}}>✅ Fitness</span>
+            </div>
+            <div className="fu1" style={{display:"flex",alignItems:"center",gap:16,marginBottom:8}}>
+              <ScoreRing score={78} size={90}/>
+              <div>
+                <div style={{color:MUT,fontSize:11}}>Gras corporel estimé</div>
+                <div style={{color:"#f97316",fontWeight:700,fontSize:26}}>24%</div>
+                <div style={{fontSize:11,color:WARN,marginTop:4}}>Abdos : partiellement visibles</div>
+                <div style={{fontSize:11,color:EM,marginTop:2}}>{SARAH_FAT.evolution}</div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+      <div style={{padding:"14px 18px"}}>
+        {example==="nails"?(
+          <div className="card" style={{marginBottom:12}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>🔍 Détecté visuellement</div>
+            {SARAH_NAILS.carences.map((c,i)=>(
+              <div key={i} style={{marginBottom:i<1?12:0,paddingBottom:i<1?12:0,borderBottom:i<1?`1px solid ${BDR}`:"none"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                  <span style={{fontWeight:700,fontSize:13}}>{c.emoji} {c.nom}</span>
+                  <NivPill n={c.niveau}/>
+                </div>
+                <div style={{fontSize:11,color:MUT,marginBottom:4}}>{c.signes}</div>
+                <Bar v={c.pct} c={c.niveau==="faible"?WARN:DANGER}/>
+              </div>
+            ))}
+          </div>
+        ):(
+          <div className="card" style={{marginBottom:12}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>💪 Composition corporelle</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+              <div style={{background:"#0a140c",borderRadius:10,padding:"10px",textAlign:"center"}}>
+                <div style={{fontSize:22,fontWeight:700,color:"#f97316"}}>24%</div>
+                <div style={{fontSize:10,color:MUT}}>Gras corporel</div>
+              </div>
+              <div style={{background:"#0a140c",borderRadius:10,padding:"10px",textAlign:"center"}}>
+                <div style={{fontSize:22}}>〰️</div>
+                <div style={{fontSize:10,color:MUT}}>Abdos partiel</div>
+              </div>
+            </div>
+            <div style={{background:`${EM}10`,borderRadius:10,padding:"10px 12px",fontSize:12,color:"#a0bcaa"}}>
+              💬 {SARAH_FAT.conseil}
+            </div>
+          </div>
+        )}
         <div style={{background:"#0f1a0a",border:`2px solid ${EM}44`,borderRadius:18,padding:20,textAlign:"center",marginBottom:12}}>
           <div style={{fontSize:28,marginBottom:8}}>🔬</div>
-          <div className="serif" style={{fontSize:18,fontWeight:700,marginBottom:6}}>Et toi, qu'est-ce que tes ongles révèlent ?</div>
+          <div className="serif" style={{fontSize:18,fontWeight:700,marginBottom:6}}>
+            {example==="nails"?"Et toi, qu'est-ce que tes ongles révèlent ?":"Et toi, quel est ton % de gras ?"}
+          </div>
           <div style={{color:MUT,fontSize:13,marginBottom:16}}>1 photo suffit. Résultat en 30 secondes.</div>
           <button className="bem" onClick={onRegister} style={{marginBottom:10}}>Créer mon compte gratuit →</button>
           <button className="bgh" onClick={onDemo}>Essayer sans compte (1 scan offert)</button>
@@ -300,9 +412,9 @@ function Onboarding({onDemo,onRegister,onLogin}) {
   );
 
   const slides = [
-    {icon:"🌿",title:"Votre corps vous parle",sub:"Vos ongles, yeux et peau révèlent des pistes sur votre santé nutritionnelle. VitaScann les analyse en 30 secondes."},
-    {icon:"🍽️",title:"Scannez aussi vos repas",sub:"Photographiez votre assiette. VitaScann calcule calories, protéines et vous dit ce qui manque à votre alimentation."},
-    {icon:"🧬",title:"Conseils sur mesure",sub:"Votre profil personnalisé — âge, objectifs, mode de vie — pour des suggestions qui collent vraiment à votre quotidien."},
+    {icon:"🌿",title:"Votre corps vous parle",sub:"Ongles, yeux, peau, barbe, dents... Chaque zone révèle des pistes sur vos carences nutritionnelles. VitaScann les lit en 30 secondes."},
+    {icon:"🍽️",title:"Scannez aussi vos repas",sub:"Photographiez votre assiette. VitaScann calcule calories, macros et vous dit ce qui manque à votre alimentation."},
+    {icon:"👨‍👩‍👧",title:"Toute la famille",sub:"Un compte, plusieurs profils. Suivez la santé nutritionnelle de toute votre famille et progressez ensemble."},
   ];
 
   return (
@@ -326,7 +438,7 @@ function Onboarding({onDemo,onRegister,onLogin}) {
         {step<2
           ? <button className="bem" onClick={()=>setStep(s=>s+1)}>Suivant →</button>
           : <>
-              <button className="bem" onClick={()=>setStep(3)} style={{marginBottom:10}}>Voir un vrai résultat 👁</button>
+              <button className="bem" onClick={()=>setStep(3)} style={{marginBottom:10}}>Voir de vrais résultats 👁</button>
               <button className="bgh" onClick={onRegister}>Créer mon compte gratuit</button>
             </>
         }
@@ -426,7 +538,6 @@ function Login({onSuccess,onRegister,onForgot}) {
       <div style={{textAlign:"center",marginBottom:28}}>
         <div className="fu" style={{fontSize:36,marginBottom:10}}>🌿</div>
         <div className="serif fu1" style={{fontSize:24,fontWeight:700}}>Bon retour</div>
-        <div className="fu2" style={{color:MUT,fontSize:13,marginTop:5}}>Connectez-vous à VitaScann</div>
       </div>
       <ErrorBanner msg={err} onClose={()=>setErr("")}/>
       <Input label="EMAIL" value={f.email} onChange={v=>setF({...f,email:v})} placeholder="vous@email.com" left="✉️" disabled={load}/>
@@ -447,8 +558,7 @@ function ForgotPassword({onBack}) {
     <div style={{height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:32}}>
       <div style={{fontSize:64,marginBottom:20}}>📧</div>
       <div className="serif" style={{fontSize:24,fontWeight:700,marginBottom:8}}>Email envoyé !</div>
-      <div style={{color:MUT,fontSize:14,marginBottom:24}}>Vérifiez votre boîte mail.</div>
-      <button className="bgh" onClick={onBack}>← Retour</button>
+      <button className="bgh" style={{marginTop:16}} onClick={onBack}>← Retour</button>
     </div>
   );
   return (
@@ -466,13 +576,11 @@ function ForgotPassword({onBack}) {
 function ProfileSetup({user,onSave,onSkip}) {
   const [p,setP] = useState({age:"",poids:"",sexe:"homme",objectif:"energie",activite:"modere",halal:false});
   const [load,setLoad] = useState(false);
-
   const save = async () => {
     setLoad(true);
     if(user?.uid&&!user?.isDemo) await ScanService.saveProfile(user.uid,p).catch(()=>{});
     setLoad(false); onSave(p);
   };
-
   return (
     <div style={{minHeight:"100vh",padding:"52px 24px 40px",overflowY:"auto"}}>
       <div style={{textAlign:"center",marginBottom:24}}>
@@ -497,7 +605,7 @@ function ProfileSetup({user,onSave,onSkip}) {
         ]}/>
       <Select label="NIVEAU D'ACTIVITÉ" value={p.activite} onChange={v=>setP({...p,activite:v})} disabled={load}
         options={[
-          {v:"sedentaire",l:"🛋️ Sédentaire (peu de sport)"},
+          {v:"sedentaire",l:"🛋️ Sédentaire"},
           {v:"modere",l:"🚶 Modéré (2-3x/sem)"},
           {v:"actif",l:"🏃 Actif (4-5x/sem)"},
           {v:"intense",l:"🔥 Très actif (quotidien)"},
@@ -517,8 +625,10 @@ function ProfileSetup({user,onSave,onSkip}) {
 }
 
 // ─── DASHBOARD ───
-function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,history,profile}) {
+function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily,onChallenge,onProgress,onMealPlan,history,profile}) {
   const scansLeft = user.plan==="free"?Math.max(0,3-(history?.length||0)):null;
+  const challengeDay = Math.min(30, history?.length||0);
+
   return (
     <div style={{minHeight:"100vh",paddingBottom:90,overflowY:"auto"}}>
       <div style={{padding:"52px 22px 18px",background:"radial-gradient(ellipse at 50% 0%,#061a0a 0%,#060d08 70%)"}}>
@@ -542,14 +652,16 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,history,
           </div>
         )}
       </div>
+
       <div style={{padding:"14px 18px"}}>
+        {/* Actions principales */}
         <div className="fu2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
           <button onClick={onScan} style={{background:"linear-gradient(135deg,#0c2812,#071a0a)",border:`1.5px solid ${EM}44`,borderRadius:18,padding:"18px 12px",cursor:"pointer",textAlign:"center",transition:"all .2s"}}
             onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
             onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>
             <div style={{fontSize:30,marginBottom:8}}>🔬</div>
             <div style={{fontWeight:700,fontSize:14,color:"#edf5ef"}}>Scan corporel</div>
-            <div style={{color:MUT,fontSize:11,marginTop:2}}>Ongles, yeux, peau...</div>
+            <div style={{color:MUT,fontSize:11,marginTop:2}}>11 zones analysées</div>
           </button>
           <button onClick={onMealScan} style={{background:"linear-gradient(135deg,#12180c,#0a1207)",border:`1.5px solid ${GOLD}44`,borderRadius:18,padding:"18px 12px",cursor:"pointer",textAlign:"center",transition:"all .2s"}}
             onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
@@ -560,6 +672,38 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,history,
             {user.plan!=="premium"&&<div style={{fontSize:9,color:GOLD,marginTop:3,fontWeight:700}}>✨ PREMIUM</div>}
           </button>
         </div>
+
+        {/* Features Premium */}
+        <div className="fu3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+          {[
+            {ic:"📈",lb:"Progression",fn:onProgress,premium:true},
+            {ic:"🗓️",lb:"Plan repas",fn:onMealPlan,premium:true},
+            {ic:"👨‍👩‍👧",lb:"Famille",fn:onFamily,premium:false},
+            {ic:"🏆",lb:"Défi 30j",fn:onChallenge,premium:false},
+            {ic:"🧬",lb:"Mon profil",fn:onProfile,premium:false},
+          ].map(({ic,lb,fn,premium})=>(
+            <button key={lb} onClick={premium&&user.plan!=="premium"?onPaywall:fn}
+              style={{background:CARD,border:`1px solid ${BDR}`,borderRadius:14,padding:"12px 6px",cursor:"pointer",textAlign:"center",position:"relative"}}>
+              <div style={{fontSize:22,marginBottom:4}}>{ic}</div>
+              <div style={{fontSize:10,color:MUT,fontWeight:600}}>{lb}</div>
+              {premium&&user.plan!=="premium"&&<div style={{position:"absolute",top:4,right:4,fontSize:8,color:GOLD}}>👑</div>}
+            </button>
+          ))}
+        </div>
+
+        {/* Défi 30 jours */}
+        <div className="fu3 card" style={{marginBottom:14,border:`1px solid ${GOLD}28`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontWeight:700,fontSize:13}}>🏆 Défi 30 jours</div>
+            <span style={{color:GOLD,fontWeight:700,fontSize:13}}>Jour {challengeDay}/30</span>
+          </div>
+          <div style={{background:"#142018",borderRadius:6,height:8,overflow:"hidden",marginBottom:8}}>
+            <div style={{width:`${(challengeDay/30)*100}%`,height:"100%",background:`linear-gradient(90deg,${GOLD},${EM})`,borderRadius:6,transition:"width 1s ease"}}/>
+          </div>
+          <div style={{fontSize:11,color:MUT}}>{30-challengeDay} scans restants pour terminer le défi</div>
+        </div>
+
+        {/* Historique */}
         {history.length>0&&(
           <div className="fu3 card" style={{marginBottom:14}}>
             <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>📅 Derniers scans</div>
@@ -575,13 +719,15 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,history,
             ))}
           </div>
         )}
+
+        {/* Banner Premium */}
         {user.plan==="free"&&(
           <div className="fu4" style={{background:"linear-gradient(135deg,#181005,#100b03)",border:`1.5px solid ${GOLD}38`,borderRadius:18,padding:18,marginBottom:14}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
               <div style={{fontSize:28}}>👑</div>
               <div>
                 <div className="serif" style={{fontSize:17,fontWeight:700,color:GOLD}}>Passez Premium</div>
-                <div style={{color:MUT,fontSize:12}}>Moins cher qu'un café par semaine</div>
+                <div style={{color:MUT,fontSize:12}}>Moins cher qu'un café/semaine</div>
               </div>
               <div style={{marginLeft:"auto",textAlign:"right"}}>
                 <div className="serif" style={{fontSize:20,fontWeight:700,color:GOLD}}>7,99$</div>
@@ -591,18 +737,12 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,history,
             <button className="bgold" onClick={onPaywall} style={{fontSize:13}}>Débloquer tout →</button>
           </div>
         )}
-        <div className="card" style={{border:`1px solid ${GOLD}28`}}>
-          <div style={{color:GOLD,fontSize:10,fontWeight:700,letterSpacing:1,marginBottom:7}}>✨ CONSEIL DU JOUR</div>
-          <div style={{fontSize:13,color:"#a0bcaa",lineHeight:1.7}}>
-            {profile?.halal
-              ?"Consommez des dattes et des amandes chaque matin — riches en Fer, Magnésium et bons acides gras."
-              :"15 min de soleil le matin + sardines 2x/semaine couvrent l'essentiel de vos besoins en Vitamine D et Oméga-3."}
-          </div>
-        </div>
       </div>
+
+      {/* Bottom nav */}
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"rgba(8,14,10,.95)",backdropFilter:"blur(20px)",borderTop:`1px solid ${BDR}`,padding:"10px 0 22px",display:"flex",justifyContent:"space-around"}}>
-        {[["🏠","Accueil"],["🔬","Scan corps"],["🍽️","Scan repas"],["🧬","Profil"]].map(([ic,lb])=>(
-          <button key={lb} onClick={lb==="Scan corps"?onScan:lb==="Scan repas"?onMealScan:lb==="Profil"?onProfile:undefined}
+        {[["🏠","Accueil"],["🔬","Scanner"],["🍽️","Repas"],["👨‍👩‍👧","Famille"]].map(([ic,lb])=>(
+          <button key={lb} onClick={lb==="Scanner"?onScan:lb==="Repas"?onMealScan:lb==="Famille"?onFamily:undefined}
             style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
             <div style={{fontSize:19}}>{ic}</div>
             <div style={{fontSize:10,color:lb==="Accueil"?EM:MUT,fontWeight:lb==="Accueil"?600:400}}>{lb}</div>
@@ -622,8 +762,8 @@ function ZonePick({onSelect,onBack,user,onPaywall}) {
       <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>Choisir une zone</div>
       <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>
         {user?.plan==="premium"
-          ?<span style={{color:GOLD}}>👑 Toutes les zones débloquées</span>
-          :<span><span style={{color:EM,fontWeight:600}}>2 zones gratuites</span> · <span style={{color:GOLD}}>6 zones Premium 🔒</span></span>}
+          ?<span style={{color:GOLD}}>👑 11 zones débloquées</span>
+          :<span><span style={{color:EM,fontWeight:600}}>2 zones gratuites</span> · <span style={{color:GOLD}}>9 zones Premium 🔒</span></span>}
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {ZONES.map(z=>{
@@ -631,67 +771,76 @@ function ZonePick({onSelect,onBack,user,onPaywall}) {
           return (
             <button key={z.id} onClick={()=>locked?onPaywall():onSelect(z)}
               style={{display:"flex",alignItems:"center",gap:14,background:locked?"#0a0e0b":CARD,border:`1px solid ${locked?"#1a2e1e":BDR}`,borderRadius:16,padding:"15px 16px",cursor:"pointer",textAlign:"left",width:"100%",transition:"all .2s",opacity:locked?.75:1}}
-              onMouseEnter={e=>{e.currentTarget.style.border=`1px solid ${locked?GOLD+"44":z.color+"55"}`;if(!locked)e.currentTarget.style.background=`${z.color}08`;}}
-              onMouseLeave={e=>{e.currentTarget.style.border=`1px solid ${locked?"#1a2e1e":BDR}`;e.currentTarget.style.background=locked?"#0a0e0b":CARD;}}>
-              <div style={{width:50,height:50,borderRadius:14,background:locked?`${GOLD}10`:`${z.color}18`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>{locked?"🔒":z.icon}</div>
+              onMouseEnter={e=>{e.currentTarget.style.border=`1px solid ${locked?GOLD+"44":z.color+"55"}`;}}
+              onMouseLeave={e=>{e.currentTarget.style.border=`1px solid ${locked?"#1a2e1e":BDR}`;}}>
+              <div style={{width:50,height:50,borderRadius:14,background:locked?`${GOLD}10`:`${z.color}18`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>
+                {locked?"🔒":z.icon}
+              </div>
               <div style={{flex:1}}>
                 <div style={{fontWeight:700,fontSize:15,color:locked?MUT:"#edf5ef"}}>{z.label}</div>
-                <div style={{fontSize:11,color:MUT,marginTop:2}}>{locked?"Zone Premium — Débloquez pour analyser":z.hint}</div>
-                {!locked&&<div style={{fontSize:10,color:z.color,marginTop:4,fontWeight:600}}>Détecte : {z.vitamins}</div>}
+                <div style={{fontSize:11,color:MUT,marginTop:2}}>{locked?"Zone Premium":z.hint}</div>
+                {!locked&&<div style={{fontSize:10,color:z.color,marginTop:4,fontWeight:600}}>{z.vitamins}</div>}
                 {locked&&<div style={{fontSize:10,color:GOLD,marginTop:4,fontWeight:600}}>✨ Premium · 7,99$/mois</div>}
               </div>
-              <div style={{color:locked?GOLD:MUT,fontSize:locked?13:18,fontWeight:locked?700:400}}>{locked?"👑":"›"}</div>
+              <div style={{color:locked?GOLD:MUT,fontSize:locked?13:18}}>{locked?"👑":"›"}</div>
             </button>
           );
         })}
       </div>
-      {user?.plan!=="premium"&&(
-        <div style={{marginTop:20,background:"linear-gradient(135deg,#181005,#100b03)",border:`1.5px solid ${GOLD}38`,borderRadius:18,padding:18}}>
-          <div className="serif" style={{fontSize:16,fontWeight:700,color:GOLD,marginBottom:5}}>👑 Débloquez les 6 zones Premium</div>
-          <div style={{color:MUT,fontSize:12,lineHeight:1.6,marginBottom:14}}>Peau, Cheveux, Langue, Pieds, Ventre, Cuir chevelu — analyse complète de votre corps.</div>
-          <button className="bgold" onClick={onPaywall}>Passer Premium · 7,99$/mois →</button>
-        </div>
-      )}
     </div>
   );
 }
 
-// ─── CAPTURE CORPS ───
+// ─── CAPTURE ───
 function Capture({zone,onCapture,onBack}) {
-  const ref=useRef();
-  const handle=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>onCapture(ev.target.result.split(",")[1],ev.target.result);r.readAsDataURL(file);};
   return (
     <div style={{minHeight:"100vh",padding:"52px 20px 40px",display:"flex",flexDirection:"column"}}>
       <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:20,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
       <div className="serif fu" style={{fontSize:22,fontWeight:700,marginBottom:3}}>Photographier</div>
       <div className="fu1" style={{color:zone.color,fontSize:17,fontWeight:600,marginBottom:20}}>{zone.icon} {zone.label}</div>
-      <div className="fu2" onClick={()=>ref.current?.click()}
-        style={{flex:1,maxHeight:300,background:"#080f0a",borderRadius:24,border:`2px solid ${zone.color}38`,position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20,cursor:"pointer"}}>
+
+      {/* Barbe spéciale */}
+      {zone.id==="beard"&&(
+        <div className="fu2" style={{background:`${VIKING}10`,border:`1px solid ${VIKING}33`,borderRadius:14,padding:14,marginBottom:16}}>
+          <div style={{color:VIKING,fontSize:11,fontWeight:700,letterSpacing:.8,marginBottom:6}}>🪓 ANALYSE BARBE VIKING</div>
+          <div style={{fontSize:12,color:"#a0bcaa",lineHeight:1.6}}>VitaScann analyse la densité, les zones clairsemées et te donne des astuces naturelles de grand-mère pour booster ta croissance.</div>
+        </div>
+      )}
+
+      {/* Dents spéciale */}
+      {zone.id==="teeth"&&(
+        <div className="fu2" style={{background:"#0a1a14",border:"1px solid #1a3028",borderRadius:14,padding:14,marginBottom:16}}>
+          <div style={{color:"#e2e8f0",fontSize:11,fontWeight:700,letterSpacing:.8,marginBottom:6}}>🦷 CONSEILS PHOTO</div>
+          <div style={{fontSize:12,color:"#a0bcaa",lineHeight:1.6}}>Sourire large, lèvres bien ouvertes. Bonne lumière directe. Photo de face.</div>
+        </div>
+      )}
+
+      <div className="fu2" style={{flex:1,maxHeight:200,background:"#080f0a",borderRadius:24,border:`2px solid ${zone.color}38`,position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
         <div style={{position:"absolute",left:16,right:16,height:2,background:`linear-gradient(90deg,transparent,${zone.color},transparent)`,animation:"scanPulse 2s ease-in-out infinite",top:"50%"}}/>
         <div style={{textAlign:"center",zIndex:1}}>
-          <div style={{fontSize:52,marginBottom:10}}>{zone.icon}</div>
-          <div style={{color:zone.color,fontWeight:600,fontSize:13}}>Appuyez pour photographier</div>
-          <div style={{color:MUT,fontSize:11,marginTop:4}}>{zone.hint}</div>
+          <div style={{fontSize:48,marginBottom:8}}>{zone.icon}</div>
+          <div style={{color:zone.color,fontWeight:600,fontSize:13}}>{zone.hint}</div>
         </div>
       </div>
+
       <div className="fu3 card" style={{marginBottom:16}}>
         <div style={{color:GOLD,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:8}}>💡 CONSEILS PHOTO</div>
-        {["Lumière naturelle ou LED blanche","Distance 10-15 cm","Image bien nette, pas floue"].map(t=>(
+        {["Lumière naturelle ou LED blanche","Bonne mise au point, pas floue","Distance adaptée à la zone"].map(t=>(
           <div key={t} style={{display:"flex",gap:7,marginBottom:5,fontSize:12,color:MUT}}>
             <div style={{width:5,height:5,borderRadius:"50%",background:GOLD,marginTop:4,flexShrink:0}}/>{t}
           </div>
         ))}
       </div>
-      <button className="bem fu4" onClick={()=>ref.current?.click()}>📷 Prendre la photo</button>
-      <input ref={ref} type="file" accept="image/*" onChange={handle} style={{display:"none"}}/>
+
+      <div className="fu4">
+        <PhotoPicker onCapture={onCapture} color={zone.color} icon={zone.icon} hint={zone.hint} label={zone.label}/>
+      </div>
     </div>
   );
 }
 
 // ─── CAPTURE REPAS ───
 function MealCapture({onCapture,onBack,user,onPaywall}) {
-  const ref=useRef();
-
   if(user?.plan!=="premium"&&!user?.isDemo) return (
     <div style={{minHeight:"100vh",padding:"52px 24px 40px",display:"flex",flexDirection:"column"}}>
       <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:32,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
@@ -704,7 +853,7 @@ function MealCapture({onCapture,onBack,user,onPaywall}) {
         </div>
       </div>
       <div className="card" style={{marginBottom:24,border:`1px solid ${GOLD}33`}}>
-        {["📸 Analyse visuelle de n'importe quel repas","🔢 Calories et macros estimés","💊 Carences comblées par ce repas","🌙 Statut halal signalé automatiquement","🔗 Croisé avec vos scans corporels"].map((f,i)=>(
+        {["📸 Analyse visuelle de n'importe quel repas","🔢 Calories et macros estimés","💊 Carences comblées","🌙 Statut halal automatique","🔗 Croisé avec vos scans corporels"].map((f,i)=>(
           <div key={i} style={{display:"flex",gap:10,marginBottom:i<4?10:0,fontSize:13,color:"#b0c8b8"}}>
             <span style={{color:EM}}>✓</span>{f}
           </div>
@@ -715,31 +864,29 @@ function MealCapture({onCapture,onBack,user,onPaywall}) {
     </div>
   );
 
-  const handle=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>onCapture(ev.target.result.split(",")[1],ev.target.result);r.readAsDataURL(file);};
   return (
     <div style={{minHeight:"100vh",padding:"52px 20px 40px",display:"flex",flexDirection:"column"}}>
       <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:20,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
       <div className="serif fu" style={{fontSize:22,fontWeight:700,marginBottom:3}}>Scan Repas</div>
       <div className="fu1" style={{color:GOLD,fontSize:15,fontWeight:600,marginBottom:20}}>🍽️ Photographiez votre assiette</div>
-      <div className="fu2" onClick={()=>ref.current?.click()}
-        style={{flex:1,maxHeight:300,background:"#080f0a",borderRadius:24,border:`2px solid ${GOLD}38`,position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20,cursor:"pointer"}}>
+      <div className="fu2" style={{flex:1,maxHeight:200,background:"#080f0a",borderRadius:24,border:`2px solid ${GOLD}38`,position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
         <div style={{position:"absolute",left:16,right:16,height:2,background:`linear-gradient(90deg,transparent,${GOLD},transparent)`,animation:"scanPulse 2s ease-in-out infinite",top:"50%"}}/>
         <div style={{textAlign:"center",zIndex:1}}>
-          <div style={{fontSize:52,marginBottom:10}}>🍽️</div>
-          <div style={{color:GOLD,fontWeight:600,fontSize:13}}>Appuyez pour photographier</div>
-          <div style={{color:MUT,fontSize:11,marginTop:4}}>Vue du dessus, repas complet visible</div>
+          <div style={{fontSize:48,marginBottom:8}}>🍽️</div>
+          <div style={{color:GOLD,fontWeight:600,fontSize:13}}>Vue du dessus, repas complet visible</div>
         </div>
       </div>
       <div className="fu3 card" style={{marginBottom:16}}>
         <div style={{color:GOLD,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:8}}>💡 POUR UN MEILLEUR RÉSULTAT</div>
-        {["Photo du dessus, tout le repas visible","Bonne lumière naturelle ou LED","Évitez les assiettes à motifs chargés"].map(t=>(
+        {["Photo du dessus, tout visible","Bonne lumière naturelle ou LED","Évitez les assiettes à motifs"].map(t=>(
           <div key={t} style={{display:"flex",gap:7,marginBottom:5,fontSize:12,color:MUT}}>
             <div style={{width:5,height:5,borderRadius:"50%",background:GOLD,marginTop:4,flexShrink:0}}/>{t}
           </div>
         ))}
       </div>
-      <button className="bem fu4" onClick={()=>ref.current?.click()} style={{background:`linear-gradient(135deg,${GOLD},#c49a2e)`,color:"#080400"}}>📷 Photographier mon repas</button>
-      <input ref={ref} type="file" accept="image/*" onChange={handle} style={{display:"none"}}/>
+      <div className="fu4">
+        <PhotoPicker onCapture={onCapture} color={GOLD} icon="🍽️" hint="Vue du dessus" label="Repas"/>
+      </div>
     </div>
   );
 }
@@ -769,10 +916,14 @@ function Preview({zone,preview,onAnalyze,onRetake,isMeal}) {
 function Analyzing({zone,isMeal}) {
   const [cur,setCur]=useState(0);
   const steps=isMeal
-    ?["Identification du repas...","Calcul des calories...","Analyse des nutriments...","Vérification carences comblées...","Rapport prêt..."]
-    :["Détection de la zone...","Analyse des pigmentations...","Comparaison base médicale...","Calcul des carences...","Génération du rapport..."];
+    ?["Identification du repas...","Calcul des calories...","Analyse des nutriments...","Rapport prêt..."]
+    :zone?.id==="beard"
+      ?["Analyse de la densité...","Détection zones clairsemées...","Calcul potentiel Viking...","Astuces grand-mère...","Rapport prêt..."]
+      :zone?.id==="teeth"
+        ?["Analyse de l'émail...","Détection des taches...","Évaluation minéralisation...","Rapport prêt..."]
+        :["Détection de la zone...","Analyse des pigmentations...","Comparaison base nutritionnelle...","Génération du rapport..."];
   useEffect(()=>{const t=setInterval(()=>setCur(s=>Math.min(s+1,steps.length-1)),850);return()=>clearInterval(t);},[]);
-  const color=isMeal?GOLD:zone?.color;
+  const color=isMeal?GOLD:zone?.id==="beard"?VIKING:zone?.color;
   return (
     <div style={{height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px"}}>
       <div style={{position:"relative",width:120,height:120,marginBottom:28}}>
@@ -781,7 +932,9 @@ function Analyzing({zone,isMeal}) {
         <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:42}}>{isMeal?"🍽️":zone?.icon}</div>
       </div>
       <div className="serif" style={{fontSize:22,fontWeight:700,marginBottom:6}}>Analyse en cours</div>
-      <div style={{color:MUT,fontSize:13,marginBottom:36}}>{isMeal?"Analyse nutritionnelle du repas":`Examen de vos ${zone?.label}`}</div>
+      <div style={{color:MUT,fontSize:13,marginBottom:36}}>
+        {zone?.id==="beard"?"Analyse de votre barbe 🪓":zone?.id==="teeth"?"Analyse de vos dents 🦷":isMeal?"Analyse nutritionnelle":`Examen de vos ${zone?.label}`}
+      </div>
       <div style={{width:"100%",maxWidth:300}}>
         {steps.map((s,i)=>(
           <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,opacity:i<=cur?1:.18,transition:"opacity .4s"}}>
@@ -795,91 +948,72 @@ function Analyzing({zone,isMeal}) {
   );
 }
 
-// ─── RÉSULTAT REPAS ───
-function MealResult({result,onNewScan,onHome}) {
-  const sc=result?.score_nutrition||0;
-  const scoreColor=sc>=75?EM:sc>=50?WARN:DANGER;
-  const handleShare=async()=>{
-    const text=`🍽️ Mon analyse repas VitaScann\n\n${result.nom_repas||"Mon repas"} — ${result.calories_estimees} kcal\nScore nutrition : ${sc}/100\n\nCarences comblées : ${result.carences_comblees?.filter(c=>c.niveau==="bien").map(c=>c.nutriment).join(", ")||"—"}\n\n🌿 vitascann.vercel.app`;
-    if(navigator.share){await navigator.share({title:"Mon repas VitaScann",text}).catch(()=>{});}
-    else{await navigator.clipboard.writeText(text);alert("📋 Résultats copiés !");}
+// ─── CHAT IA POST-SCAN ───
+function ChatIA({result,zone,profile,onClose}) {
+  const [msgs,setMsgs] = useState([{role:"assistant",text:`Bonjour ! J'ai analysé vos ${zone?.label||"résultats"}. Posez-moi vos questions nutrition ! 💬`}]);
+  const [input,setInput] = useState("");
+  const [load,setLoad] = useState(false);
+  const endRef = useRef();
+
+  useEffect(()=>endRef.current?.scrollIntoView({behavior:"smooth"}),[msgs]);
+
+  const send = async () => {
+    if(!input.trim()||load)return;
+    const q = input.trim(); setInput("");
+    setMsgs(m=>[...m,{role:"user",text:q}]);
+    setLoad(true);
+    try {
+      const context = `Résultats scan ${zone?.label}: Score ${result.score}/100. Carences: ${result.carences?.map(c=>c.nom).join(", ")||"aucune"}. Profil: ${profile?.age||"?"}ans, ${profile?.sexe||"?"}, objectif: ${profile?.objectif||"?"}.`;
+      const res = await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:300,system:CHAT_SYSTEM,messages:[
+          {role:"user",content:`${context}\n\nQuestion: ${q}`}
+        ]})
+      });
+      const data = await res.json();
+      const text = data.content?.map(b=>b.text||"").join("")||"Désolé, réessayez.";
+      setMsgs(m=>[...m,{role:"assistant",text}]);
+    } catch(e) { setMsgs(m=>[...m,{role:"assistant",text:"Erreur de connexion. Réessayez."}]); }
+    finally { setLoad(false); }
   };
+
   return (
-    <div style={{minHeight:"100vh",paddingBottom:80,overflowY:"auto"}}>
-      <div style={{padding:"52px 22px 22px",background:"radial-gradient(ellipse at 50% 0%,#1a1200 0%,#060d08 70%)"}}>
-        <div className="fu" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-          <div className="serif" style={{fontSize:22,fontWeight:700}}>Analyse repas</div>
-          <span style={{background:`${scoreColor}14`,color:scoreColor,borderRadius:20,padding:"3px 12px",fontSize:11,fontWeight:700}}>
-            {sc>=75?"✅ Excellent":sc>=50?"👁 Correct":"⚠️ Incomplet"}
-          </span>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",zIndex:100,display:"flex",flexDirection:"column",maxWidth:430,margin:"0 auto"}}>
+      <div style={{background:CARD,borderBottom:`1px solid ${BDR}`,padding:"16px 18px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div>
+          <div style={{fontWeight:700,fontSize:15}}>💬 Nutritionniste IA</div>
+          <div style={{color:MUT,fontSize:11}}>Posez vos questions sur vos résultats</div>
         </div>
-        <div className="fu1" style={{display:"flex",alignItems:"center",gap:18}}>
-          <ScoreRing score={sc} size={100}/>
-          <div>
-            <div style={{fontWeight:700,fontSize:16,color:GOLD}}>{result.nom_repas||"Votre repas"}</div>
-            {result.note_halal==="halal"&&<span style={{background:`${GOLD}14`,color:GOLD,borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700,marginTop:4,display:"inline-block"}}>🌙 Halal</span>}
-            {result.note_halal==="attention"&&<span style={{background:`${WARN}14`,color:WARN,borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700,marginTop:4,display:"inline-block"}}>⚠️ Vérifier halal</span>}
-            <div style={{color:MUT,fontSize:11,marginTop:8}}>Calories estimées</div>
-            <div style={{color:GOLD,fontWeight:700,fontSize:24}}>{result.calories_estimees}<span style={{fontSize:12,fontWeight:400}}> kcal</span></div>
-          </div>
-        </div>
+        <button onClick={onClose} style={{background:"none",border:"none",color:MUT,fontSize:22,cursor:"pointer"}}>×</button>
       </div>
-      <div style={{padding:"14px 18px"}}>
-        <div className="fu2 card" style={{marginBottom:14}}>
-          <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>📊 Macronutriments</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-            {[["Protéines",result.proteines_g,"g","#38bdf8"],["Glucides",result.glucides_g,"g","#fbbf24"],["Lipides",result.lipides_g,"g","#fb923c"]].map(([l,v,u,c])=>(
-              <div key={l} style={{background:"#0a140c",borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
-                <div style={{fontSize:18,fontWeight:700,color:c}}>{v||"?"}</div>
-                <div style={{fontSize:10,color:MUT,marginTop:2}}>{l} ({u})</div>
-              </div>
-            ))}
-          </div>
-        </div>
-        {result.carences_comblees?.length>0&&(
-          <div className="fu3 card" style={{marginBottom:14}}>
-            <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>✅ Carences comblées par ce repas</div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
-              {result.carences_comblees.map((c,i)=>{
-                const col=c.niveau==="bien"?EM:c.niveau==="moyen"?WARN:MUT;
-                return <span key={i} style={{background:`${col}14`,color:col,borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:600}}>{c.emoji} {c.nutriment}</span>;
-              })}
+      <div style={{flex:1,overflowY:"auto",padding:"16px 18px"}}>
+        {msgs.map((m,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:12}}>
+            <div style={{maxWidth:"80%",background:m.role==="user"?`${EM}20`:CARD,border:`1px solid ${m.role==="user"?EM:BDR}`,borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px",padding:"10px 14px",fontSize:13,lineHeight:1.6,color:m.role==="user"?EM:"#edf5ef"}}>
+              {m.text}
             </div>
           </div>
-        )}
-        {result.manque?.length>0&&(
-          <div className="fu3 card" style={{marginBottom:14,border:`1px solid ${WARN}22`}}>
-            <div style={{fontWeight:700,fontSize:13,marginBottom:12,color:WARN}}>⚠️ Ce qui manque</div>
-            {result.manque.map((m,i)=>(
-              <div key={i} style={{marginBottom:i<result.manque.length-1?10:0,paddingBottom:i<result.manque.length-1?10:0,borderBottom:i<result.manque.length-1?`1px solid ${BDR}`:"none"}}>
-                <div style={{fontWeight:600,fontSize:13,marginBottom:3}}>{m.nutriment}</div>
-                <div style={{fontSize:12,color:MUT}}>{m.conseil}</div>
-              </div>
-            ))}
-          </div>
-        )}
-        {result.conseil_global&&(
-          <div className="fu4 card" style={{border:`1px solid ${GOLD}28`,marginBottom:14}}>
-            <div style={{color:GOLD,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:7}}>💬 CONSEIL PERSONNALISÉ</div>
-            <div style={{fontSize:13,color:"#a0bcaa",lineHeight:1.7}}>{result.conseil_global}</div>
-          </div>
-        )}
-        <div style={{background:"#120f06",border:"1px solid #2a2010",borderRadius:12,padding:"10px 14px",fontSize:11,color:"#806040",lineHeight:1.6,marginBottom:16}}>
-          ⚠️ Estimation indicative basée sur l'analyse visuelle. Les valeurs peuvent varier selon portions et préparation.
-        </div>
-        <button onClick={handleShare} style={{width:"100%",background:"linear-gradient(135deg,#1a2e20,#0f1e14)",border:`1.5px solid ${EM}55`,borderRadius:12,padding:"14px",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:700,color:EM,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          📤 Partager mon analyse
-        </button>
-        <button className="bem" onClick={onNewScan} style={{marginBottom:10}}>🍽️ Scanner un autre repas</button>
-        <button className="bgh" onClick={onHome}>🏠 Retour à l'accueil</button>
+        ))}
+        {load&&<div style={{display:"flex",gap:6,padding:"0 4px"}}>
+          {[0,1,2].map(i=><div key={i} style={{width:8,height:8,borderRadius:"50%",background:EM,animation:`pulse 1s ${i*.2}s ease infinite`}}/>)}
+        </div>}
+        <div ref={endRef}/>
+      </div>
+      <div style={{padding:"12px 18px",background:CARD,borderTop:`1px solid ${BDR}`,display:"flex",gap:10}}>
+        <input className="inp" value={input} onChange={e=>setInput(e.target.value)}
+          onKeyDown={e=>e.key==="Enter"&&send()}
+          placeholder="Posez votre question..." style={{flex:1,padding:"12px 16px"}}/>
+        <button onClick={send} disabled={!input.trim()||load}
+          style={{background:EM,border:"none",borderRadius:12,padding:"12px 16px",fontSize:18,cursor:"pointer",opacity:!input.trim()||load?.5:1}}>→</button>
       </div>
     </div>
   );
 }
 
-// ─── RÉSULTAT CORPS ───
+// ─── RÉSULTAT CORPOREL ───
 async function shareResult(result,zone) {
-  const text=`🌿 Mon rapport VitaScann\n\nZone : ${zone.icon} ${zone.label}\nScore : ${result.score}/100\nStatut : ${result.urgence==="urgent"?"⚠️ Urgent":result.urgence==="attention"?"👁 Attention":"✅ Normal"}\n\n${result.carences?.length>0?`Carences : ${result.carences.map(c=>c.nom).join(", ")}`:"Aucune carence majeure ✅"}\n\n💬 ${result.conseil||""}\n\n🔬 vitascann.vercel.app`;
+  const text=`🌿 Mon rapport VitaScann\n\nZone : ${zone.icon} ${zone.label}\nScore : ${result.score}/100\n${result.type_analyse==="body_fat"?`Gras : ${result.pct_gras_estime}%\nAbdos : ${result.abdos_visibles}`:result.type_analyse==="beard"?`Potentiel Viking : ${result.potentiel_viking} 🪓`:""}\n\n💬 ${result.conseil||""}\n\n🔬 vitascann.vercel.app`;
   if(navigator.share){await navigator.share({title:"Mon rapport VitaScann",text,url:"https://vitascann.vercel.app"}).catch(()=>{});}
   else{await navigator.clipboard.writeText(text);alert("📋 Résultats copiés !");}
 }
@@ -904,31 +1038,32 @@ async function generatePDF(result,zone,user) {
   const score=result?.score||0;const sc2=score>=75?GREEN:score>=50?ORANGE:RED;
   fill(sc2);doc.circle(W-MARGIN-20,y+14,12,"F");doc.setFontSize(14);doc.setFont("helvetica","bold");rgb(DARK);doc.text(`${score}`,W-MARGIN-20,y+15.5,{align:"center"});
   doc.setFontSize(6);doc.text("/100",W-MARGIN-20,y+20,{align:"center"});
-  const urgColor=result?.urgence==="urgent"?RED:result?.urgence==="attention"?ORANGE:GREEN;
-  const urgLabel=result?.urgence==="urgent"?"URGENT":result?.urgence==="attention"?"ATTENTION":"NORMAL";
-  fill(urgColor);doc.roundedRect(W-MARGIN-60,y+6,32,8,2,2,"F");doc.setFontSize(7);doc.setFont("helvetica","bold");rgb(DARK);doc.text(urgLabel,W-MARGIN-44,y+11.2,{align:"center"});
   y+=35;
+  if(result?.type_analyse==="beard"&&result?.astuces_grand_mere?.length>0){
+    const bH=12+result.astuces_grand_mere.length*8;fill([12,8,20]);doc.roundedRect(MARGIN,y,COL,bH,3,3,"F");line([139,92,246]);doc.setLineWidth(0.3);doc.roundedRect(MARGIN,y,COL,bH,3,3,"S");
+    doc.setFontSize(8);doc.setFont("helvetica","bold");rgb([192,132,252]);doc.text("ASTUCES GRAND-MERE BARBE",MARGIN+6,y+6);y+=10;
+    result.astuces_grand_mere.forEach(a=>{doc.setFontSize(7);doc.setFont("helvetica","normal");rgb([200,180,220]);doc.text(`• ${a}`,MARGIN+6,y);y+=8;});y+=4;
+  }
+  if(result?.type_analyse==="teeth"&&result?.astuces_grand_mere?.length>0){
+    const bH=12+result.astuces_grand_mere.length*8;fill([8,18,14]);doc.roundedRect(MARGIN,y,COL,bH,3,3,"F");line(GREEN);doc.setLineWidth(0.3);doc.roundedRect(MARGIN,y,COL,bH,3,3,"S");
+    doc.setFontSize(8);doc.setFont("helvetica","bold");rgb(GREEN);doc.text("REMEDES NATURELS DENTS",MARGIN+6,y+6);y+=10;
+    result.astuces_grand_mere.forEach(a=>{doc.setFontSize(7);doc.setFont("helvetica","normal");rgb([160,200,180]);doc.text(`• ${a}`,MARGIN+6,y);y+=8;});y+=4;
+  }
   if(result?.carences?.length>0){
     doc.setFontSize(10);doc.setFont("helvetica","bold");rgb(WHITE);doc.text("Carences identifiees",MARGIN,y);y+=6;
     result.carences.forEach(c=>{
       if(y>250){doc.addPage();fill(DARK);doc.rect(0,0,W,297,"F");y=20;}
       const nc=c.niveau==="critique"?RED:c.niveau==="faible"?ORANGE:c.niveau==="limite"?[251,191,36]:GREEN;
-      fill([12,24,16]);doc.roundedRect(MARGIN,y,COL,40,3,3,"F");line(nc);doc.setLineWidth(0.4);doc.roundedRect(MARGIN,y,COL,40,3,3,"S");
-      fill(nc);doc.roundedRect(MARGIN,y,3,40,1,1,"F");
+      fill([12,24,16]);doc.roundedRect(MARGIN,y,COL,38,3,3,"F");line(nc);doc.setLineWidth(0.4);doc.roundedRect(MARGIN,y,COL,38,3,3,"S");
+      fill(nc);doc.roundedRect(MARGIN,y,3,38,1,1,"F");
       doc.setFontSize(11);doc.setFont("helvetica","bold");rgb(WHITE);doc.text(`${c.nom}`,MARGIN+8,y+9);
       fill(nc);doc.roundedRect(W-MARGIN-30,y+3,28,7,2,2,"F");doc.setFontSize(7);doc.setFont("helvetica","bold");rgb(DARK);doc.text((c.niveau||"").toUpperCase(),W-MARGIN-16,y+8,{align:"center"});
       doc.setFontSize(8);doc.setFont("helvetica","normal");rgb([176,200,184]);doc.text(doc.splitTextToSize(c.signes||"",COL-16),MARGIN+8,y+17);
       fill([20,32,24]);doc.roundedRect(MARGIN+8,y+21,COL-16,3,1,1,"F");fill(nc);doc.roundedRect(MARGIN+8,y+21,(COL-16)*((c.pct||50)/100),3,1,1,"F");
-      doc.setFontSize(7);doc.setFont("helvetica","bold");rgb(GREEN);doc.text(`Aliments : ${(c.aliments||[]).slice(0,4).join(" - ")}`,MARGIN+8,y+30);
-      if(c.complement){rgb(PURPLE);doc.text(`Complement : ${c.complement}${c.dose?" — "+c.dose:""}`,MARGIN+8,y+37);}
-      y+=46;
+      doc.setFontSize(7);doc.setFont("helvetica","bold");rgb(GREEN);doc.text(`Aliments : ${(c.aliments||[]).slice(0,4).join(" - ")}`,MARGIN+8,y+29);
+      if(c.complement){rgb(PURPLE);doc.text(`Complement : ${c.complement}${c.dose?" — "+c.dose:""}`,MARGIN+8,y+36);}
+      y+=44;
     });
-  }
-  if(result?.positifs?.length>0){
-    if(y>240){doc.addPage();fill(DARK);doc.rect(0,0,W,297,"F");y=20;}
-    const bH=10+result.positifs.length*7;fill([8,20,8]);doc.roundedRect(MARGIN,y,COL,bH,3,3,"F");line(GREEN);doc.setLineWidth(0.3);doc.roundedRect(MARGIN,y,COL,bH,3,3,"S");
-    doc.setFontSize(8);doc.setFont("helvetica","bold");rgb(GREEN);doc.text("POINTS POSITIFS",MARGIN+6,y+6);y+=10;
-    result.positifs.forEach(p=>{doc.setFontSize(8);doc.setFont("helvetica","normal");rgb([176,200,184]);doc.text(`• ${p}`,MARGIN+6,y);y+=7;});y+=4;
   }
   if(result?.conseil){
     if(y>240){doc.addPage();fill(DARK);doc.rect(0,0,W,297,"F");y=20;}
@@ -936,22 +1071,24 @@ async function generatePDF(result,zone,user) {
     fill([24,16,6]);doc.roundedRect(MARGIN,y,COL,cH,3,3,"F");line(GOLDC);doc.setLineWidth(0.3);doc.roundedRect(MARGIN,y,COL,cH,3,3,"S");
     doc.setFontSize(8);doc.setFont("helvetica","bold");rgb(GOLDC);doc.text("CONSEIL PERSONNALISE",MARGIN+6,y+6);
     doc.setFontSize(8.5);doc.setFont("helvetica","normal");rgb([160,188,170]);doc.text(cl,MARGIN+6,y+13);y+=cH+6;
-    if(result?.prochain){doc.setFontSize(8);rgb(GRAY);doc.text("Prochain scan : ",MARGIN,y);doc.setFont("helvetica","bold");rgb(GOLDC);doc.text(result.prochain,MARGIN+35,y);y+=8;}
   }
-  if(y>260){doc.addPage();fill(DARK);doc.rect(0,0,W,297,"F");y=20;}
-  fill([18,15,6]);doc.roundedRect(MARGIN,y+4,COL,14,2,2,"F");doc.setFontSize(7);doc.setFont("helvetica","normal");rgb([128,96,64]);
-  doc.text(doc.splitTextToSize("Ce rapport est indicatif et ne remplace pas un avis medical professionnel. Consultez un medecin pour tout diagnostic.",COL-8),MARGIN+4,y+10);
   const pc=doc.getNumberOfPages();
   for(let i=1;i<=pc;i++){doc.setPage(i);fill([0,20,10]);doc.rect(0,285,W,12,"F");doc.setFontSize(7);doc.setFont("helvetica","normal");rgb(GRAY);doc.text("vitascann.vercel.app",MARGIN,291);doc.text(`Page ${i} / ${pc}`,W/2,291,{align:"center"});doc.text("© 2026 VitaScann",W-MARGIN,291,{align:"right"});}
   doc.save(`VitaScann_${zone?.label||"rapport"}_${now.toISOString().slice(0,10)}.pdf`);
 }
 
-function Result({result,zone,user,onNewScan,onHome}) {
+function Result({result,zone,user,profile,onNewScan,onHome}) {
   const [exp,setExp]=useState(null);
   const [sharing,setSharing]=useState(false);
+  const [showChat,setShowChat]=useState(false);
   const uc=result?.urgence==="urgent"?DANGER:result?.urgence==="attention"?WARN:EM;
   const isBodyFat=result?.type_analyse==="body_fat";
+  const isBeard=result?.type_analyse==="beard";
+  const isTeeth=result?.type_analyse==="teeth";
+
   return (
+    <>
+    {showChat&&<ChatIA result={result} zone={zone} profile={profile} onClose={()=>setShowChat(false)}/>}
     <div style={{minHeight:"100vh",paddingBottom:80,overflowY:"auto"}}>
       <div style={{padding:"52px 22px 22px",background:"radial-gradient(ellipse at 50% 0%,#071c0c 0%,#060d08 70%)"}}>
         <div className="fu" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
@@ -970,6 +1107,11 @@ function Result({result,zone,user,onNewScan,onHome}) {
                 <div style={{color:MUT,fontSize:11,marginTop:8}}>Gras estimé</div>
                 <div style={{color:"#f97316",fontWeight:700,fontSize:24}}>{result.pct_gras_estime}<span style={{fontSize:13}}>%</span></div>
               </>
+            ):isBeard?(
+              <>
+                <div style={{color:MUT,fontSize:11,marginTop:8}}>Potentiel Viking</div>
+                <div style={{color:VIKING,fontWeight:700,fontSize:16}}>🪓 {result.potentiel_viking}</div>
+              </>
             ):(
               <>
                 <div style={{color:MUT,fontSize:11,marginTop:8}}>Carences</div>
@@ -979,16 +1121,17 @@ function Result({result,zone,user,onNewScan,onHome}) {
           </div>
         </div>
       </div>
+
       <div style={{padding:"0 18px"}}>
 
-        {/* BLOC % GRAS */}
+        {/* % GRAS */}
         {isBodyFat&&(
           <div className="fu2 card" style={{marginBottom:14}}>
             <div style={{fontWeight:700,fontSize:13,marginBottom:14}}>💪 Composition corporelle</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
               <div style={{background:"#0a140c",borderRadius:12,padding:"14px",textAlign:"center"}}>
                 <div style={{fontSize:28,fontWeight:700,color:"#f97316"}}>{result.pct_gras_estime}<span style={{fontSize:14}}>%</span></div>
-                <div style={{fontSize:11,color:MUT,marginTop:2}}>Gras corporel estimé</div>
+                <div style={{fontSize:11,color:MUT,marginTop:2}}>Gras corporel</div>
               </div>
               <div style={{background:"#0a140c",borderRadius:12,padding:"14px",textAlign:"center"}}>
                 <div style={{fontSize:28,fontWeight:700,color:result.abdos_visibles==="oui"?EM:result.abdos_visibles==="partiellement"?WARN:MUT}}>
@@ -997,22 +1140,61 @@ function Result({result,zone,user,onNewScan,onHome}) {
                 <div style={{fontSize:11,color:MUT,marginTop:2}}>Abdos visibles</div>
               </div>
             </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0a140c",borderRadius:12,padding:"10px 14px",marginBottom:8}}>
-              <span style={{fontSize:12,color:MUT}}>Catégorie</span>
-              <span style={{fontWeight:700,fontSize:13,color:"#f97316",textTransform:"capitalize"}}>{result.categorie_gras}</span>
+            {[["Catégorie","#f97316",result.categorie_gras],["Morphologie",EM,result.morphologie]].map(([l,c,v])=>v&&(
+              <div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0a140c",borderRadius:12,padding:"10px 14px",marginBottom:8}}>
+                <span style={{fontSize:12,color:MUT}}>{l}</span>
+                <span style={{fontWeight:700,fontSize:13,color:c,textTransform:"capitalize"}}>{v}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* BARBE */}
+        {isBeard&&(
+          <div className="fu2 card" style={{marginBottom:14,border:`1px solid ${VIKING}33`}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:14,color:VIKING}}>🪓 Analyse barbe</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+              <div style={{background:"#0a0514",borderRadius:12,padding:"12px",textAlign:"center"}}>
+                <div style={{fontSize:13,fontWeight:700,color:VIKING,textTransform:"capitalize"}}>{result.densite||"?"}</div>
+                <div style={{fontSize:10,color:MUT,marginTop:2}}>Densité</div>
+              </div>
+              <div style={{background:"#0a0514",borderRadius:12,padding:"12px",textAlign:"center"}}>
+                <div style={{fontSize:13,fontWeight:700,color:GOLD}}>🪓 {result.potentiel_viking}</div>
+                <div style={{fontSize:10,color:MUT,marginTop:2}}>Potentiel Viking</div>
+              </div>
             </div>
-            {result.morphologie&&(
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0a140c",borderRadius:12,padding:"10px 14px"}}>
-                <span style={{fontSize:12,color:MUT}}>Morphologie</span>
-                <span style={{fontWeight:700,fontSize:13,color:EM,textTransform:"capitalize"}}>{result.morphologie}</span>
+            {result.zones_clairsemees?.length>0&&(
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:11,color:MUT,marginBottom:6}}>Zones clairsemées :</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                  {result.zones_clairsemees.map(z=><span key={z} style={{background:`${WARN}14`,color:WARN,borderRadius:20,padding:"3px 10px",fontSize:11}}>{z}</span>)}
+                </div>
               </div>
             )}
           </div>
         )}
 
+        {/* ASTUCES GRAND-MÈRE */}
+        {(isBeard||isTeeth)&&result?.astuces_grand_mere?.length>0&&(
+          <div className="fu3 card" style={{marginBottom:14,border:`1px solid ${isBeard?VIKING:EM}33`}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:12,color:isBeard?VIKING:EM}}>
+              {isBeard?"🧙‍♂️ Astuces grand-mère — Barbe":"🌿 Remèdes naturels — Dents"}
+            </div>
+            {result.astuces_grand_mere.map((a,i)=>(
+              <div key={i} style={{display:"flex",gap:10,marginBottom:i<result.astuces_grand_mere.length-1?10:0,paddingBottom:i<result.astuces_grand_mere.length-1?10:0,borderBottom:i<result.astuces_grand_mere.length-1?`1px solid ${BDR}`:"none"}}>
+                <div style={{width:28,height:28,borderRadius:8,background:isBeard?`${VIKING}15`:`${EM}12`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>{isBeard?"🪓":"🌿"}</div>
+                <div style={{fontSize:12,color:"#b0c8b8",lineHeight:1.6,paddingTop:4}}>{a}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* CARENCES */}
         {result?.carences?.length>0&&(
           <div className="fu2 card" style={{marginBottom:14}}>
-            <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>🔍 {isBodyFat?"Nutriments à optimiser":"Carences identifiées"}</div>
+            <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>
+              {isBodyFat?"💊 Nutriments à optimiser":isBeard?"💊 Nutriments pour la barbe":isTeeth?"💊 Nutriments pour les dents":"🔍 Carences identifiées"}
+            </div>
             {result.carences.map((c,i)=>(
               <div key={i} style={{marginBottom:14,borderBottom:i<result.carences.length-1?`1px solid ${BDR}`:"none",paddingBottom:i<result.carences.length-1?14:0}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
@@ -1050,12 +1232,14 @@ function Result({result,zone,user,onNewScan,onHome}) {
             ))}
           </div>
         )}
+
         {result?.positifs?.length>0&&(
           <div className="fu3" style={{background:"#081408",border:`1px solid ${EM}28`,borderRadius:16,padding:16,marginBottom:14}}>
             <div style={{color:EM,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:8}}>✅ POINTS POSITIFS</div>
             {result.positifs.map((p,i)=><div key={i} style={{fontSize:13,color:"#b0c8b8",marginBottom:5,lineHeight:1.5}}>• {p}</div>)}
           </div>
         )}
+
         {result?.conseil&&(
           <div className="fu4 card" style={{border:`1px solid ${GOLD}28`,marginBottom:14}}>
             <div style={{color:GOLD,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:7}}>💬 CONSEIL PERSONNALISÉ</div>
@@ -1063,9 +1247,15 @@ function Result({result,zone,user,onNewScan,onHome}) {
             {result.prochain&&<div style={{marginTop:10,fontSize:11,color:MUT}}>📍 Prochain scan : <span style={{color:GOLD,fontWeight:600}}>{result.prochain}</span></div>}
           </div>
         )}
+
         <div style={{background:"#120f06",border:"1px solid #2a2010",borderRadius:12,padding:"10px 14px",fontSize:11,color:"#806040",lineHeight:1.6,marginBottom:16}}>
           ⚠️ Rapport indicatif. Consultez un professionnel de santé pour tout diagnostic médical.
         </div>
+
+        <button onClick={()=>setShowChat(true)}
+          style={{width:"100%",background:`linear-gradient(135deg,${EM}15,#071a0a)`,border:`1.5px solid ${EM}55`,borderRadius:12,padding:"14px",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:700,color:EM,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          💬 Poser une question au nutritionniste IA
+        </button>
         <button onClick={async()=>{setSharing(true);await shareResult(result,zone);setSharing(false);}}
           style={{width:"100%",background:"linear-gradient(135deg,#1a2e20,#0f1e14)",border:`1.5px solid ${EM}55`,borderRadius:12,padding:"14px",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:700,color:EM,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           {sharing?"Partage...":"📤 Partager mon score"}
@@ -1075,10 +1265,292 @@ function Result({result,zone,user,onNewScan,onHome}) {
         <button className="bgh" onClick={onHome}>🏠 Retour à l'accueil</button>
       </div>
     </div>
+    </>
   );
 }
 
-// ─── PAYWALL 7,99$ ───
+// ─── RÉSULTAT REPAS ───
+function MealResult({result,onNewScan,onHome}) {
+  const sc=result?.score_nutrition||0;
+  const scoreColor=sc>=75?EM:sc>=50?WARN:DANGER;
+  const handleShare=async()=>{
+    const text=`🍽️ Mon analyse repas VitaScann\n\n${result.nom_repas||"Mon repas"} — ${result.calories_estimees} kcal\nScore : ${sc}/100\n\n🌿 vitascann.vercel.app`;
+    if(navigator.share){await navigator.share({title:"Mon repas VitaScann",text}).catch(()=>{});}
+    else{await navigator.clipboard.writeText(text);alert("📋 Copié !");}
+  };
+  return (
+    <div style={{minHeight:"100vh",paddingBottom:80,overflowY:"auto"}}>
+      <div style={{padding:"52px 22px 22px",background:"radial-gradient(ellipse at 50% 0%,#1a1200 0%,#060d08 70%)"}}>
+        <div className="fu" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <div className="serif" style={{fontSize:22,fontWeight:700}}>Analyse repas</div>
+          <span style={{background:`${scoreColor}14`,color:scoreColor,borderRadius:20,padding:"3px 12px",fontSize:11,fontWeight:700}}>
+            {sc>=75?"✅ Excellent":sc>=50?"👁 Correct":"⚠️ Incomplet"}
+          </span>
+        </div>
+        <div className="fu1" style={{display:"flex",alignItems:"center",gap:18}}>
+          <ScoreRing score={sc} size={100}/>
+          <div>
+            <div style={{fontWeight:700,fontSize:16,color:GOLD}}>{result.nom_repas||"Votre repas"}</div>
+            {result.note_halal==="halal"&&<span style={{background:`${GOLD}14`,color:GOLD,borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700,marginTop:4,display:"inline-block"}}>🌙 Halal</span>}
+            {result.note_halal==="attention"&&<span style={{background:`${WARN}14`,color:WARN,borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700,marginTop:4,display:"inline-block"}}>⚠️ Vérifier halal</span>}
+            <div style={{color:MUT,fontSize:11,marginTop:8}}>Calories estimées</div>
+            <div style={{color:GOLD,fontWeight:700,fontSize:24}}>{result.calories_estimees}<span style={{fontSize:12,fontWeight:400}}> kcal</span></div>
+          </div>
+        </div>
+      </div>
+      <div style={{padding:"14px 18px"}}>
+        <div className="fu2 card" style={{marginBottom:14}}>
+          <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>📊 Macronutriments</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            {[["Protéines",result.proteines_g,"g","#38bdf8"],["Glucides",result.glucides_g,"g","#fbbf24"],["Lipides",result.lipides_g,"g","#fb923c"]].map(([l,v,u,c])=>(
+              <div key={l} style={{background:"#0a140c",borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
+                <div style={{fontSize:18,fontWeight:700,color:c}}>{v||"?"}</div>
+                <div style={{fontSize:10,color:MUT,marginTop:2}}>{l} ({u})</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {result.carences_comblees?.length>0&&(
+          <div className="fu3 card" style={{marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>✅ Carences comblées</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
+              {result.carences_comblees.map((c,i)=>{
+                const col=c.niveau==="bien"?EM:c.niveau==="moyen"?WARN:MUT;
+                return <span key={i} style={{background:`${col}14`,color:col,borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:600}}>{c.emoji} {c.nutriment}</span>;
+              })}
+            </div>
+          </div>
+        )}
+        {result.manque?.length>0&&(
+          <div className="fu3 card" style={{marginBottom:14,border:`1px solid ${WARN}22`}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:12,color:WARN}}>⚠️ Ce qui manque</div>
+            {result.manque.map((m,i)=>(
+              <div key={i} style={{marginBottom:i<result.manque.length-1?10:0,paddingBottom:i<result.manque.length-1?10:0,borderBottom:i<result.manque.length-1?`1px solid ${BDR}`:"none"}}>
+                <div style={{fontWeight:600,fontSize:13,marginBottom:3}}>{m.nutriment}</div>
+                <div style={{fontSize:12,color:MUT}}>{m.conseil}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {result.conseil_global&&(
+          <div className="fu4 card" style={{border:`1px solid ${GOLD}28`,marginBottom:14}}>
+            <div style={{color:GOLD,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:7}}>💬 CONSEIL</div>
+            <div style={{fontSize:13,color:"#a0bcaa",lineHeight:1.7}}>{result.conseil_global}</div>
+          </div>
+        )}
+        <div style={{background:"#120f06",border:"1px solid #2a2010",borderRadius:12,padding:"10px 14px",fontSize:11,color:"#806040",lineHeight:1.6,marginBottom:16}}>
+          ⚠️ Estimation indicative basée sur l'analyse visuelle.
+        </div>
+        <button onClick={handleShare} style={{width:"100%",background:"linear-gradient(135deg,#1a2e20,#0f1e14)",border:`1.5px solid ${EM}55`,borderRadius:12,padding:"14px",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:700,color:EM,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          📤 Partager mon analyse
+        </button>
+        <button className="bem" onClick={onNewScan} style={{marginBottom:10}}>🍽️ Scanner un autre repas</button>
+        <button className="bgh" onClick={onHome}>🏠 Retour à l'accueil</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── PROGRESSION ───
+function Progress({history,onBack}) {
+  const scores = history.filter(h=>h.score).slice(0,10).reverse();
+  const max = Math.max(...scores.map(s=>s.score),100);
+  return (
+    <div style={{minHeight:"100vh",padding:"52px 20px 40px"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
+      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>📈 Ma progression</div>
+      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>Évolution de vos scores</div>
+      {scores.length>0?(
+        <div className="fu2 card" style={{marginBottom:20}}>
+          <div style={{display:"flex",alignItems:"flex-end",gap:6,height:120,padding:"10px 0"}}>
+            {scores.map((s,i)=>{
+              const h=(s.score/max)*100;
+              const c=s.score>=75?EM:s.score>=50?WARN:DANGER;
+              return (
+                <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                  <div style={{fontSize:9,color:c,fontWeight:700}}>{s.score}</div>
+                  <div style={{width:"100%",height:`${h}%`,background:c,borderRadius:"4px 4px 0 0",minHeight:4,boxShadow:`0 0 6px ${c}55`,transition:"height 1s ease"}}/>
+                  <div style={{fontSize:8,color:MUT,textAlign:"center",lineHeight:1.2}}>{(s.zone||s.nom_repas||"S").slice(0,5)}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ):(
+        <div className="card" style={{textAlign:"center",padding:32}}>
+          <div style={{fontSize:40,marginBottom:12}}>📊</div>
+          <div style={{color:MUT}}>Faites vos premiers scans pour voir votre progression !</div>
+        </div>
+      )}
+      {scores.length>0&&(
+        <div className="fu3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+          {[
+            ["Meilleur",Math.max(...scores.map(s=>s.score)),EM],
+            ["Moyen",Math.round(scores.reduce((a,s)=>a+s.score,0)/scores.length),WARN],
+            ["Scans",history.length,GOLD],
+          ].map(([l,v,c])=>(
+            <div key={l} className="card" style={{textAlign:"center",border:`1px solid ${c}22`}}>
+              <div style={{fontSize:22,fontWeight:700,color:c}}>{v}</div>
+              <div style={{fontSize:10,color:MUT,marginTop:3}}>{l}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PLAN REPAS ───
+function MealPlan({profile,onBack,user}) {
+  const [plan,setPlan] = useState(null);
+  const [load,setLoad] = useState(false);
+
+  const generate = async () => {
+    setLoad(true);
+    try {
+      const pc = profile?`Age: ${profile.age||"?"}ans, sexe: ${profile.sexe||"?"}, objectif: ${profile.objectif||"?"}, activite: ${profile.activite||"?"}, halal: ${profile.halal?"oui":"non"}.`:"Pas de profil.";
+      const res = await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:MEAL_PLAN_PROMPT,messages:[{role:"user",content:`Profil: ${pc} Génère un plan repas 7 jours adapté.`}]})
+      });
+      const data = await res.json();
+      const text = data.content?.map(b=>b.text||"").join("")||"";
+      const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
+      setPlan(parsed);
+    } catch(e) { console.error(e); }
+    finally { setLoad(false); }
+  };
+
+  return (
+    <div style={{minHeight:"100vh",padding:"52px 20px 40px",overflowY:"auto"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
+      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>🗓️ Plan repas 7 jours</div>
+      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>Personnalisé selon votre profil et vos carences</div>
+      {!plan?(
+        <button className="bem" onClick={generate} disabled={load}>
+          {load?<Spin/>:"✨ Générer mon plan personnalisé"}
+        </button>
+      ):(
+        <div>
+          {plan.semaine?.map((j,i)=>(
+            <div key={i} className="card" style={{marginBottom:12}}>
+              <div style={{color:GOLD,fontWeight:700,fontSize:13,marginBottom:10}}>📅 {j.jour}</div>
+              {[["🌅 Petit-déj",j.petit_dej],["☀️ Déjeuner",j.dejeuner],["🌙 Dîner",j.diner],j.snack&&["🍎 Snack",j.snack]].filter(Boolean).map(([l,v])=>(
+                <div key={l} style={{marginBottom:6}}>
+                  <span style={{color:MUT,fontSize:11}}>{l} : </span>
+                  <span style={{fontSize:12,color:"#b0c8b8"}}>{v}</span>
+                </div>
+              ))}
+              {j.nutriments_cibles?.length>0&&(
+                <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:8}}>
+                  {j.nutriments_cibles.map(n=><span key={n} style={{background:`${EM}12`,color:EM,borderRadius:20,padding:"2px 8px",fontSize:10}}>{n}</span>)}
+                </div>
+              )}
+            </div>
+          ))}
+          <button className="bgh" onClick={()=>setPlan(null)} style={{marginTop:10}}>Régénérer</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── FAMILLE ───
+function Family({user,family,onSave,onBack,onSwitchProfile}) {
+  const [name,setName] = useState("");
+  const [members,setMembers] = useState(family||[]);
+
+  const add = () => {
+    if(!name.trim())return;
+    const newMembers = [...members,{name:name.trim(),id:Date.now()}];
+    setMembers(newMembers);
+    setName("");
+    if(user?.uid&&!user?.isDemo) ScanService.saveFamily(user.uid,newMembers).catch(()=>{});
+    onSave(newMembers);
+  };
+
+  return (
+    <div style={{minHeight:"100vh",padding:"52px 20px 40px"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
+      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>👨‍👩‍👧 Ma famille</div>
+      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>Suivez la santé de toute votre famille</div>
+
+      <div className="fu2" style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,background:`${EM}14`,border:`1.5px solid ${EM}44`,borderRadius:16,padding:"14px 16px"}}>
+          <div style={{width:44,height:44,borderRadius:12,background:`${EM}20`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>👤</div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,fontSize:14,color:EM}}>{user.name} (Moi)</div>
+            <div style={{fontSize:11,color:MUT,marginTop:2}}>{user.plan==="premium"?"👑 Premium":"Gratuit"}</div>
+          </div>
+          <div style={{color:EM,fontSize:12,fontWeight:600}}>Actif</div>
+        </div>
+        {members.map((m,i)=>(
+          <button key={m.id} onClick={()=>onSwitchProfile(m)}
+            style={{display:"flex",alignItems:"center",gap:10,background:CARD,border:`1px solid ${BDR}`,borderRadius:16,padding:"14px 16px",cursor:"pointer",textAlign:"left",width:"100%",transition:"all .2s"}}
+            onMouseEnter={e=>e.currentTarget.style.border=`1px solid ${EM}44`}
+            onMouseLeave={e=>e.currentTarget.style.border=`1px solid ${BDR}`}>
+            <div style={{width:44,height:44,borderRadius:12,background:"#142018",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>
+              {["👶","👧","👦","👩","👨","👴","👵"][i%7]}
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700,fontSize:14}}>{m.name}</div>
+              <div style={{fontSize:11,color:MUT,marginTop:2}}>Appuyer pour scanner</div>
+            </div>
+            <div style={{color:MUT,fontSize:18}}>›</div>
+          </button>
+        ))}
+      </div>
+
+      <div className="fu3 card" style={{marginBottom:16}}>
+        <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>➕ Ajouter un membre</div>
+        <Input value={name} onChange={setName} placeholder="Prénom du membre" left="👤"/>
+        <button className="bem" onClick={add} disabled={!name.trim()}>Ajouter →</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── DÉFI 30 JOURS ───
+function Challenge({history,onBack}) {
+  const done = Math.min(30,history?.length||0);
+  const badges = [
+    {day:1,icon:"🌱",label:"Premier pas",done:done>=1},
+    {day:5,icon:"⚡",label:"5 scans",done:done>=5},
+    {day:10,icon:"🔥",label:"10 scans",done:done>=10},
+    {day:20,icon:"💎",label:"20 scans",done:done>=20},
+    {day:30,icon:"👑",label:"Défi complet",done:done>=30},
+  ];
+  return (
+    <div style={{minHeight:"100vh",padding:"52px 20px 40px"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
+      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>🏆 Défi 30 jours</div>
+      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>Améliorez votre santé en 30 scans</div>
+
+      <div className="fu2 card" style={{marginBottom:20,textAlign:"center"}}>
+        <div style={{fontSize:48,fontWeight:700,color:GOLD,marginBottom:4}}>{done}<span style={{fontSize:20,color:MUT}}>/30</span></div>
+        <div style={{color:MUT,fontSize:13,marginBottom:14}}>scans complétés</div>
+        <div style={{background:"#142018",borderRadius:8,height:10,overflow:"hidden",marginBottom:8}}>
+          <div style={{width:`${(done/30)*100}%`,height:"100%",background:`linear-gradient(90deg,${GOLD},${EM})`,borderRadius:8,transition:"width 1.2s ease"}}/>
+        </div>
+        <div style={{fontSize:12,color:EM,fontWeight:600}}>{done>=30?"🎉 Défi terminé !":done>0?`Plus que ${30-done} scans !`:"Commencez votre premier scan !"}</div>
+      </div>
+
+      <div className="fu3" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        {badges.map(b=>(
+          <div key={b.day} style={{background:b.done?`${GOLD}12`:CARD,border:`1px solid ${b.done?GOLD:BDR}`,borderRadius:16,padding:"16px",textAlign:"center",transition:"all .3s"}}>
+            <div style={{fontSize:32,marginBottom:6,filter:b.done?"none":"grayscale(1) opacity(0.4)"}}>{b.icon}</div>
+            <div style={{fontWeight:700,fontSize:12,color:b.done?GOLD:"#edf5ef"}}>{b.label}</div>
+            <div style={{fontSize:10,color:MUT,marginTop:2}}>Jour {b.day}</div>
+            {b.done&&<div style={{color:GOLD,fontSize:11,fontWeight:700,marginTop:4}}>✓ Obtenu !</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── PAYWALL ───
 function Paywall({user,onBack,onSuccess}) {
   const [secs,setSecs]=useState(12*60);
   useEffect(()=>{const t=setInterval(()=>setSecs(s=>s>0?s-1:0),1000);return()=>clearInterval(t);},[]);
@@ -1094,8 +1566,6 @@ function Paywall({user,onBack,onSuccess}) {
   return (
     <div style={{minHeight:"100vh",padding:"52px 24px 40px",overflowY:"auto"}}>
       <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:20,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
-
-      {/* Compte à rebours */}
       <div style={{background:urgent?"#1a0505":"#0f1505",border:`1.5px solid ${urgent?DANGER:GOLD}44`,borderRadius:14,padding:"12px 16px",marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <div>
           <div style={{fontSize:11,color:urgent?DANGER:GOLD,fontWeight:700,letterSpacing:.8}}>{urgent?"🔥 OFFRE EXPIRE BIENTÔT":"⏰ OFFRE DE LANCEMENT"}</div>
@@ -1107,27 +1577,24 @@ function Paywall({user,onBack,onSuccess}) {
           <div style={{fontSize:18,fontWeight:700,color:GOLD}}>7,99$/mois</div>
         </div>
       </div>
-
       <div style={{textAlign:"center",marginBottom:24}}>
         <div style={{fontSize:50,marginBottom:12}}>👑</div>
         <div className="serif" style={{fontSize:26,fontWeight:700,color:GOLD,marginBottom:8}}>VitaScann Premium</div>
-        <div style={{color:MUT,fontSize:14,lineHeight:1.7}}>
-          Moins cher qu'un café par semaine.<br/>
-          <span style={{color:"#edf5ef"}}>Connaître ce que votre corps vous dit, ça n'a pas de prix.</span>
-        </div>
+        <div style={{color:MUT,fontSize:14,lineHeight:1.7}}>Moins cher qu'un café par semaine.</div>
       </div>
-
       <div className="card" style={{marginBottom:20,border:`1px solid ${GOLD}33`}}>
         <div style={{color:GOLD,fontSize:11,fontWeight:700,letterSpacing:.8,marginBottom:14}}>✨ CE QUE VOUS DÉBLOQUEZ</div>
         {[
-          ["🔬","Scans corporels illimités","Ongles, yeux, peau, cheveux, langue, pieds, ventre, cuir chevelu"],
-          ["🍽️","Scan Repas","Photo de votre assiette → calories, macros et carences comblées"],
-          ["🧬","Profil santé personnalisé","Conseils adaptés à votre âge, poids et objectifs"],
-          ["🌙","Mode halal","Compléments et aliments conformes signalés automatiquement"],
-          ["📄","Rapport PDF","Téléchargeable et partageable avec votre médecin"],
-          ["📈","Historique complet","Suivez votre progression semaine après semaine"],
+          ["🔬","11 zones corporelles","Dont Dents 🦷 et Barbe 🧔 — unique au monde"],
+          ["🍽️","Scan Repas","Calories, macros, carences comblées"],
+          ["💬","Chat nutritionniste IA","Posez vos questions après chaque scan"],
+          ["🗓️","Plan repas 7 jours","Personnalisé selon vos carences"],
+          ["📈","Suivi progression","Courbe de vos scores dans le temps"],
+          ["👨‍👩‍👧","Profils famille","Toute la famille sur un compte"],
+          ["🌙","Mode halal","Compléments et aliments conformes"],
+          ["📄","Rapport PDF","Partageable avec votre médecin"],
         ].map(([ic,title,sub],i)=>(
-          <div key={i} style={{display:"flex",gap:12,marginBottom:i<5?14:0,paddingBottom:i<5?14:0,borderBottom:i<5?`1px solid ${BDR}`:"none"}}>
+          <div key={i} style={{display:"flex",gap:12,marginBottom:i<7?14:0,paddingBottom:i<7?14:0,borderBottom:i<7?`1px solid ${BDR}`:"none"}}>
             <div style={{width:36,height:36,borderRadius:10,background:`${GOLD}12`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{ic}</div>
             <div>
               <div style={{fontWeight:600,fontSize:13}}>{title}</div>
@@ -1136,7 +1603,6 @@ function Paywall({user,onBack,onSuccess}) {
           </div>
         ))}
       </div>
-
       <div style={{textAlign:"center",marginBottom:20}}>
         <div style={{display:"flex",justifyContent:"center",alignItems:"baseline",gap:10,marginBottom:4}}>
           <span style={{color:MUT,fontSize:15,textDecoration:"line-through"}}>14,99$</span>
@@ -1145,11 +1611,9 @@ function Paywall({user,onBack,onSuccess}) {
         <div style={{color:MUT,fontSize:13}}>par mois · Annulez quand vous voulez</div>
         <div style={{color:EM,fontSize:12,fontWeight:600,marginTop:4}}>✅ -47% tarif de lancement</div>
       </div>
-
-      <button className="bgold" onClick={handleCheckout} style={{marginBottom:12,fontSize:16,padding:"18px",boxShadow:urgent?`0 0 24px ${DANGER}33`:undefined}}>
+      <button className="bgold" onClick={handleCheckout} style={{marginBottom:12,fontSize:16,padding:"18px"}}>
         💳 S'abonner maintenant →
       </button>
-
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
         {[["🔒","Paiement sécurisé Stripe"],["❌","Sans engagement"],["💬","Support rapide"]].map(([ic,lb])=>(
           <div key={lb} style={{background:CARD,borderRadius:10,padding:"8px 6px",textAlign:"center"}}>
@@ -1158,9 +1622,8 @@ function Paywall({user,onBack,onSuccess}) {
           </div>
         ))}
       </div>
-
       <div style={{background:"#0a1a0c",border:`1px solid ${BDR}`,borderRadius:12,padding:14,fontSize:12,color:MUT,lineHeight:1.6,textAlign:"center"}}>
-        ⚠️ VitaScann fournit des <strong style={{color:"#edf5ef"}}>pistes nutritionnelles indicatives</strong>, pas des diagnostics médicaux. Consultez toujours un professionnel pour tout diagnostic.
+        ⚠️ VitaScann fournit des <strong style={{color:"#edf5ef"}}>pistes nutritionnelles indicatives</strong>, pas des diagnostics médicaux.
       </div>
     </div>
   );
@@ -1177,6 +1640,7 @@ export default function VitaScann() {
   const [mealResult,setMealResult]=useState(null);
   const [history,setHistory]=useState([]);
   const [profile,setProfile]=useState(null);
+  const [family,setFamily]=useState([]);
   const [demoUsed,setDemoUsed]=useState(false);
   const [isMeal,setIsMeal]=useState(false);
 
@@ -1190,7 +1654,7 @@ export default function VitaScann() {
       else if(screen==="capture")setScreen("zones");
       else if(screen==="preview")setScreen("capture");
       else if(screen==="meal_preview")setScreen("meal_capture");
-      else if(screen==="paywall")setScreen("dashboard");
+      else if(screen==="paywall"||screen==="progress"||screen==="mealplan"||screen==="family"||screen==="challenge")setScreen("dashboard");
       else if(screen==="profile")setScreen("dashboard");
       else if(screen==="analyzing")return;
       else setScreen("dashboard");
@@ -1200,6 +1664,7 @@ export default function VitaScann() {
     return()=>window.removeEventListener("popstate",handleBack);
   },[screen]);
 
+  // Stripe retour
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
     if(params.get("premium")==="success"){
@@ -1209,6 +1674,7 @@ export default function VitaScann() {
     }
   },[]);
 
+  // Auth
   useEffect(()=>{
     const unsub=AuthService.onAuthChange(async firebaseUser=>{
       if(firebaseUser){
@@ -1217,6 +1683,7 @@ export default function VitaScann() {
         const u={uid:firebaseUser.uid,name:firebaseUser.displayName||userData.name||"Utilisateur",email:firebaseUser.email,plan:userData.plan||"free"};
         setUser(u);
         if(userData.profile)setProfile(userData.profile);
+        if(userData.family)setFamily(userData.family);
         const h=await ScanService.getHistory(firebaseUser.uid);
         setHistory(h);
         setScreen(userData.profile?"dashboard":"profile");
@@ -1289,29 +1756,26 @@ export default function VitaScann() {
 
   const handleLogout=async()=>{
     await AuthService.logout();
-    setUser(null);setHistory([]);setProfile(null);
+    setUser(null);setHistory([]);setProfile(null);setFamily([]);
     setScreen("login");
   };
 
   const handleDemo=()=>{
     if(demoUsed){setScreen("register");return;}
     setUser({uid:"demo",name:"Visiteur",email:"",plan:"free",isDemo:true});
-    setHistory([]);
-    setIsMeal(false);
+    setHistory([]);setIsMeal(false);
     setScreen("zones");
   };
 
   const handleScan=()=>{
     if(user?.isDemo&&demoUsed){setScreen("register");return;}
     if(user?.plan==="free"&&!user?.isDemo&&history.length>=3){setScreen("paywall");return;}
-    setIsMeal(false);
-    setScreen("zones");
+    setIsMeal(false);setScreen("zones");
   };
 
   const handleMealScan=()=>{
-    if(user?.plan!=="premium"&&!user?.isDemo){setScreen("paywall");return;}
-    setIsMeal(true);
-    setScreen("meal_capture");
+    if(user?.plan!=="premium"&&!user?.isDemo&&history.length>=1){setScreen("paywall");return;}
+    setIsMeal(true);setScreen("meal_capture");
   };
 
   return (
@@ -1324,16 +1788,20 @@ export default function VitaScann() {
         {screen==="login"        && <Login onSuccess={handleAuthSuccess} onRegister={()=>setScreen("register")} onForgot={()=>setScreen("forgot")}/>}
         {screen==="forgot"       && <ForgotPassword onBack={()=>setScreen("login")}/>}
         {screen==="profile"      && <ProfileSetup user={user} onSave={p=>{setProfile(p);setScreen("dashboard");}} onSkip={()=>setScreen("dashboard")}/>}
-        {screen==="dashboard"    && user && <Dashboard user={user} onScan={handleScan} onMealScan={handleMealScan} onPaywall={()=>setScreen("paywall")} onLogout={handleLogout} onProfile={()=>setScreen("profile")} history={history} profile={profile}/>}
+        {screen==="dashboard"    && user && <Dashboard user={user} onScan={handleScan} onMealScan={handleMealScan} onPaywall={()=>setScreen("paywall")} onLogout={handleLogout} onProfile={()=>setScreen("profile")} onFamily={()=>setScreen("family")} onChallenge={()=>setScreen("challenge")} onProgress={()=>user.plan==="premium"?setScreen("progress"):setScreen("paywall")} onMealPlan={()=>user.plan==="premium"?setScreen("mealplan"):setScreen("paywall")} history={history} profile={profile}/>}
         {screen==="zones"        && <ZonePick onSelect={z=>{setZone(z);setScreen("capture");}} onBack={()=>setScreen("dashboard")} user={user} onPaywall={()=>setScreen("paywall")}/>}
         {screen==="capture"      && zone && <Capture zone={zone} onCapture={(b,p)=>{setB64(b);setPrev(p);setScreen("preview");}} onBack={()=>setScreen("zones")}/>}
         {screen==="meal_capture" && <MealCapture onCapture={(b,p)=>{setB64(b);setPrev(p);setScreen("meal_preview");}} onBack={()=>setScreen("dashboard")} user={user} onPaywall={()=>setScreen("paywall")}/>}
         {screen==="preview"      && zone && <Preview zone={zone} preview={prev} onAnalyze={analyze} onRetake={()=>setScreen("capture")} isMeal={false}/>}
         {screen==="meal_preview" && <Preview zone={null} preview={prev} onAnalyze={analyzeMeal} onRetake={()=>setScreen("meal_capture")} isMeal={true}/>}
         {screen==="analyzing"    && <Analyzing zone={zone} isMeal={isMeal}/>}
-        {screen==="result"       && result&&zone && <Result result={result} zone={zone} user={user} onNewScan={()=>setScreen("zones")} onHome={()=>setScreen("dashboard")}/>}
+        {screen==="result"       && result&&zone && <Result result={result} zone={zone} user={user} profile={profile} onNewScan={()=>setScreen("zones")} onHome={()=>setScreen("dashboard")}/>}
         {screen==="meal_result"  && mealResult && <MealResult result={mealResult} onNewScan={()=>setScreen("meal_capture")} onHome={()=>setScreen("dashboard")}/>}
         {screen==="paywall"      && <Paywall user={user} onBack={()=>setScreen(user&&!user.isDemo?"dashboard":"onboarding")} onSuccess={()=>{setUser(u=>({...u,plan:"premium"}));setScreen("dashboard");}}/>}
+        {screen==="progress"     && <Progress history={history} onBack={()=>setScreen("dashboard")}/>}
+        {screen==="mealplan"     && <MealPlan profile={profile} onBack={()=>setScreen("dashboard")} user={user}/>}
+        {screen==="family"       && <Family user={user} family={family} onSave={setFamily} onBack={()=>setScreen("dashboard")} onSwitchProfile={m=>{setUser(u=>({...u,name:m.name,isFamily:true}));setScreen("zones");}}/>}
+        {screen==="challenge"    && <Challenge history={history} onBack={()=>setScreen("dashboard")}/>}
       </div>
     </>
   );
