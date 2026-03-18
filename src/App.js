@@ -1133,6 +1133,24 @@ export default function VitaScann() {
   const [profile,setProfile]=useState(null);
   const [demoUsed,setDemoUsed]=useState(false);
   const [isMeal,setIsMeal]=useState(false);
+  useEffect(()=>{
+  const handleBack=(e)=>{
+    e.preventDefault();
+    if(screen==="dashboard")return;
+    if(screen==="result"||screen==="meal_result")setScreen("dashboard");
+    else if(screen==="zones"||screen==="meal_capture")setScreen("dashboard");
+    else if(screen==="capture")setScreen("zones");
+    else if(screen==="preview")setScreen("capture");
+    else if(screen==="meal_preview")setScreen("meal_capture");
+    else if(screen==="paywall")setScreen("dashboard");
+    else if(screen==="profile")setScreen("dashboard");
+    else if(screen==="analyzing")return;
+    else setScreen("dashboard");
+  };
+  window.addEventListener("popstate",handleBack);
+  window.history.pushState(null,"",window.location.href);
+  return()=>window.removeEventListener("popstate",handleBack);
+},[screen]);
 
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
