@@ -1199,6 +1199,8 @@ export default function VitaScann() {
     window.history.pushState(null,"",window.location.href);
     return()=>window.removeEventListener("popstate",handleBack);
   },[screen]);
+
+  useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
     if(params.get("premium")==="success"){
       const uid=params.get("uid");
