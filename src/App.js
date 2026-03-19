@@ -691,14 +691,14 @@ const EM="#00ff88",GOLD="#e2b84a",MUT="#4a6e52",DANGER="#ff5555",WARN="#ffaa33",
 const CARD="#0c1810",BDR="#192c1d";
 
 // ─── ZONES ───
-const getZones = (t) => [
+const getZones = (t, sexe) => [
   {id:"nails",    icon:"💅", label:t==="en"?"Nails":"Ongles",          hint:t==="en"?"Lay your hand flat":"Posez votre main à plat",                  vitamins:"B12 · C · Fer · Zinc",      color:"#c084fc", premium:false},
   {id:"eyes",     icon:"👁️", label:t==="en"?"Eyes":"Yeux",            hint:t==="en"?"White of eye visible":"Blanc de l'œil visible",                   vitamins:"A · Fer",                   color:"#38bdf8", premium:false},
   {id:"skin",     icon:"🖐️", label:t==="en"?"Skin":"Peau",            hint:t==="en"?"Inner side of wrist":"Face interne du poignet",                  vitamins:"D · B3 · Zinc",             color:"#fb923c", premium:true},
   {id:"hair",     icon:"💇", label:t==="en"?"Hair":"Cheveux",         hint:t==="en"?"Scalp, roots visible":"Cuir chevelu, racines visibles",           vitamins:"Biotine · Fer · B7",        color:"#f472b6", premium:true},
   {id:"tongue",   icon:"👅", label:t==="en"?"Tongue":"Langue",        hint:t==="en"?"Stuck out, good light":"Tirée, bonne lumière",                     vitamins:"B2 · B3 · B12",             color:"#f87171", premium:true},
   {id:"feet",     icon:"🦶", label:t==="en"?"Feet":"Pieds",           hint:t==="en"?"Sole, heels":"Plante du pied, talons",                   vitamins:"B3 · E · Zinc",             color:"#a3e635", premium:true},
-  {id:"belly",    icon:"🫃", label:t==="en"?"Belly":"Ventre",         hint:t==="en"?"Abdomen, torso visible":"Zone abdominale, torse visible",           vitamins:"D · Magnésium · B12",       color:"#fbbf24", premium:true},
+  {id:"belly",    icon:profile?.sexe==="femme"?"🤰":"🫃", label:t==="en"?"Belly":"Ventre",         hint:t==="en"?"Abdomen, torso visible":"Zone abdominale, torse visible",           vitamins:"D · Magnésium · B12",       color:"#fbbf24", premium:true},
   {id:"scalp",    icon:"🧠", label:t==="en"?"Scalp":"Cuir chev.",     hint:t==="en"?"Loss or irritation zones":"Zones de chute ou irritation",             vitamins:"Biotine · Zinc · B5",       color:"#e879f9", premium:true},
   {id:"body_fat", icon:"💪", label:t==="en"?"Body Fat %":"% Gras corporel", hint:t==="en"?"Torso or abdomen visible, good light":"Torse ou abdomen visible, bonne lumière",  vitamins:t==="en"?"Body composition":"Composition corporelle",    color:"#f97316", premium:true},
   {id:"teeth",    icon:"🦷", label:t==="en"?"Teeth":"Dents",          hint:t==="en"?"Wide smile, good light":"Sourire large, bonne lumière",             vitamins:"Calcium · D · K2",          color:"#e2e8f0", premium:true},
@@ -1365,7 +1365,7 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
 
 // ─── ZONE PICKER ───
 function ZonePick({onSelect,onBack,user,onPaywall,lang,t}) {
-  const ZONES = getZones(lang);
+  const ZONES = getZones(lang, profile?.sexe);
   return (
     <div style={{minHeight:"100vh",padding:"52px 20px 40px"}}>
       <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
