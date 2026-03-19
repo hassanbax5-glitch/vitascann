@@ -1,5 +1,5 @@
 // ============================================
-// VITASCANN — APP.JS v4.0
+// VITASCANN — APP.JS v4.1
 // ✅ 11 zones : Ongles, Yeux, Peau, Cheveux, Langue,
 //    Pieds, Ventre, Cuir chev., % Gras, Dents, Barbe
 // ✅ Scan Repas (calories + macros + carences)
@@ -14,6 +14,7 @@
 // ✅ Défi communauté 30 jours
 // ✅ Paywall 7,99$/mois honnête
 // ✅ Fix bouton back Android PWA
+// ✅ BILINGUE FR / EN — sélecteur de langue
 // ============================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -39,6 +40,582 @@ const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 const ANTHROPIC_KEY = process.env.REACT_APP_ANTHROPIC_KEY;
+
+// ─── TRADUCTIONS ───
+const T = {
+  fr: {
+    // Global
+    back: "← Retour",
+    next: "Suivant →",
+    skip: "Passer →",
+    loading: "Chargement...",
+    error: "Erreur. Réessayez.",
+    save: "Sauvegarder →",
+    // Onboarding
+    ob_slide1_title: "Votre corps vous parle",
+    ob_slide1_sub: "Ongles, yeux, peau, barbe, dents... Chaque zone révèle des pistes sur vos carences nutritionnelles. VitaScann les lit en 30 secondes.",
+    ob_slide2_title: "Scannez aussi vos repas",
+    ob_slide2_sub: "Photographiez votre assiette. VitaScann calcule calories, macros et vous dit ce qui manque à votre alimentation.",
+    ob_slide3_title: "Toute la famille",
+    ob_slide3_sub: "Un compte, plusieurs profils. Suivez la santé nutritionnelle de toute votre famille et progressez ensemble.",
+    ob_see_results: "Voir de vrais résultats 👁",
+    ob_create_account: "Créer mon compte gratuit",
+    ob_try_demo: "Essayer sans compte (1 scan offert)",
+    ob_already_account: "Déjà un compte ? Se connecter",
+    ob_example_badge: "👁 EXEMPLES RÉELS — Sarah, 28 ans",
+    ob_nails_title: "Scan Ongles — Sarah",
+    ob_fat_title: "% Gras — Sarah +3 mois",
+    ob_nails_cta: "Et toi, qu'est-ce que tes ongles révèlent ?",
+    ob_fat_cta: "Et toi, quel est ton % de gras ?",
+    ob_photo_hint: "1 photo suffit. Résultat en 30 secondes.",
+    ob_register_cta: "Créer mon compte gratuit →",
+    // Auth
+    register_title: "Créer votre compte",
+    register_subtitle: "1 scan gratuit offert dès l'inscription",
+    register_name: "NOM COMPLET",
+    register_name_ph: "Votre prénom",
+    register_email: "EMAIL",
+    register_email_ph: "vous@email.com",
+    register_pass: "MOT DE PASSE",
+    register_pass_ph: "8 caractères minimum",
+    register_confirm: "CONFIRMER",
+    register_confirm_ph: "Répétez le mot de passe",
+    register_btn: "Créer mon compte →",
+    register_login: "Déjà un compte ? Se connecter",
+    register_success: "Compte créé !",
+    register_welcome: "Bienvenue",
+    err_name: "Nom requis",
+    err_email: "Email invalide",
+    err_pass: "8 caractères minimum",
+    err_conf: "Mots de passe différents",
+    err_email_used: "Email déjà utilisé.",
+    err_weak_pass: "Mot de passe trop faible.",
+    strength_weak: "Faible",
+    strength_medium: "Moyen",
+    strength_strong: "Fort",
+    strength_very_strong: "Très fort",
+    login_title: "Se connecter",
+    login_subtitle: "Bon retour 🌿",
+    login_btn: "Se connecter →",
+    login_forgot: "Mot de passe oublié ?",
+    login_no_account: "Pas encore de compte ? S'inscrire",
+    err_fill_fields: "Remplissez tous les champs.",
+    err_invalid_creds: "Email ou mot de passe incorrect.",
+    forgot_title: "Réinitialiser",
+    forgot_subtitle: "Entrez votre email pour recevoir un lien.",
+    forgot_btn: "Envoyer le lien →",
+    forgot_sent: "Email envoyé ! Vérifiez votre boîte.",
+    forgot_back: "← Retour à la connexion",
+    // Profile
+    profile_title: "Votre profil santé",
+    profile_subtitle: "Pour des analyses personnalisées",
+    profile_age: "ÂGE",
+    profile_age_ph: "Ex: 32",
+    profile_weight: "POIDS (kg)",
+    profile_weight_ph: "Ex: 75",
+    profile_sex: "SEXE",
+    profile_sex_m: "Homme",
+    profile_sex_f: "Femme",
+    profile_sex_other: "Autre",
+    profile_goal: "OBJECTIF",
+    profile_goal_loss: "Perte de poids",
+    profile_goal_muscle: "Prise de muscle",
+    profile_goal_health: "Santé générale",
+    profile_goal_energy: "Énergie & vitalité",
+    profile_goal_pregnancy: "Grossesse / allaitement",
+    profile_goal_athlete: "Performance sportive",
+    profile_activity: "ACTIVITÉ",
+    profile_activity_low: "Sédentaire",
+    profile_activity_moderate: "Modérée (2-3x/sem)",
+    profile_activity_active: "Active (5x/sem)",
+    profile_activity_very: "Très active (quotidien)",
+    profile_halal: "🌙 Mode Halal",
+    profile_halal_sub: "Recommandations conformes",
+    profile_skip: "Passer pour l'instant",
+    // Dashboard
+    db_hello: "Bonjour,",
+    db_premium: "👑 Compte Premium actif",
+    db_free: "Gratuit ·",
+    db_scans_left: "scan(s) restant(s)",
+    db_logout: "Déco.",
+    db_body_scan: "Scan corporel",
+    db_body_sub: "11 zones analysées",
+    db_meal_scan: "Scan repas",
+    db_meal_sub: "Calories & carences",
+    db_progress: "Progression",
+    db_meal_plan: "Plan repas",
+    db_family: "Famille",
+    db_challenge: "Défi 30j",
+    db_my_profile: "Mon profil",
+    db_challenge_title: "🏆 Défi 30 jours",
+    db_challenge_left: "scans restants pour terminer le défi",
+    db_history_title: "📅 Derniers scans",
+    db_recent: "Récent",
+    db_good: "Bien",
+    db_attention: "Attention",
+    db_premium_banner: "Passez Premium",
+    db_premium_sub: "Moins cher qu'un café/semaine",
+    db_unlock: "Débloquer tout →",
+    // Zones
+    zones_title: "Choisir une zone",
+    zones_premium_all: "👑 11 zones débloquées",
+    zones_free: "2 zones gratuites",
+    zones_premium_locked: "9 zones Premium 🔒",
+    zones_premium_zone: "Zone Premium",
+    zones_premium_price: "✨ Premium · 7,99$/mois",
+    // Capture
+    capture_title: "Photographier",
+    capture_beard_title: "🪓 ANALYSE BARBE VIKING",
+    capture_beard_sub: "VitaScann analyse la densité, les zones clairsemées et te donne des astuces naturelles de grand-mère pour booster ta croissance.",
+    capture_teeth_title: "🦷 CONSEILS PHOTO",
+    capture_teeth_sub: "Sourire large, lèvres bien ouvertes. Bonne lumière directe. Photo de face.",
+    capture_tips_title: "💡 CONSEILS PHOTO",
+    capture_tip1: "Lumière naturelle ou LED blanche",
+    capture_tip2: "Bonne mise au point, pas floue",
+    capture_tip3: "Distance adaptée à la zone",
+    capture_camera: "📷 Prendre une photo",
+    capture_gallery: "🖼️ Choisir dans la galerie",
+    // Meal capture
+    meal_capture_title: "Scan Repas",
+    meal_capture_sub: "Photographiez votre assiette et obtenez :",
+    meal_capture_macros: "calories · protéines · glucides · lipides",
+    meal_capture_deficiencies: "et quelles carences ce repas comble.",
+    meal_unlock: "👑 Débloquer le Scan Repas — 7,99$/mois",
+    meal_feature1: "📸 Analyse visuelle de n'importe quel repas",
+    meal_feature2: "🔢 Calories et macros estimés",
+    meal_feature3: "💊 Carences comblées",
+    meal_feature4: "🌙 Statut halal automatique",
+    meal_feature5: "🔗 Croisé avec vos scans corporels",
+    meal_photo_title: "📸 Photographier votre repas",
+    meal_photo_sub: "Assiette entière visible, bonne lumière",
+    // Analyzing
+    analyzing_title: "Analyse en cours...",
+    analyzing_sub: "Notre IA examine votre photo",
+    analyzing_disclaimer: "Pistes indicatives uniquement — non médical",
+    // Result
+    result_title: "Votre rapport",
+    result_urgent: "⚠️ Urgent",
+    result_attention: "👁 Attention",
+    result_normal: "✅ Normal",
+    result_zone: "Zone analysée",
+    result_body_fat_label: "Gras estimé",
+    result_viking: "Potentiel Viking",
+    result_deficiencies: "Carences",
+    result_body_comp: "💪 Composition corporelle",
+    result_body_fat: "Gras corporel",
+    result_abs: "Abdos visibles",
+    result_category: "Catégorie",
+    result_morpho: "Morphologie",
+    result_beard_title: "🪓 Analyse barbe",
+    result_density: "Densité",
+    result_viking_potential: "Potentiel Viking",
+    result_sparse: "Zones clairsemées :",
+    result_grandma_beard: "🧙‍♂️ Astuces grand-mère — Barbe",
+    result_grandma_teeth: "🌿 Remèdes naturels — Dents",
+    result_nutrients_body: "💊 Nutriments à optimiser",
+    result_nutrients_beard: "💊 Nutriments pour la barbe",
+    result_nutrients_teeth: "💊 Nutriments pour les dents",
+    result_deficiencies_found: "🔍 Carences identifiées",
+    result_food: "🥗 ALIMENTS",
+    result_supplement: "💊 COMPLÉMENT",
+    result_show: "▼ Recommandations",
+    result_hide: "▲ Masquer",
+    result_positives: "✅ Points positifs",
+    result_advice: "💬 CONSEIL PERSONNALISÉ",
+    result_disclaimer: "⚠️ Pistes indicatives — non médical",
+    result_chat: "💬 Chat nutritionniste IA",
+    result_share: "📤 Partager mes résultats",
+    result_pdf: "📄 Télécharger PDF",
+    result_new_scan: "🔬 Nouveau scan corporel",
+    result_home: "🏠 Retour à l'accueil",
+    // Meal result
+    meal_result_title: "Analyse repas",
+    meal_excellent: "✅ Excellent",
+    meal_ok: "👁 Correct",
+    meal_incomplete: "⚠️ Incomplet",
+    meal_halal: "🌙 Halal",
+    meal_halal_check: "⚠️ Vérifier halal",
+    meal_calories: "Calories estimées",
+    meal_macros: "📊 Macronutriments",
+    meal_protein: "Protéines",
+    meal_carbs: "Glucides",
+    meal_fat: "Lipides",
+    meal_covered: "✅ Carences comblées",
+    meal_missing: "⚠️ Ce qui manque",
+    meal_global_advice: "💬 CONSEIL",
+    meal_disclaimer: "⚠️ Estimation indicative basée sur l'analyse visuelle.",
+    meal_share: "📤 Partager mon analyse",
+    meal_new: "🍽️ Scanner un autre repas",
+    meal_home: "🏠 Retour à l'accueil",
+    // Progress
+    progress_title: "📈 Ma progression",
+    progress_sub: "Évolution de vos scores",
+    progress_empty: "Faites vos premiers scans pour voir votre progression !",
+    progress_best: "Meilleur",
+    progress_avg: "Moyen",
+    progress_scans: "Scans",
+    // Meal plan
+    mealplan_title: "🗓️ Plan repas 7 jours",
+    mealplan_sub: "Personnalisé selon votre profil et vos carences",
+    mealplan_generate: "✨ Générer mon plan personnalisé",
+    mealplan_regen: "Régénérer",
+    mealplan_breakfast: "🌅 Petit-déj",
+    mealplan_lunch: "☀️ Déjeuner",
+    mealplan_dinner: "🌙 Dîner",
+    mealplan_snack: "🍎 Snack",
+    // Family
+    family_title: "👨‍👩‍👧 Ma famille",
+    family_sub: "Suivez la santé de toute votre famille",
+    family_me: "Moi",
+    family_active: "Actif",
+    family_tap: "Appuyer pour scanner",
+    family_add_title: "➕ Ajouter un membre",
+    family_add_ph: "Prénom du membre",
+    family_add_btn: "Ajouter →",
+    // Challenge
+    challenge_title: "🏆 Défi 30 jours",
+    challenge_sub: "Améliorez votre santé en 30 scans",
+    challenge_done: "scans complétés",
+    challenge_complete: "🎉 Défi terminé !",
+    challenge_left: "Plus que",
+    challenge_left2: "scans !",
+    challenge_start: "Commencez votre premier scan !",
+    badge_first: "Premier pas",
+    badge_5: "5 scans",
+    badge_10: "10 scans",
+    badge_20: "20 scans",
+    badge_30: "Défi complet",
+    badge_day: "Jour",
+    badge_obtained: "✓ Obtenu !",
+    // Paywall
+    pw_timer_label: "⏰ OFFRE DE LANCEMENT",
+    pw_timer_urgent: "🔥 OFFRE EXPIRE BIENTÔT",
+    pw_regular: "Prix habituel",
+    pw_title: "VitaScann Premium",
+    pw_subtitle: "Moins cher qu'un café par semaine.",
+    pw_unlock: "✨ CE QUE VOUS DÉBLOQUEZ",
+    pw_f1_title: "11 zones corporelles",
+    pw_f1_sub: "Dont Dents 🦷 et Barbe 🧔 — unique au monde",
+    pw_f2_title: "Scan Repas",
+    pw_f2_sub: "Calories, macros, carences comblées",
+    pw_f3_title: "Chat nutritionniste IA",
+    pw_f3_sub: "Posez vos questions après chaque scan",
+    pw_f4_title: "Plan repas 7 jours",
+    pw_f4_sub: "Personnalisé selon vos carences",
+    pw_f5_title: "Suivi progression",
+    pw_f5_sub: "Courbe de vos scores dans le temps",
+    pw_f6_title: "Profils famille",
+    pw_f6_sub: "Toute la famille sur un compte",
+    pw_f7_title: "Mode halal",
+    pw_f7_sub: "Compléments et aliments conformes",
+    pw_f8_title: "Rapport PDF",
+    pw_f8_sub: "Partageable avec votre médecin",
+    pw_per_month: "par mois · Annulez quand vous voulez",
+    pw_discount: "✅ -47% tarif de lancement",
+    pw_btn: "💳 S'abonner maintenant →",
+    pw_secure: "Paiement sécurisé Stripe",
+    pw_cancel: "Sans engagement",
+    pw_support: "Support rapide",
+    pw_disclaimer: "⚠️ VitaScann fournit des pistes nutritionnelles indicatives, pas des diagnostics médicaux.",
+    // Chat
+    chat_title: "💬 Nutritionniste IA",
+    chat_placeholder: "Posez votre question...",
+    chat_welcome: "Bonjour ! Je suis votre nutritionniste IA VitaScann. Que voulez-vous savoir sur vos résultats ?",
+    // Nav
+    nav_home: "Accueil",
+    nav_scan: "Scanner",
+    nav_meal: "Repas",
+    nav_family: "Famille",
+    // Language selector
+    lang_label: "Langue / Language",
+  },
+  en: {
+    // Global
+    back: "← Back",
+    next: "Next →",
+    skip: "Skip →",
+    loading: "Loading...",
+    error: "Error. Please try again.",
+    save: "Save →",
+    // Onboarding
+    ob_slide1_title: "Your body speaks",
+    ob_slide1_sub: "Nails, eyes, skin, beard, teeth... Each zone reveals clues about your nutritional deficiencies. VitaScann reads them in 30 seconds.",
+    ob_slide2_title: "Scan your meals too",
+    ob_slide2_sub: "Photograph your plate. VitaScann calculates calories, macros and tells you what's missing from your diet.",
+    ob_slide3_title: "The whole family",
+    ob_slide3_sub: "One account, multiple profiles. Track the nutritional health of your entire family and progress together.",
+    ob_see_results: "See real results 👁",
+    ob_create_account: "Create my free account",
+    ob_try_demo: "Try without account (1 free scan)",
+    ob_already_account: "Already have an account? Sign in",
+    ob_example_badge: "👁 REAL EXAMPLES — Sarah, 28 years",
+    ob_nails_title: "Nail Scan — Sarah",
+    ob_fat_title: "Body Fat % — Sarah +3 months",
+    ob_nails_cta: "What do your nails reveal?",
+    ob_fat_cta: "What's your body fat %?",
+    ob_photo_hint: "1 photo is enough. Result in 30 seconds.",
+    ob_register_cta: "Create my free account →",
+    // Auth
+    register_title: "Create your account",
+    register_subtitle: "1 free scan offered upon registration",
+    register_name: "FULL NAME",
+    register_name_ph: "Your first name",
+    register_email: "EMAIL",
+    register_email_ph: "you@email.com",
+    register_pass: "PASSWORD",
+    register_pass_ph: "8 characters minimum",
+    register_confirm: "CONFIRM",
+    register_confirm_ph: "Repeat password",
+    register_btn: "Create my account →",
+    register_login: "Already have an account? Sign in",
+    register_success: "Account created!",
+    register_welcome: "Welcome",
+    err_name: "Name required",
+    err_email: "Invalid email",
+    err_pass: "8 characters minimum",
+    err_conf: "Passwords don't match",
+    err_email_used: "Email already in use.",
+    err_weak_pass: "Password too weak.",
+    strength_weak: "Weak",
+    strength_medium: "Medium",
+    strength_strong: "Strong",
+    strength_very_strong: "Very strong",
+    login_title: "Sign in",
+    login_subtitle: "Welcome back 🌿",
+    login_btn: "Sign in →",
+    login_forgot: "Forgot password?",
+    login_no_account: "No account yet? Sign up",
+    err_fill_fields: "Please fill all fields.",
+    err_invalid_creds: "Incorrect email or password.",
+    forgot_title: "Reset Password",
+    forgot_subtitle: "Enter your email to receive a reset link.",
+    forgot_btn: "Send link →",
+    forgot_sent: "Email sent! Check your inbox.",
+    forgot_back: "← Back to login",
+    // Profile
+    profile_title: "Your health profile",
+    profile_subtitle: "For personalized analyses",
+    profile_age: "AGE",
+    profile_age_ph: "E.g. 32",
+    profile_weight: "WEIGHT (kg)",
+    profile_weight_ph: "E.g. 75",
+    profile_sex: "SEX",
+    profile_sex_m: "Male",
+    profile_sex_f: "Female",
+    profile_sex_other: "Other",
+    profile_goal: "GOAL",
+    profile_goal_loss: "Weight loss",
+    profile_goal_muscle: "Muscle gain",
+    profile_goal_health: "General health",
+    profile_goal_energy: "Energy & vitality",
+    profile_goal_pregnancy: "Pregnancy / breastfeeding",
+    profile_goal_athlete: "Athletic performance",
+    profile_activity: "ACTIVITY",
+    profile_activity_low: "Sedentary",
+    profile_activity_moderate: "Moderate (2-3x/week)",
+    profile_activity_active: "Active (5x/week)",
+    profile_activity_very: "Very active (daily)",
+    profile_halal: "🌙 Halal Mode",
+    profile_halal_sub: "Compliant recommendations",
+    profile_skip: "Skip for now",
+    // Dashboard
+    db_hello: "Hello,",
+    db_premium: "👑 Premium account active",
+    db_free: "Free ·",
+    db_scans_left: "scan(s) remaining",
+    db_logout: "Logout",
+    db_body_scan: "Body scan",
+    db_body_sub: "11 zones analyzed",
+    db_meal_scan: "Meal scan",
+    db_meal_sub: "Calories & deficiencies",
+    db_progress: "Progress",
+    db_meal_plan: "Meal plan",
+    db_family: "Family",
+    db_challenge: "30d Challenge",
+    db_my_profile: "My profile",
+    db_challenge_title: "🏆 30-day Challenge",
+    db_challenge_left: "scans left to complete the challenge",
+    db_history_title: "📅 Recent scans",
+    db_recent: "Recent",
+    db_good: "Good",
+    db_attention: "Watch out",
+    db_premium_banner: "Go Premium",
+    db_premium_sub: "Less than a coffee per week",
+    db_unlock: "Unlock everything →",
+    // Zones
+    zones_title: "Choose a zone",
+    zones_premium_all: "👑 11 zones unlocked",
+    zones_free: "2 free zones",
+    zones_premium_locked: "9 Premium zones 🔒",
+    zones_premium_zone: "Premium Zone",
+    zones_premium_price: "✨ Premium · $7.99/month",
+    // Capture
+    capture_title: "Take a photo",
+    capture_beard_title: "🪓 VIKING BEARD ANALYSIS",
+    capture_beard_sub: "VitaScann analyzes density, sparse zones and gives you natural grandmother remedies to boost your growth.",
+    capture_teeth_title: "🦷 PHOTO TIPS",
+    capture_teeth_sub: "Wide smile, lips fully open. Good direct light. Front photo.",
+    capture_tips_title: "💡 PHOTO TIPS",
+    capture_tip1: "Natural light or white LED",
+    capture_tip2: "Good focus, not blurry",
+    capture_tip3: "Appropriate distance for the zone",
+    capture_camera: "📷 Take a photo",
+    capture_gallery: "🖼️ Choose from gallery",
+    // Meal capture
+    meal_capture_title: "Meal Scan",
+    meal_capture_sub: "Photograph your plate and get:",
+    meal_capture_macros: "calories · protein · carbs · fat",
+    meal_capture_deficiencies: "and which deficiencies this meal covers.",
+    meal_unlock: "👑 Unlock Meal Scan — $7.99/month",
+    meal_feature1: "📸 Visual analysis of any meal",
+    meal_feature2: "🔢 Estimated calories and macros",
+    meal_feature3: "💊 Deficiencies covered",
+    meal_feature4: "🌙 Automatic halal status",
+    meal_feature5: "🔗 Crossed with your body scans",
+    meal_photo_title: "📸 Photograph your meal",
+    meal_photo_sub: "Full plate visible, good lighting",
+    // Analyzing
+    analyzing_title: "Analysis in progress...",
+    analyzing_sub: "Our AI is examining your photo",
+    analyzing_disclaimer: "Indicative clues only — not medical",
+    // Result
+    result_title: "Your report",
+    result_urgent: "⚠️ Urgent",
+    result_attention: "👁 Attention",
+    result_normal: "✅ Normal",
+    result_zone: "Analyzed zone",
+    result_body_fat_label: "Estimated fat",
+    result_viking: "Viking Potential",
+    result_deficiencies: "Deficiencies",
+    result_body_comp: "💪 Body composition",
+    result_body_fat: "Body fat",
+    result_abs: "Abs visible",
+    result_category: "Category",
+    result_morpho: "Morphology",
+    result_beard_title: "🪓 Beard analysis",
+    result_density: "Density",
+    result_viking_potential: "Viking Potential",
+    result_sparse: "Sparse zones:",
+    result_grandma_beard: "🧙‍♂️ Grandmother tips — Beard",
+    result_grandma_teeth: "🌿 Natural remedies — Teeth",
+    result_nutrients_body: "💊 Nutrients to optimize",
+    result_nutrients_beard: "💊 Nutrients for beard",
+    result_nutrients_teeth: "💊 Nutrients for teeth",
+    result_deficiencies_found: "🔍 Identified deficiencies",
+    result_food: "🥗 FOODS",
+    result_supplement: "💊 SUPPLEMENT",
+    result_show: "▼ Recommendations",
+    result_hide: "▲ Hide",
+    result_positives: "✅ Positive points",
+    result_advice: "💬 PERSONALIZED ADVICE",
+    result_disclaimer: "⚠️ Indicative clues — not medical",
+    result_chat: "💬 AI Nutritionist Chat",
+    result_share: "📤 Share my results",
+    result_pdf: "📄 Download PDF",
+    result_new_scan: "🔬 New body scan",
+    result_home: "🏠 Back to home",
+    // Meal result
+    meal_result_title: "Meal analysis",
+    meal_excellent: "✅ Excellent",
+    meal_ok: "👁 Good",
+    meal_incomplete: "⚠️ Incomplete",
+    meal_halal: "🌙 Halal",
+    meal_halal_check: "⚠️ Check halal",
+    meal_calories: "Estimated calories",
+    meal_macros: "📊 Macronutrients",
+    meal_protein: "Protein",
+    meal_carbs: "Carbs",
+    meal_fat: "Fat",
+    meal_covered: "✅ Deficiencies covered",
+    meal_missing: "⚠️ What's missing",
+    meal_global_advice: "💬 ADVICE",
+    meal_disclaimer: "⚠️ Indicative estimate based on visual analysis.",
+    meal_share: "📤 Share my analysis",
+    meal_new: "🍽️ Scan another meal",
+    meal_home: "🏠 Back to home",
+    // Progress
+    progress_title: "📈 My progress",
+    progress_sub: "Evolution of your scores",
+    progress_empty: "Do your first scans to see your progress!",
+    progress_best: "Best",
+    progress_avg: "Average",
+    progress_scans: "Scans",
+    // Meal plan
+    mealplan_title: "🗓️ 7-day Meal Plan",
+    mealplan_sub: "Personalized to your profile and deficiencies",
+    mealplan_generate: "✨ Generate my personalized plan",
+    mealplan_regen: "Regenerate",
+    mealplan_breakfast: "🌅 Breakfast",
+    mealplan_lunch: "☀️ Lunch",
+    mealplan_dinner: "🌙 Dinner",
+    mealplan_snack: "🍎 Snack",
+    // Family
+    family_title: "👨‍👩‍👧 My family",
+    family_sub: "Track the health of your whole family",
+    family_me: "Me",
+    family_active: "Active",
+    family_tap: "Tap to scan",
+    family_add_title: "➕ Add a member",
+    family_add_ph: "Member's first name",
+    family_add_btn: "Add →",
+    // Challenge
+    challenge_title: "🏆 30-day Challenge",
+    challenge_sub: "Improve your health in 30 scans",
+    challenge_done: "scans completed",
+    challenge_complete: "🎉 Challenge complete!",
+    challenge_left: "Only",
+    challenge_left2: "scans left!",
+    challenge_start: "Start your first scan!",
+    badge_first: "First step",
+    badge_5: "5 scans",
+    badge_10: "10 scans",
+    badge_20: "20 scans",
+    badge_30: "Challenge complete",
+    badge_day: "Day",
+    badge_obtained: "✓ Obtained!",
+    // Paywall
+    pw_timer_label: "⏰ LAUNCH OFFER",
+    pw_timer_urgent: "🔥 OFFER EXPIRING SOON",
+    pw_regular: "Regular price",
+    pw_title: "VitaScann Premium",
+    pw_subtitle: "Less than a coffee per week.",
+    pw_unlock: "✨ WHAT YOU UNLOCK",
+    pw_f1_title: "11 body zones",
+    pw_f1_sub: "Including Teeth 🦷 and Beard 🧔 — unique worldwide",
+    pw_f2_title: "Meal Scan",
+    pw_f2_sub: "Calories, macros, deficiencies covered",
+    pw_f3_title: "AI Nutritionist Chat",
+    pw_f3_sub: "Ask questions after every scan",
+    pw_f4_title: "7-day meal plan",
+    pw_f4_sub: "Personalized to your deficiencies",
+    pw_f5_title: "Progress tracking",
+    pw_f5_sub: "Score curve over time",
+    pw_f6_title: "Family profiles",
+    pw_f6_sub: "Whole family on one account",
+    pw_f7_title: "Halal mode",
+    pw_f7_sub: "Compliant supplements and foods",
+    pw_f8_title: "PDF Report",
+    pw_f8_sub: "Shareable with your doctor",
+    pw_per_month: "per month · Cancel anytime",
+    pw_discount: "✅ -47% launch price",
+    pw_btn: "💳 Subscribe now →",
+    pw_secure: "Secure Stripe payment",
+    pw_cancel: "No commitment",
+    pw_support: "Fast support",
+    pw_disclaimer: "⚠️ VitaScann provides indicative nutritional clues, not medical diagnoses.",
+    // Chat
+    chat_title: "💬 AI Nutritionist",
+    chat_placeholder: "Ask your question...",
+    chat_welcome: "Hello! I'm your VitaScann AI nutritionist. What would you like to know about your results?",
+    // Nav
+    nav_home: "Home",
+    nav_scan: "Scan",
+    nav_meal: "Meals",
+    nav_family: "Family",
+    // Language selector
+    lang_label: "Langue / Language",
+  }
+};
 
 // ─── SERVICES ───
 const AuthService = {
@@ -114,30 +691,30 @@ const EM="#00ff88",GOLD="#e2b84a",MUT="#4a6e52",DANGER="#ff5555",WARN="#ffaa33",
 const CARD="#0c1810",BDR="#192c1d";
 
 // ─── ZONES ───
-const ZONES = [
-  {id:"nails",    icon:"💅", label:"Ongles",          hint:"Posez votre main à plat",                  vitamins:"B12 · C · Fer · Zinc",      color:"#c084fc", premium:false},
-  {id:"eyes",     icon:"👁️", label:"Yeux",            hint:"Blanc de l'œil visible",                   vitamins:"A · Fer",                   color:"#38bdf8", premium:false},
-  {id:"skin",     icon:"🖐️", label:"Peau",            hint:"Face interne du poignet",                  vitamins:"D · B3 · Zinc",             color:"#fb923c", premium:true},
-  {id:"hair",     icon:"💇", label:"Cheveux",         hint:"Cuir chevelu, racines visibles",           vitamins:"Biotine · Fer · B7",        color:"#f472b6", premium:true},
-  {id:"tongue",   icon:"👅", label:"Langue",          hint:"Tirée, bonne lumière",                     vitamins:"B2 · B3 · B12",             color:"#f87171", premium:true},
-  {id:"feet",     icon:"🦶", label:"Pieds",           hint:"Plante du pied, talons",                   vitamins:"B3 · E · Zinc",             color:"#a3e635", premium:true},
-  {id:"belly",    icon:"🫃", label:"Ventre",          hint:"Zone abdominale, torse visible",           vitamins:"D · Magnésium · B12",       color:"#fbbf24", premium:true},
-  {id:"scalp",    icon:"🧠", label:"Cuir chev.",      hint:"Zones de chute ou irritation",             vitamins:"Biotine · Zinc · B5",       color:"#e879f9", premium:true},
-  {id:"body_fat", icon:"💪", label:"% Gras corporel", hint:"Torse ou abdomen visible, bonne lumière",  vitamins:"Composition corporelle",    color:"#f97316", premium:true},
-  {id:"teeth",    icon:"🦷", label:"Dents",           hint:"Sourire large, bonne lumière",             vitamins:"Calcium · D · K2",          color:"#e2e8f0", premium:true},
-  {id:"beard",    icon:"🧔", label:"Barbe",           hint:"Visage entier, barbe visible",             vitamins:"Biotine · Zinc · B7 · Fer", color:"#92400e", premium:true},
+const getZones = (t) => [
+  {id:"nails",    icon:"💅", label:t==="en"?"Nails":"Ongles",          hint:t==="en"?"Lay your hand flat":"Posez votre main à plat",                  vitamins:"B12 · C · Fer · Zinc",      color:"#c084fc", premium:false},
+  {id:"eyes",     icon:"👁️", label:t==="en"?"Eyes":"Yeux",            hint:t==="en"?"White of eye visible":"Blanc de l'œil visible",                   vitamins:"A · Fer",                   color:"#38bdf8", premium:false},
+  {id:"skin",     icon:"🖐️", label:t==="en"?"Skin":"Peau",            hint:t==="en"?"Inner side of wrist":"Face interne du poignet",                  vitamins:"D · B3 · Zinc",             color:"#fb923c", premium:true},
+  {id:"hair",     icon:"💇", label:t==="en"?"Hair":"Cheveux",         hint:t==="en"?"Scalp, roots visible":"Cuir chevelu, racines visibles",           vitamins:"Biotine · Fer · B7",        color:"#f472b6", premium:true},
+  {id:"tongue",   icon:"👅", label:t==="en"?"Tongue":"Langue",        hint:t==="en"?"Stuck out, good light":"Tirée, bonne lumière",                     vitamins:"B2 · B3 · B12",             color:"#f87171", premium:true},
+  {id:"feet",     icon:"🦶", label:t==="en"?"Feet":"Pieds",           hint:t==="en"?"Sole, heels":"Plante du pied, talons",                   vitamins:"B3 · E · Zinc",             color:"#a3e635", premium:true},
+  {id:"belly",    icon:"🫃", label:t==="en"?"Belly":"Ventre",         hint:t==="en"?"Abdomen, torso visible":"Zone abdominale, torse visible",           vitamins:"D · Magnésium · B12",       color:"#fbbf24", premium:true},
+  {id:"scalp",    icon:"🧠", label:t==="en"?"Scalp":"Cuir chev.",     hint:t==="en"?"Loss or irritation zones":"Zones de chute ou irritation",             vitamins:"Biotine · Zinc · B5",       color:"#e879f9", premium:true},
+  {id:"body_fat", icon:"💪", label:t==="en"?"Body Fat %":"% Gras corporel", hint:t==="en"?"Torso or abdomen visible, good light":"Torse ou abdomen visible, bonne lumière",  vitamins:t==="en"?"Body composition":"Composition corporelle",    color:"#f97316", premium:true},
+  {id:"teeth",    icon:"🦷", label:t==="en"?"Teeth":"Dents",          hint:t==="en"?"Wide smile, good light":"Sourire large, bonne lumière",             vitamins:"Calcium · D · K2",          color:"#e2e8f0", premium:true},
+  {id:"beard",    icon:"🧔", label:t==="en"?"Beard":"Barbe",          hint:t==="en"?"Full face, beard visible":"Visage entier, barbe visible",             vitamins:"Biotine · Zinc · B7 · Fer", color:"#92400e", premium:true},
 ];
 
 // ─── PROMPTS IA ───
 const BODY_PROMPT = `Tu es VitaScann, assistant visuel en nutrition. Analyses de photos — PISTES indicatives uniquement, pas un diagnostic médical.
 
-Si zone = "% Gras corporel" → JSON :
+Si zone = "% Gras corporel" ou "Body Fat %" → JSON :
 {"score":0-100,"urgence":"normal|attention|urgent","type_analyse":"body_fat","pct_gras_estime":5-45,"categorie_gras":"essentiel|athlete|fitness|acceptable|obesite","abdos_visibles":"oui|partiellement|non","morphologie":"ectomorphe|mesomorphe|endomorphe","carences":[{"nom":"Protéines","niveau":"faible","pct":40,"emoji":"💪","signes":"masse musculaire visible","aliments":["poulet","oeufs","légumineuses"],"complement":"Whey Protéine","dose":"25g après entraînement"}],"positifs":["p1"],"conseil":"2 phrases nutrition+sport.","prochain":"zone suivante"}
 
-Si zone = "Dents" → JSON :
+Si zone = "Dents" ou "Teeth" → JSON :
 {"score":0-100,"urgence":"normal|attention|urgent","type_analyse":"teeth","etat_email":"excellent|bon|abime|critique","couleur":"blanc|jaunâtre|tache","carences":[{"nom":"Calcium","niveau":"faible","pct":45,"emoji":"🦷","signes":"observation","aliments":["lait","amandes","sardines"],"complement":"Calcium + D3","dose":"500mg/j"}],"astuces_grand_mere":["Rincer bouche huile coco 10min à jeun","Pâte bicarbonate+citron 1x/sem","Curcuma + eau chaude rincement"],"positifs":["p1"],"conseil":"2 phrases.","prochain":"zone"}
 
-Si zone = "Barbe" → JSON :
+Si zone = "Barbe" ou "Beard" → JSON :
 {"score":0-100,"urgence":"normal|attention|urgent","type_analyse":"beard","densite":"faible|moyenne|dense","zones_clairsemees":["joues","menton","moustache"],"potentiel_viking":"faible|moyen|fort|légendaire","carences":[{"nom":"Biotine","niveau":"faible","pct":35,"emoji":"🧔","signes":"zones clairsemées","aliments":["oeufs","noix","avocats"],"complement":"Biotine 5000mcg","dose":"1 gélule/matin"}],"astuces_grand_mere":["Huile de ricin + massage 5min/soir","Cannelle + miel de Manuka application 20min","Citron frais + huile d'argan 2x/semaine","Eau de rose + gingembre frais"],"positifs":["p1"],"conseil":"2 phrases croissance barbe.","prochain":"zone"}
 
 Sinon → JSON :
@@ -146,7 +723,7 @@ Sinon → JSON :
 const MEAL_PROMPT = `Tu es VitaScann nutritionniste. Analyse cette photo de repas. Retourne UNIQUEMENT ce JSON valide (sans markdown) :
 {"nom_repas":"Nom","calories_estimees":0-2000,"proteines_g":0-100,"glucides_g":0-200,"lipides_g":0-100,"score_nutrition":0-100,"carences_comblees":[{"nutriment":"Vitamine X","emoji":"🟢","niveau":"bien|moyen|faible"}],"manque":[{"nutriment":"Zinc","conseil":"Ajouter graines de courge"}],"conseil_global":"2 phrases.","note_halal":"halal|inconnu|attention"}`;
 
-const CHAT_SYSTEM = `Tu es le nutritionniste IA de VitaScann. Réponds en français, de façon concise (max 3 phrases), bienveillante et pratique. Contexte du scan fourni dans le message. Pas de diagnostic médical.`;
+const CHAT_SYSTEM = `Tu es le nutritionniste IA de VitaScann. Réponds en français ou en anglais selon la langue utilisée par l'utilisateur, de façon concise (max 3 phrases), bienveillante et pratique. Contexte du scan fourni dans le message. Pas de diagnostic médical.`;
 
 const MEAL_PLAN_PROMPT = `Tu es nutritionniste VitaScann. Basé sur ce profil et ces carences, génère un plan repas 7 jours. Retourne UNIQUEMENT ce JSON (sans markdown) :
 {"semaine":[{"jour":"Lundi","petit_dej":"...","dejeuner":"...","diner":"...","snack":"...","nutriments_cibles":["Fer","VitD"]}]}`;
@@ -231,58 +808,72 @@ function ErrorBanner({msg,onClose}) {
   );
 }
 
-// ─── DOUBLE OPTION PHOTO ───
-function PhotoPicker({onCapture,color,icon,hint,label}) {
+// ─── LANGUAGE SELECTOR ───
+function LangToggle({lang,setLang}) {
+  return (
+    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+      {[["fr","🇫🇷"],["en","🇬🇧"]].map(([l,flag])=>(
+        <button key={l} onClick={()=>{setLang(l);localStorage.setItem("vs_lang",l);}}
+          style={{background:lang===l?`${EM}20`:"transparent",border:`1.5px solid ${lang===l?EM:BDR}`,borderRadius:10,padding:"5px 10px",fontFamily:"'Outfit',sans-serif",fontSize:14,cursor:"pointer",color:lang===l?EM:MUT,transition:"all .2s"}}>
+          {flag}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── PHOTO PICKER ───
+function PhotoPicker({onCapture,color,icon,hint,label,t}) {
   const camRef = useRef();
   const galRef = useRef();
-  const handle = (e) => {
-    const file = e.target.files[0]; if(!file)return;
-    const r = new FileReader();
-    r.onload = ev => onCapture(ev.target.result.split(",")[1], ev.target.result);
-    r.readAsDataURL(file);
+
+  const handleFile = (file) => {
+    if(!file)return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX=1024;
+        let w=img.width,h=img.height;
+        if(w>MAX){h=Math.round(h*(MAX/w));w=MAX;}
+        if(h>MAX){w=Math.round(w*(MAX/h));h=MAX;}
+        canvas.width=w;canvas.height=h;
+        canvas.getContext("2d").drawImage(img,0,0,w,h);
+        const b64 = canvas.toDataURL("image/jpeg",0.85).split(",")[1];
+        onCapture(b64, canvas.toDataURL("image/jpeg",0.85));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
   };
+
   return (
-    <div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-        <button onClick={()=>camRef.current?.click()}
-          style={{background:`${color}12`,border:`2px solid ${color}44`,borderRadius:18,padding:"20px 12px",cursor:"pointer",textAlign:"center",transition:"all .2s"}}
-          onMouseEnter={e=>e.currentTarget.style.background=`${color}22`}
-          onMouseLeave={e=>e.currentTarget.style.background=`${color}12`}>
-          <div style={{fontSize:32,marginBottom:8}}>📷</div>
-          <div style={{fontWeight:700,fontSize:13,color:"#edf5ef"}}>Caméra</div>
-          <div style={{color:MUT,fontSize:11,marginTop:2}}>Prendre en photo</div>
-        </button>
-        <button onClick={()=>galRef.current?.click()}
-          style={{background:`${color}12`,border:`2px solid ${color}44`,borderRadius:18,padding:"20px 12px",cursor:"pointer",textAlign:"center",transition:"all .2s"}}
-          onMouseEnter={e=>e.currentTarget.style.background=`${color}22`}
-          onMouseLeave={e=>e.currentTarget.style.background=`${color}12`}>
-          <div style={{fontSize:32,marginBottom:8}}>🖼️</div>
-          <div style={{fontWeight:700,fontSize:13,color:"#edf5ef"}}>Galerie</div>
-          <div style={{color:MUT,fontSize:11,marginTop:2}}>Choisir une photo</div>
-        </button>
-      </div>
-      <input ref={camRef} type="file" accept="image/*" capture="environment" onChange={handle} style={{display:"none"}}/>
-      <input ref={galRef} type="file" accept="image/*" onChange={handle} style={{display:"none"}}/>
+    <div style={{display:"flex",gap:10}}>
+      <input ref={camRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])}/>
+      <input ref={galRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])}/>
+      <button onClick={()=>camRef.current.click()}
+        style={{flex:1,background:`${color}15`,border:`1.5px solid ${color}44`,borderRadius:14,padding:"16px 10px",fontFamily:"'Outfit',sans-serif",fontSize:13,fontWeight:700,color:color,cursor:"pointer",textAlign:"center"}}>
+        {t("capture_camera")}
+      </button>
+      <button onClick={()=>galRef.current.click()}
+        style={{flex:1,background:"#0c1810",border:`1.5px solid ${BDR}`,borderRadius:14,padding:"16px 10px",fontFamily:"'Outfit',sans-serif",fontSize:13,fontWeight:700,color:MUT,cursor:"pointer",textAlign:"center"}}>
+        {t("capture_gallery")}
+      </button>
     </div>
   );
 }
 
 // ─── SPLASH ───
-function Splash({onDone}) {
-  useEffect(()=>{const t=setTimeout(onDone,2400);return()=>clearTimeout(t);},[]);
+function Splash({onDone,lang,setLang}) {
+  useEffect(()=>{const timer=setTimeout(onDone,2000);return()=>clearTimeout(timer);},[onDone]);
   return (
-    <div style={{height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"radial-gradient(ellipse at 50% 40%,#061a0a 0%,#060d08 70%)"}}>
-      <div style={{animation:"glow 2s ease infinite,floatY 3s ease-in-out infinite",marginBottom:28}}>
-        <div style={{width:110,height:110,borderRadius:30,background:`linear-gradient(135deg,${EM},#007744)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:60}}>🌿</div>
-      </div>
-      <div className="serif fu" style={{fontSize:48,fontWeight:700,color:"#edf5ef",letterSpacing:-1}}>VitaScann</div>
-      <div className="fu1" style={{color:MUT,fontSize:13,letterSpacing:2,marginTop:6}}>INTELLIGENCE NUTRITIONNELLE</div>
-      <div className="fu2" style={{marginTop:32,display:"flex",gap:16}}>
-        {["Corps","Repas","Famille"].map((l,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:5,color:MUT,fontSize:12}}>
-            <div style={{width:6,height:6,borderRadius:3,background:EM}}/>{l}
-          </div>
-        ))}
+    <div style={{height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"radial-gradient(ellipse at 50% 50%,#061a0a,#060d08)"}}>
+      <div style={{fontSize:80,animation:"floatY 2s ease-in-out infinite",marginBottom:20}}>🌿</div>
+      <div className="serif" style={{fontSize:36,fontWeight:700,color:EM,letterSpacing:1}}>VitaScann</div>
+      <div style={{color:MUT,fontSize:14,marginTop:8}}>Intelligence Nutritionnelle</div>
+      <div style={{position:"absolute",bottom:40,display:"flex",gap:8,alignItems:"center"}}>
+        <LangToggle lang={lang} setLang={setLang}/>
       </div>
     </div>
   );
@@ -307,21 +898,21 @@ const SARAH_FAT = {
   evolution:"Score amélioré de +10 points en 3 mois 📈",
 };
 
-function Onboarding({onDemo,onRegister,onLogin}) {
+function Onboarding({onDemo,onRegister,onLogin,lang,setLang,t}) {
   const [step,setStep] = useState(0);
   const [example,setExample] = useState("nails");
 
   if(step===3) return (
     <div style={{minHeight:"100vh",paddingBottom:100,overflowY:"auto"}}>
       <div style={{padding:"52px 22px 18px",background:"radial-gradient(ellipse at 50% 0%,#071c0c 0%,#060d08 70%)"}}>
-        <div style={{textAlign:"center",marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <span style={{background:"#00ff8818",color:EM,borderRadius:20,padding:"4px 14px",fontSize:11,fontWeight:700}}>
-            👁 EXEMPLES RÉELS — Sarah, 28 ans
+            {t("ob_example_badge")}
           </span>
+          <LangToggle lang={lang} setLang={setLang}/>
         </div>
-        {/* Toggle */}
         <div style={{display:"flex",gap:8,marginBottom:16}}>
-          {[["nails","💅 Ongles"],["fat","💪 % Gras"]].map(([k,l])=>(
+          {[["nails",`💅 ${lang==="en"?"Nails":"Ongles"}`],["fat",`💪 ${lang==="en"?"Body Fat":"% Gras"}`]].map(([k,l])=>(
             <button key={k} onClick={()=>setExample(k)}
               style={{flex:1,background:example===k?`${EM}20`:"transparent",border:`1.5px solid ${example===k?EM:BDR}`,borderRadius:12,padding:"8px",fontFamily:"'Outfit',sans-serif",fontSize:12,fontWeight:700,color:example===k?EM:MUT,cursor:"pointer",transition:"all .2s"}}>
               {l}
@@ -332,30 +923,30 @@ function Onboarding({onDemo,onRegister,onLogin}) {
         {example==="nails"?(
           <>
             <div className="fu" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div className="serif" style={{fontSize:20,fontWeight:700}}>Scan Ongles — Sarah</div>
-              <span style={{background:`${WARN}14`,color:WARN,borderRadius:20,padding:"3px 10px",fontSize:10,fontWeight:700}}>👁 Attention</span>
+              <div className="serif" style={{fontSize:20,fontWeight:700}}>{t("ob_nails_title")}</div>
+              <span style={{background:`${WARN}14`,color:WARN,borderRadius:20,padding:"3px 10px",fontSize:10,fontWeight:700}}>👁 {lang==="en"?"Attention":"Attention"}</span>
             </div>
             <div className="fu1" style={{display:"flex",alignItems:"center",gap:16,marginBottom:8}}>
               <ScoreRing score={68} size={90}/>
               <div>
-                <div style={{color:MUT,fontSize:11}}>2 carences détectées</div>
+                <div style={{color:MUT,fontSize:11}}>{lang==="en"?"2 deficiencies detected":"2 carences détectées"}</div>
                 <div style={{color:WARN,fontWeight:700,fontSize:26}}>Vitamine D · Fer</div>
-                <div style={{fontSize:11,color:MUT,marginTop:4}}>Via analyse visuelle ongles</div>
+                <div style={{fontSize:11,color:MUT,marginTop:4}}>{lang==="en"?"Via visual nail analysis":"Via analyse visuelle ongles"}</div>
               </div>
             </div>
           </>
         ):(
           <>
             <div className="fu" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div className="serif" style={{fontSize:20,fontWeight:700}}>% Gras — Sarah +3 mois</div>
+              <div className="serif" style={{fontSize:20,fontWeight:700}}>{t("ob_fat_title")}</div>
               <span style={{background:`${EM}14`,color:EM,borderRadius:20,padding:"3px 10px",fontSize:10,fontWeight:700}}>✅ Fitness</span>
             </div>
             <div className="fu1" style={{display:"flex",alignItems:"center",gap:16,marginBottom:8}}>
               <ScoreRing score={78} size={90}/>
               <div>
-                <div style={{color:MUT,fontSize:11}}>Gras corporel estimé</div>
+                <div style={{color:MUT,fontSize:11}}>{lang==="en"?"Estimated body fat":"Gras corporel estimé"}</div>
                 <div style={{color:"#f97316",fontWeight:700,fontSize:26}}>24%</div>
-                <div style={{fontSize:11,color:WARN,marginTop:4}}>Abdos : partiellement visibles</div>
+                <div style={{fontSize:11,color:WARN,marginTop:4}}>{lang==="en"?"Abs: partially visible":"Abdos : partiellement visibles"}</div>
                 <div style={{fontSize:11,color:EM,marginTop:2}}>{SARAH_FAT.evolution}</div>
               </div>
             </div>
@@ -365,7 +956,7 @@ function Onboarding({onDemo,onRegister,onLogin}) {
       <div style={{padding:"14px 18px"}}>
         {example==="nails"?(
           <div className="card" style={{marginBottom:12}}>
-            <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>🔍 Détecté visuellement</div>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>🔍 {lang==="en"?"Detected visually":"Détecté visuellement"}</div>
             {SARAH_NAILS.carences.map((c,i)=>(
               <div key={i} style={{marginBottom:i<1?12:0,paddingBottom:i<1?12:0,borderBottom:i<1?`1px solid ${BDR}`:"none"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
@@ -379,15 +970,15 @@ function Onboarding({onDemo,onRegister,onLogin}) {
           </div>
         ):(
           <div className="card" style={{marginBottom:12}}>
-            <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>💪 Composition corporelle</div>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>💪 {lang==="en"?"Body composition":"Composition corporelle"}</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
               <div style={{background:"#0a140c",borderRadius:10,padding:"10px",textAlign:"center"}}>
                 <div style={{fontSize:22,fontWeight:700,color:"#f97316"}}>24%</div>
-                <div style={{fontSize:10,color:MUT}}>Gras corporel</div>
+                <div style={{fontSize:10,color:MUT}}>{lang==="en"?"Body fat":"Gras corporel"}</div>
               </div>
               <div style={{background:"#0a140c",borderRadius:10,padding:"10px",textAlign:"center"}}>
                 <div style={{fontSize:22}}>〰️</div>
-                <div style={{fontSize:10,color:MUT}}>Abdos partiel</div>
+                <div style={{fontSize:10,color:MUT}}>{lang==="en"?"Partial abs":"Abdos partiel"}</div>
               </div>
             </div>
             <div style={{background:`${EM}10`,borderRadius:10,padding:"10px 12px",fontSize:12,color:"#a0bcaa"}}>
@@ -398,29 +989,30 @@ function Onboarding({onDemo,onRegister,onLogin}) {
         <div style={{background:"#0f1a0a",border:`2px solid ${EM}44`,borderRadius:18,padding:20,textAlign:"center",marginBottom:12}}>
           <div style={{fontSize:28,marginBottom:8}}>🔬</div>
           <div className="serif" style={{fontSize:18,fontWeight:700,marginBottom:6}}>
-            {example==="nails"?"Et toi, qu'est-ce que tes ongles révèlent ?":"Et toi, quel est ton % de gras ?"}
+            {example==="nails"?t("ob_nails_cta"):t("ob_fat_cta")}
           </div>
-          <div style={{color:MUT,fontSize:13,marginBottom:16}}>1 photo suffit. Résultat en 30 secondes.</div>
-          <button className="bem" onClick={onRegister} style={{marginBottom:10}}>Créer mon compte gratuit →</button>
-          <button className="bgh" onClick={onDemo}>Essayer sans compte (1 scan offert)</button>
+          <div style={{color:MUT,fontSize:13,marginBottom:16}}>{t("ob_photo_hint")}</div>
+          <button className="bem" onClick={onRegister} style={{marginBottom:10}}>{t("ob_register_cta")}</button>
+          <button className="bgh" onClick={onDemo}>{t("ob_try_demo")}</button>
         </div>
         <div style={{textAlign:"center"}}>
-          <button onClick={onLogin} style={{background:"none",border:"none",color:MUT,fontSize:12,cursor:"pointer"}}>Déjà un compte ? Se connecter</button>
+          <button onClick={onLogin} style={{background:"none",border:"none",color:MUT,fontSize:12,cursor:"pointer"}}>{t("ob_already_account")}</button>
         </div>
       </div>
     </div>
   );
 
   const slides = [
-    {icon:"🌿",title:"Votre corps vous parle",sub:"Ongles, yeux, peau, barbe, dents... Chaque zone révèle des pistes sur vos carences nutritionnelles. VitaScann les lit en 30 secondes."},
-    {icon:"🍽️",title:"Scannez aussi vos repas",sub:"Photographiez votre assiette. VitaScann calcule calories, macros et vous dit ce qui manque à votre alimentation."},
-    {icon:"👨‍👩‍👧",title:"Toute la famille",sub:"Un compte, plusieurs profils. Suivez la santé nutritionnelle de toute votre famille et progressez ensemble."},
+    {icon:"🌿",title:t("ob_slide1_title"),sub:t("ob_slide1_sub")},
+    {icon:"🍽️",title:t("ob_slide2_title"),sub:t("ob_slide2_sub")},
+    {icon:"👨‍👩‍👧",title:t("ob_slide3_title"),sub:t("ob_slide3_sub")},
   ];
 
   return (
     <div style={{height:"100vh",display:"flex",flexDirection:"column",background:"radial-gradient(ellipse at 50% 30%,#061a0a 0%,#060d08 70%)"}}>
-      <div style={{padding:"20px 24px 0",display:"flex",justifyContent:"flex-end"}}>
-        <button onClick={onRegister} style={{background:"none",border:"none",color:MUT,fontSize:13,cursor:"pointer"}}>Passer →</button>
+      <div style={{padding:"20px 24px 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <LangToggle lang={lang} setLang={setLang}/>
+        <button onClick={onRegister} style={{background:"none",border:"none",color:MUT,fontSize:13,cursor:"pointer"}}>{t("skip")}</button>
       </div>
       <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"0 32px",textAlign:"center"}}>
         <div key={step} style={{animation:"slideIn .4s ease both"}}>
@@ -436,15 +1028,15 @@ function Onboarding({onDemo,onRegister,onLogin}) {
       </div>
       <div style={{padding:"0 24px 48px"}}>
         {step<2
-          ? <button className="bem" onClick={()=>setStep(s=>s+1)}>Suivant →</button>
+          ? <button className="bem" onClick={()=>setStep(s=>s+1)}>{t("next")}</button>
           : <>
-              <button className="bem" onClick={()=>setStep(3)} style={{marginBottom:10}}>Voir de vrais résultats 👁</button>
-              <button className="bgh" onClick={onRegister}>Créer mon compte gratuit</button>
+              <button className="bem" onClick={()=>setStep(3)} style={{marginBottom:10}}>{t("ob_see_results")}</button>
+              <button className="bgh" onClick={onRegister}>{t("ob_create_account")}</button>
             </>
         }
         {step===0&&(
           <div style={{textAlign:"center",marginTop:14}}>
-            <button onClick={onLogin} style={{background:"none",border:"none",color:MUT,fontSize:12,cursor:"pointer"}}>Déjà un compte ? Se connecter</button>
+            <button onClick={onLogin} style={{background:"none",border:"none",color:MUT,fontSize:12,cursor:"pointer"}}>{t("ob_already_account")}</button>
           </div>
         )}
       </div>
@@ -453,7 +1045,7 @@ function Onboarding({onDemo,onRegister,onLogin}) {
 }
 
 // ─── AUTH ───
-function Register({onSuccess,onLogin}) {
+function Register({onSuccess,onLogin,t}) {
   const [f,setF] = useState({name:"",email:"",pass:"",conf:""});
   const [errs,setErrs] = useState({});
   const [load,setLoad] = useState(false);
@@ -462,10 +1054,10 @@ function Register({onSuccess,onLogin}) {
 
   const validate = () => {
     const e={};
-    if(!f.name.trim())e.name="Nom requis";
-    if(!f.email.includes("@"))e.email="Email invalide";
-    if(f.pass.length<8)e.pass="8 caractères minimum";
-    if(f.pass!==f.conf)e.conf="Mots de passe différents";
+    if(!f.name.trim())e.name=t("err_name");
+    if(!f.email.includes("@"))e.email=t("err_email");
+    if(f.pass.length<8)e.pass=t("err_pass");
+    if(f.pass!==f.conf)e.conf=t("err_conf");
     setErrs(e); return Object.keys(e).length===0;
   };
 
@@ -477,17 +1069,18 @@ function Register({onSuccess,onLogin}) {
       setStep(2); await sleep(1500);
       onSuccess({uid:user.uid,name:f.name,email:f.email,plan:"free"});
     } catch(e) {
-      setGlobalErr(e.code==="auth/email-already-in-use"?"Email déjà utilisé.":e.code==="auth/weak-password"?"Mot de passe trop faible.":"Erreur. Réessayez.");
+      setGlobalErr(e.code==="auth/email-already-in-use"?t("err_email_used"):e.code==="auth/weak-password"?t("err_weak_pass"):t("error"));
     } finally { setLoad(false); }
   };
 
   const strength = f.pass.length>=12?4:f.pass.length>=8?3:f.pass.length>=5?2:f.pass.length>0?1:0;
+  const strengthLabels = ["",t("strength_weak"),t("strength_medium"),t("strength_strong"),t("strength_very_strong")];
 
   if(step===2) return (
     <div style={{height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:32}}>
       <div style={{fontSize:80,animation:"pop .5s ease",marginBottom:20}}>✅</div>
-      <div className="serif" style={{fontSize:28,fontWeight:700,marginBottom:8}}>Compte créé !</div>
-      <div style={{color:MUT,fontSize:14}}>Bienvenue {f.name} 🌿</div>
+      <div className="serif" style={{fontSize:28,fontWeight:700,marginBottom:8}}>{t("register_success")}</div>
+      <div style={{color:MUT,fontSize:14}}>{t("register_welcome")} {f.name} 🌿</div>
     </div>
   );
 
@@ -495,41 +1088,41 @@ function Register({onSuccess,onLogin}) {
     <div style={{minHeight:"100vh",padding:"52px 24px 40px",overflowY:"auto"}}>
       <div style={{textAlign:"center",marginBottom:28}}>
         <div className="fu" style={{fontSize:36,marginBottom:10}}>🌿</div>
-        <div className="serif fu1" style={{fontSize:24,fontWeight:700}}>Créer votre compte</div>
-        <div className="fu2" style={{color:MUT,fontSize:13,marginTop:5}}>1 scan gratuit offert dès l'inscription</div>
+        <div className="serif fu1" style={{fontSize:24,fontWeight:700}}>{t("register_title")}</div>
+        <div className="fu2" style={{color:MUT,fontSize:13,marginTop:5}}>{t("register_subtitle")}</div>
       </div>
       <ErrorBanner msg={globalErr} onClose={()=>setGlobalErr("")}/>
-      <Input label="NOM COMPLET" value={f.name} onChange={v=>setF({...f,name:v})} placeholder="Votre prénom" left="👤" error={errs.name} disabled={load}/>
-      <Input label="EMAIL" value={f.email} onChange={v=>setF({...f,email:v})} placeholder="vous@email.com" left="✉️" error={errs.email} disabled={load}/>
-      <Input label="MOT DE PASSE" type="password" value={f.pass} onChange={v=>setF({...f,pass:v})} placeholder="8 caractères minimum" left="🔒" error={errs.pass} disabled={load}/>
+      <Input label={t("register_name")} value={f.name} onChange={v=>setF({...f,name:v})} placeholder={t("register_name_ph")} left="👤" error={errs.name} disabled={load}/>
+      <Input label={t("register_email")} value={f.email} onChange={v=>setF({...f,email:v})} placeholder={t("register_email_ph")} left="✉️" error={errs.email} disabled={load}/>
+      <Input label={t("register_pass")} type="password" value={f.pass} onChange={v=>setF({...f,pass:v})} placeholder={t("register_pass_ph")} left="🔒" error={errs.pass} disabled={load}/>
       {f.pass.length>0&&(
         <div style={{marginBottom:14}}>
           <div style={{display:"flex",gap:4,marginBottom:4}}>
             {[1,2,3,4].map(i=><div key={i} style={{flex:1,height:3,borderRadius:2,background:i<=strength?(strength>=4?EM:strength>=3?WARN:DANGER):BDR,transition:"background .3s"}}/>)}
           </div>
-          <div style={{fontSize:10,color:strength>=4?EM:strength>=3?WARN:DANGER}}>{["","Faible","Moyen","Fort","Très fort"][strength]}</div>
+          <div style={{fontSize:10,color:strength>=4?EM:strength>=3?WARN:DANGER}}>{strengthLabels[strength]}</div>
         </div>
       )}
-      <Input label="CONFIRMER" type="password" value={f.conf} onChange={v=>setF({...f,conf:v})} placeholder="Répétez le mot de passe" left="✅" error={errs.conf} disabled={load}/>
-      <button className="bem" onClick={submit} disabled={load} style={{marginBottom:12,marginTop:4}}>{load?<Spin/>:"Créer mon compte →"}</button>
-      <button className="bgh" onClick={onLogin}>Déjà un compte ? Se connecter</button>
+      <Input label={t("register_confirm")} type="password" value={f.conf} onChange={v=>setF({...f,conf:v})} placeholder={t("register_confirm_ph")} left="✅" error={errs.conf} disabled={load}/>
+      <button className="bem" onClick={submit} disabled={load} style={{marginBottom:12,marginTop:4}}>{load?<Spin/>:t("register_btn")}</button>
+      <button className="bgh" onClick={onLogin}>{t("register_login")}</button>
     </div>
   );
 }
 
-function Login({onSuccess,onRegister,onForgot}) {
+function Login({onSuccess,onRegister,onForgot,t}) {
   const [f,setF] = useState({email:"",pass:""});
   const [load,setLoad] = useState(false);
   const [err,setErr] = useState("");
 
   const submit = async () => {
-    if(!f.email||!f.pass)return setErr("Remplissez tous les champs.");
+    if(!f.email||!f.pass)return setErr(t("err_fill_fields"));
     setLoad(true); setErr("");
     try {
       const u = await AuthService.login(f.email,f.pass);
       onSuccess({uid:u.uid,name:u.displayName||u.name||"Utilisateur",email:u.email,plan:u.plan||"free"});
     } catch(e) {
-      setErr(e.code==="auth/wrong-password"||e.code==="auth/user-not-found"?"Email ou mot de passe incorrect.":"Erreur de connexion.");
+      setErr(t("err_invalid_creds"));
     } finally { setLoad(false); }
   };
 
@@ -537,95 +1130,114 @@ function Login({onSuccess,onRegister,onForgot}) {
     <div style={{minHeight:"100vh",padding:"52px 24px 40px",overflowY:"auto"}}>
       <div style={{textAlign:"center",marginBottom:28}}>
         <div className="fu" style={{fontSize:36,marginBottom:10}}>🌿</div>
-        <div className="serif fu1" style={{fontSize:24,fontWeight:700}}>Bon retour</div>
+        <div className="serif fu1" style={{fontSize:24,fontWeight:700}}>{t("login_title")}</div>
+        <div className="fu2" style={{color:MUT,fontSize:13,marginTop:5}}>{t("login_subtitle")}</div>
       </div>
       <ErrorBanner msg={err} onClose={()=>setErr("")}/>
-      <Input label="EMAIL" value={f.email} onChange={v=>setF({...f,email:v})} placeholder="vous@email.com" left="✉️" disabled={load}/>
-      <Input label="MOT DE PASSE" type="password" value={f.pass} onChange={v=>setF({...f,pass:v})} placeholder="Votre mot de passe" left="🔒" disabled={load}/>
-      <div style={{textAlign:"right",marginBottom:18}}>
-        <button onClick={onForgot} style={{background:"none",border:"none",color:MUT,fontSize:12,cursor:"pointer"}}>Mot de passe oublié ?</button>
-      </div>
-      <button className="bem" onClick={submit} disabled={load} style={{marginBottom:12}}>{load?<Spin/>:"Se connecter →"}</button>
-      <button className="bgh" onClick={onRegister}>Créer un compte gratuit</button>
+      <Input label={t("register_email")} value={f.email} onChange={v=>setF({...f,email:v})} placeholder={t("register_email_ph")} left="✉️" disabled={load}/>
+      <Input label={t("register_pass")} type="password" value={f.pass} onChange={v=>setF({...f,pass:v})} placeholder="••••••••" left="🔒" disabled={load}/>
+      <button className="bem" onClick={submit} disabled={load} style={{marginBottom:12}}>{load?<Spin/>:t("login_btn")}</button>
+      <button className="bgh" onClick={onForgot} style={{marginBottom:10}}>{t("login_forgot")}</button>
+      <button className="bgh" onClick={onRegister}>{t("login_no_account")}</button>
     </div>
   );
 }
 
-function ForgotPassword({onBack}) {
-  const [email,setEmail]=useState(""); const [sent,setSent]=useState(false); const [load,setLoad]=useState(false);
-  const submit=async()=>{if(!email.includes("@"))return;setLoad(true);await AuthService.resetPassword(email).catch(()=>{});setSent(true);setLoad(false);};
-  if(sent) return (
-    <div style={{height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:32}}>
-      <div style={{fontSize:64,marginBottom:20}}>📧</div>
-      <div className="serif" style={{fontSize:24,fontWeight:700,marginBottom:8}}>Email envoyé !</div>
-      <button className="bgh" style={{marginTop:16}} onClick={onBack}>← Retour</button>
-    </div>
-  );
+function ForgotPassword({onBack,t}) {
+  const [email,setEmail] = useState("");
+  const [sent,setSent] = useState(false);
+  const [load,setLoad] = useState(false);
+
+  const send = async () => {
+    if(!email)return;
+    setLoad(true);
+    try { await AuthService.resetPassword(email); setSent(true); }
+    catch(e) { }
+    finally { setLoad(false); }
+  };
+
   return (
     <div style={{minHeight:"100vh",padding:"52px 24px 40px"}}>
-      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:28,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
-      <div className="serif fu" style={{fontSize:24,fontWeight:700,marginBottom:6}}>Mot de passe oublié</div>
-      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>Entrez votre email pour recevoir un lien.</div>
-      <Input label="EMAIL" value={email} onChange={setEmail} placeholder="vous@email.com" left="✉️" disabled={load}/>
-      <button className="bem" onClick={submit} disabled={load||!email.includes("@")}>{load?<Spin/>:"Envoyer le lien →"}</button>
+      <div style={{textAlign:"center",marginBottom:28}}>
+        <div className="fu" style={{fontSize:36,marginBottom:10}}>🔑</div>
+        <div className="serif fu1" style={{fontSize:24,fontWeight:700}}>{t("forgot_title")}</div>
+        <div className="fu2" style={{color:MUT,fontSize:13,marginTop:5}}>{t("forgot_subtitle")}</div>
+      </div>
+      {sent?(
+        <div style={{textAlign:"center",padding:24,background:`${EM}10`,border:`1px solid ${EM}33`,borderRadius:16}}>
+          <div style={{fontSize:40,marginBottom:12}}>✅</div>
+          <div style={{color:EM,fontWeight:700}}>{t("forgot_sent")}</div>
+        </div>
+      ):(
+        <>
+          <Input label={t("register_email")} value={email} onChange={setEmail} placeholder={t("register_email_ph")} left="✉️" disabled={load}/>
+          <button className="bem" onClick={send} disabled={load||!email}>{load?<Spin/>:t("forgot_btn")}</button>
+        </>
+      )}
+      <div style={{textAlign:"center",marginTop:20}}>
+        <button onClick={onBack} style={{background:"none",border:"none",color:MUT,fontSize:13,cursor:"pointer"}}>{t("forgot_back")}</button>
+      </div>
     </div>
   );
 }
 
-// ─── PROFIL SANTÉ ───
-function ProfileSetup({user,onSave,onSkip}) {
-  const [p,setP] = useState({age:"",poids:"",sexe:"homme",objectif:"energie",activite:"modere",halal:false});
+// ─── PROFILE SETUP ───
+function ProfileSetup({user,onSave,onSkip,t}) {
+  const [p,setP] = useState({age:"",poids:"",sexe:"homme",objectif:"sante",activite:"moderee",halal:false});
   const [load,setLoad] = useState(false);
+
   const save = async () => {
     setLoad(true);
     if(user?.uid&&!user?.isDemo) await ScanService.saveProfile(user.uid,p).catch(()=>{});
-    setLoad(false); onSave(p);
+    onSave(p);
+    setLoad(false);
   };
+
   return (
     <div style={{minHeight:"100vh",padding:"52px 24px 40px",overflowY:"auto"}}>
-      <div style={{textAlign:"center",marginBottom:24}}>
-        <div style={{fontSize:40,marginBottom:10}}>🧬</div>
-        <div className="serif fu" style={{fontSize:24,fontWeight:700}}>Votre profil santé</div>
-        <div className="fu1" style={{color:MUT,fontSize:13,marginTop:5}}>Pour des conseils vraiment personnalisés</div>
+      <div style={{textAlign:"center",marginBottom:28}}>
+        <div className="fu" style={{fontSize:36,marginBottom:10}}>🧬</div>
+        <div className="serif fu1" style={{fontSize:24,fontWeight:700}}>{t("profile_title")}</div>
+        <div className="fu2" style={{color:MUT,fontSize:13,marginTop:5}}>{t("profile_subtitle")}</div>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:4}}>
-        <Input label="ÂGE" value={p.age} onChange={v=>setP({...p,age:v})} placeholder="28" right="ans" disabled={load}/>
-        <Input label="POIDS" value={p.poids} onChange={v=>setP({...p,poids:v})} placeholder="65" right="kg" disabled={load}/>
-      </div>
-      <Select label="SEXE BIOLOGIQUE" value={p.sexe} onChange={v=>setP({...p,sexe:v})} disabled={load}
-        options={[{v:"homme",l:"Homme"},{v:"femme",l:"Femme"},{v:"autre",l:"Autre"}]}/>
-      <Select label="OBJECTIF PRINCIPAL" value={p.objectif} onChange={v=>setP({...p,objectif:v})} disabled={load}
+      <Input label={t("profile_age")} value={p.age} onChange={v=>setP({...p,age:v})} placeholder={t("profile_age_ph")} left="🎂" disabled={load}/>
+      <Input label={t("profile_weight")} value={p.poids} onChange={v=>setP({...p,poids:v})} placeholder={t("profile_weight_ph")} left="⚖️" disabled={load}/>
+      <Select label={t("profile_sex")} value={p.sexe} onChange={v=>setP({...p,sexe:v})} disabled={load}
+        options={[{v:"homme",l:`👨 ${t("profile_sex_m")}`},{v:"femme",l:`👩 ${t("profile_sex_f")}`},{v:"autre",l:t("profile_sex_other")}]}/>
+      <Select label={t("profile_goal")} value={p.objectif} onChange={v=>setP({...p,objectif:v})} disabled={load}
         options={[
-          {v:"energie",l:"⚡ Améliorer mon énergie"},
-          {v:"peau",l:"✨ Peau & cheveux"},
-          {v:"immunite",l:"🛡️ Renforcer l'immunité"},
-          {v:"sport",l:"💪 Performance sportive"},
-          {v:"poids",l:"⚖️ Gestion du poids"},
-          {v:"grossesse",l:"🤱 Grossesse / allaitement"},
+          {v:"sante",l:`🌿 ${t("profile_goal_health")}`},
+          {v:"perte",l:`⚖️ ${t("profile_goal_loss")}`},
+          {v:"muscle",l:`💪 ${t("profile_goal_muscle")}`},
+          {v:"energie",l:`⚡ ${t("profile_goal_energy")}`},
+          {v:"grossesse",l:`🤰 ${t("profile_goal_pregnancy")}`},
+          {v:"sport",l:`🏃 ${t("profile_goal_athlete")}`},
         ]}/>
-      <Select label="NIVEAU D'ACTIVITÉ" value={p.activite} onChange={v=>setP({...p,activite:v})} disabled={load}
+      <Select label={t("profile_activity")} value={p.activite} onChange={v=>setP({...p,activite:v})} disabled={load}
         options={[
-          {v:"sedentaire",l:"🛋️ Sédentaire"},
-          {v:"modere",l:"🚶 Modéré (2-3x/sem)"},
-          {v:"actif",l:"🏃 Actif (4-5x/sem)"},
-          {v:"intense",l:"🔥 Très actif (quotidien)"},
+          {v:"sedentaire",l:`🛋️ ${t("profile_activity_low")}`},
+          {v:"moderee",l:`🚶 ${t("profile_activity_moderate")}`},
+          {v:"active",l:`🏃 ${t("profile_activity_active")}`},
+          {v:"tres_active",l:`🔥 ${t("profile_activity_very")}`},
         ]}/>
-      <button onClick={()=>setP({...p,halal:!p.halal})}
-        style={{width:"100%",background:p.halal?`${EM}12`:"#0c1810",border:`1.5px solid ${p.halal?EM:BDR}`,borderRadius:12,padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:12,cursor:"pointer",transition:"all .2s"}}>
-        <div style={{width:22,height:22,borderRadius:6,background:p.halal?EM:BDR,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,transition:"all .2s"}}>{p.halal?"✓":""}</div>
-        <div style={{textAlign:"left"}}>
-          <div style={{fontSize:14,fontWeight:600,color:p.halal?EM:"#edf5ef"}}>🌙 Recommandations halal</div>
-          <div style={{fontSize:11,color:MUT,marginTop:2}}>Compléments et aliments conformes</div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:CARD,border:`1px solid ${BDR}`,borderRadius:12,padding:"14px 16px",marginBottom:20}}>
+        <div>
+          <div style={{fontWeight:600,fontSize:14}}>{t("profile_halal")}</div>
+          <div style={{color:MUT,fontSize:12,marginTop:2}}>{t("profile_halal_sub")}</div>
         </div>
-      </button>
-      <button className="bem" onClick={save} disabled={load} style={{marginBottom:10}}>{load?<Spin/>:"Enregistrer mon profil →"}</button>
-      <button className="bgh" onClick={onSkip}>Passer pour l'instant</button>
+        <button onClick={()=>setP({...p,halal:!p.halal})}
+          style={{width:44,height:24,borderRadius:12,border:"none",background:p.halal?GOLD:BDR,cursor:"pointer",position:"relative",transition:"background .3s"}}>
+          <div style={{position:"absolute",top:2,left:p.halal?22:2,width:20,height:20,borderRadius:10,background:"white",transition:"left .3s",boxShadow:"0 1px 3px #0004"}}/>
+        </button>
+      </div>
+      <button className="bem" onClick={save} disabled={load} style={{marginBottom:12}}>{load?<Spin/>:t("save")}</button>
+      <button className="bgh" onClick={onSkip}>{t("profile_skip")}</button>
     </div>
   );
 }
 
 // ─── DASHBOARD ───
-function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily,onChallenge,onProgress,onMealPlan,history,profile}) {
+function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily,onChallenge,onProgress,onMealPlan,history,profile,lang,setLang,t}) {
   const scansLeft = user.plan==="free"?Math.max(0,3-(history?.length||0)):null;
   const challengeDay = Math.min(30, history?.length||0);
 
@@ -634,19 +1246,22 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
       <div style={{padding:"52px 22px 18px",background:"radial-gradient(ellipse at 50% 0%,#061a0a 0%,#060d08 70%)"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
           <div>
-            <div className="serif fu" style={{fontSize:24,fontWeight:700}}>Bonjour, {user.name?.split(" ")[0]} 👋</div>
+            <div className="serif fu" style={{fontSize:24,fontWeight:700}}>{t("db_hello")} {user.name?.split(" ")[0]} 👋</div>
             <div className="fu1" style={{color:MUT,fontSize:13,marginTop:3}}>
               {user.plan==="premium"
-                ?<span style={{color:GOLD}}>👑 Compte Premium actif</span>
-                :<span>Gratuit · <span style={{color:EM,fontWeight:600}}>{scansLeft} scan{scansLeft!==1?"s":""} restant{scansLeft!==1?"s":""}</span></span>
+                ?<span style={{color:GOLD}}>{t("db_premium")}</span>
+                :<span>{t("db_free")} <span style={{color:EM,fontWeight:600}}>{scansLeft} {t("db_scans_left")}</span></span>
               }
             </div>
           </div>
-          <button onClick={onLogout} style={{background:"none",border:`1px solid ${BDR}`,borderRadius:10,padding:"6px 12px",color:MUT,fontSize:12,cursor:"pointer"}}>Déco.</button>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <LangToggle lang={lang} setLang={setLang}/>
+            <button onClick={onLogout} style={{background:"none",border:`1px solid ${BDR}`,borderRadius:10,padding:"6px 12px",color:MUT,fontSize:12,cursor:"pointer"}}>{t("db_logout")}</button>
+          </div>
         </div>
         {profile&&(
           <div className="fu2" style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>
-            {profile.age&&<span style={{background:`${EM}10`,color:EM,borderRadius:20,padding:"3px 10px",fontSize:11}}>👤 {profile.age} ans</span>}
+            {profile.age&&<span style={{background:`${EM}10`,color:EM,borderRadius:20,padding:"3px 10px",fontSize:11}}>👤 {profile.age} {lang==="en"?"yrs":"ans"}</span>}
             {profile.objectif&&<span style={{background:`${EM}10`,color:EM,borderRadius:20,padding:"3px 10px",fontSize:11}}>🎯 {profile.objectif}</span>}
             {profile.halal&&<span style={{background:`${GOLD}10`,color:GOLD,borderRadius:20,padding:"3px 10px",fontSize:11}}>🌙 Halal</span>}
           </div>
@@ -654,33 +1269,31 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
       </div>
 
       <div style={{padding:"14px 18px"}}>
-        {/* Actions principales */}
         <div className="fu2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
           <button onClick={onScan} style={{background:"linear-gradient(135deg,#0c2812,#071a0a)",border:`1.5px solid ${EM}44`,borderRadius:18,padding:"18px 12px",cursor:"pointer",textAlign:"center",transition:"all .2s"}}
             onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
             onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>
             <div style={{fontSize:30,marginBottom:8}}>🔬</div>
-            <div style={{fontWeight:700,fontSize:14,color:"#edf5ef"}}>Scan corporel</div>
-            <div style={{color:MUT,fontSize:11,marginTop:2}}>11 zones analysées</div>
+            <div style={{fontWeight:700,fontSize:14,color:"#edf5ef"}}>{t("db_body_scan")}</div>
+            <div style={{color:MUT,fontSize:11,marginTop:2}}>{t("db_body_sub")}</div>
           </button>
           <button onClick={onMealScan} style={{background:"linear-gradient(135deg,#12180c,#0a1207)",border:`1.5px solid ${GOLD}44`,borderRadius:18,padding:"18px 12px",cursor:"pointer",textAlign:"center",transition:"all .2s"}}
             onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
             onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>
             <div style={{fontSize:30,marginBottom:8}}>🍽️</div>
-            <div style={{fontWeight:700,fontSize:14,color:GOLD}}>Scan repas</div>
-            <div style={{color:MUT,fontSize:11,marginTop:2}}>Calories & carences</div>
+            <div style={{fontWeight:700,fontSize:14,color:GOLD}}>{t("db_meal_scan")}</div>
+            <div style={{color:MUT,fontSize:11,marginTop:2}}>{t("db_meal_sub")}</div>
             {user.plan!=="premium"&&<div style={{fontSize:9,color:GOLD,marginTop:3,fontWeight:700}}>✨ PREMIUM</div>}
           </button>
         </div>
 
-        {/* Features Premium */}
         <div className="fu3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
           {[
-            {ic:"📈",lb:"Progression",fn:onProgress,premium:true},
-            {ic:"🗓️",lb:"Plan repas",fn:onMealPlan,premium:true},
-            {ic:"👨‍👩‍👧",lb:"Famille",fn:onFamily,premium:false},
-            {ic:"🏆",lb:"Défi 30j",fn:onChallenge,premium:false},
-            {ic:"🧬",lb:"Mon profil",fn:onProfile,premium:false},
+            {ic:"📈",lb:t("db_progress"),fn:onProgress,premium:true},
+            {ic:"🗓️",lb:t("db_meal_plan"),fn:onMealPlan,premium:true},
+            {ic:"👨‍👩‍👧",lb:t("db_family"),fn:onFamily,premium:false},
+            {ic:"🏆",lb:t("db_challenge"),fn:onChallenge,premium:false},
+            {ic:"🧬",lb:t("db_my_profile"),fn:onProfile,premium:false},
           ].map(({ic,lb,fn,premium})=>(
             <button key={lb} onClick={premium&&user.plan!=="premium"?onPaywall:fn}
               style={{background:CARD,border:`1px solid ${BDR}`,borderRadius:14,padding:"12px 6px",cursor:"pointer",textAlign:"center",position:"relative"}}>
@@ -691,62 +1304,58 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
           ))}
         </div>
 
-        {/* Défi 30 jours */}
         <div className="fu3 card" style={{marginBottom:14,border:`1px solid ${GOLD}28`}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <div style={{fontWeight:700,fontSize:13}}>🏆 Défi 30 jours</div>
-            <span style={{color:GOLD,fontWeight:700,fontSize:13}}>Jour {challengeDay}/30</span>
+            <div style={{fontWeight:700,fontSize:13}}>{t("db_challenge_title")}</div>
+            <span style={{color:GOLD,fontWeight:700,fontSize:13}}>{lang==="en"?"Day":"Jour"} {challengeDay}/30</span>
           </div>
           <div style={{background:"#142018",borderRadius:6,height:8,overflow:"hidden",marginBottom:8}}>
             <div style={{width:`${(challengeDay/30)*100}%`,height:"100%",background:`linear-gradient(90deg,${GOLD},${EM})`,borderRadius:6,transition:"width 1s ease"}}/>
           </div>
-          <div style={{fontSize:11,color:MUT}}>{30-challengeDay} scans restants pour terminer le défi</div>
+          <div style={{fontSize:11,color:MUT}}>{30-challengeDay} {t("db_challenge_left")}</div>
         </div>
 
-        {/* Historique */}
         {history.length>0&&(
           <div className="fu3 card" style={{marginBottom:14}}>
-            <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>📅 Derniers scans</div>
+            <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>{t("db_history_title")}</div>
             {history.slice(0,3).map((h,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:12,marginBottom:i<Math.min(2,history.length-1)?12:0,paddingBottom:i<Math.min(2,history.length-1)?12:0,borderBottom:i<Math.min(2,history.length-1)?`1px solid ${BDR}`:"none"}}>
                 <ScoreRing score={h.score||75} size={48}/>
                 <div style={{flex:1}}>
                   <div style={{fontWeight:600,fontSize:13}}>{h.zone||h.nom_repas||"Scan"}</div>
-                  <div style={{color:MUT,fontSize:11,marginTop:2}}>{h.createdAt?.toDate?.()?.toLocaleDateString("fr")||"Récent"}</div>
+                  <div style={{color:MUT,fontSize:11,marginTop:2}}>{h.createdAt?.toDate?.()?.toLocaleDateString(lang==="en"?"en":"fr")||t("db_recent")}</div>
                 </div>
-                <span style={{background:h.score>=75?`${EM}20`:WARN+"20",color:h.score>=75?EM:WARN,borderRadius:20,padding:"2px 9px",fontSize:10,fontWeight:700}}>{h.score>=75?"Bien":"Attention"}</span>
+                <span style={{background:h.score>=75?`${EM}20`:WARN+"20",color:h.score>=75?EM:WARN,borderRadius:20,padding:"2px 9px",fontSize:10,fontWeight:700}}>{h.score>=75?t("db_good"):t("db_attention")}</span>
               </div>
             ))}
           </div>
         )}
 
-        {/* Banner Premium */}
         {user.plan==="free"&&(
           <div className="fu4" style={{background:"linear-gradient(135deg,#181005,#100b03)",border:`1.5px solid ${GOLD}38`,borderRadius:18,padding:18,marginBottom:14}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
               <div style={{fontSize:28}}>👑</div>
               <div>
-                <div className="serif" style={{fontSize:17,fontWeight:700,color:GOLD}}>Passez Premium</div>
-                <div style={{color:MUT,fontSize:12}}>Moins cher qu'un café/semaine</div>
+                <div className="serif" style={{fontSize:17,fontWeight:700,color:GOLD}}>{t("db_premium_banner")}</div>
+                <div style={{color:MUT,fontSize:12}}>{t("db_premium_sub")}</div>
               </div>
               <div style={{marginLeft:"auto",textAlign:"right"}}>
                 <div className="serif" style={{fontSize:20,fontWeight:700,color:GOLD}}>7,99$</div>
                 <div style={{color:MUT,fontSize:10}}>/mois</div>
               </div>
             </div>
-            <button className="bgold" onClick={onPaywall} style={{fontSize:13}}>Débloquer tout →</button>
+            <button className="bgold" onClick={onPaywall} style={{fontSize:13}}>{t("db_unlock")}</button>
           </div>
         )}
       </div>
 
-      {/* Bottom nav */}
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"rgba(8,14,10,.95)",backdropFilter:"blur(20px)",borderTop:`1px solid ${BDR}`,padding:"10px 0 22px",display:"flex",justifyContent:"space-around"}}>
-        {[["🏠","Accueil"],["🔬","Scanner"],["🍽️","Repas"],["👨‍👩‍👧","Famille"]].map(([ic,lb])=>(
-          <button key={lb} onClick={lb==="Scanner"?onScan:lb==="Repas"?onMealScan:lb==="Famille"?onFamily:undefined}
+        {[[`🏠`,t("nav_home")],[`🔬`,t("nav_scan")],[`🍽️`,t("nav_meal")],[`👨‍👩‍👧`,t("nav_family")]].map(([ic,lb])=>(
+          <button key={lb} onClick={lb===t("nav_scan")?onScan:lb===t("nav_meal")?onMealScan:lb===t("nav_family")?onFamily:undefined}
             style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
             <div style={{fontSize:19}}>{ic}</div>
-            <div style={{fontSize:10,color:lb==="Accueil"?EM:MUT,fontWeight:lb==="Accueil"?600:400}}>{lb}</div>
-            {lb==="Accueil"&&<div style={{width:4,height:4,borderRadius:2,background:EM}}/>}
+            <div style={{fontSize:10,color:lb===t("nav_home")?EM:MUT,fontWeight:lb===t("nav_home")?600:400}}>{lb}</div>
+            {lb===t("nav_home")&&<div style={{width:4,height:4,borderRadius:2,background:EM}}/>}
           </button>
         ))}
       </div>
@@ -755,15 +1364,16 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
 }
 
 // ─── ZONE PICKER ───
-function ZonePick({onSelect,onBack,user,onPaywall}) {
+function ZonePick({onSelect,onBack,user,onPaywall,lang,t}) {
+  const ZONES = getZones(lang);
   return (
     <div style={{minHeight:"100vh",padding:"52px 20px 40px"}}>
-      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
-      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>Choisir une zone</div>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
+      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>{t("zones_title")}</div>
       <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>
         {user?.plan==="premium"
-          ?<span style={{color:GOLD}}>👑 11 zones débloquées</span>
-          :<span><span style={{color:EM,fontWeight:600}}>2 zones gratuites</span> · <span style={{color:GOLD}}>9 zones Premium 🔒</span></span>}
+          ?<span style={{color:GOLD}}>{t("zones_premium_all")}</span>
+          :<span><span style={{color:EM,fontWeight:600}}>{t("zones_free")}</span> · <span style={{color:GOLD}}>{t("zones_premium_locked")}</span></span>}
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {ZONES.map(z=>{
@@ -778,9 +1388,9 @@ function ZonePick({onSelect,onBack,user,onPaywall}) {
               </div>
               <div style={{flex:1}}>
                 <div style={{fontWeight:700,fontSize:15,color:locked?MUT:"#edf5ef"}}>{z.label}</div>
-                <div style={{fontSize:11,color:MUT,marginTop:2}}>{locked?"Zone Premium":z.hint}</div>
+                <div style={{fontSize:11,color:MUT,marginTop:2}}>{locked?t("zones_premium_zone"):z.hint}</div>
                 {!locked&&<div style={{fontSize:10,color:z.color,marginTop:4,fontWeight:600}}>{z.vitamins}</div>}
-                {locked&&<div style={{fontSize:10,color:GOLD,marginTop:4,fontWeight:600}}>✨ Premium · 7,99$/mois</div>}
+                {locked&&<div style={{fontSize:10,color:GOLD,marginTop:4,fontWeight:600}}>{t("zones_premium_price")}</div>}
               </div>
               <div style={{color:locked?GOLD:MUT,fontSize:locked?13:18}}>{locked?"👑":"›"}</div>
             </button>
@@ -792,26 +1402,24 @@ function ZonePick({onSelect,onBack,user,onPaywall}) {
 }
 
 // ─── CAPTURE ───
-function Capture({zone,onCapture,onBack}) {
+function Capture({zone,onCapture,onBack,t}) {
   return (
     <div style={{minHeight:"100vh",padding:"52px 20px 40px",display:"flex",flexDirection:"column"}}>
-      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:20,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
-      <div className="serif fu" style={{fontSize:22,fontWeight:700,marginBottom:3}}>Photographier</div>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:20,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
+      <div className="serif fu" style={{fontSize:22,fontWeight:700,marginBottom:3}}>{t("capture_title")}</div>
       <div className="fu1" style={{color:zone.color,fontSize:17,fontWeight:600,marginBottom:20}}>{zone.icon} {zone.label}</div>
 
-      {/* Barbe spéciale */}
       {zone.id==="beard"&&(
         <div className="fu2" style={{background:`${VIKING}10`,border:`1px solid ${VIKING}33`,borderRadius:14,padding:14,marginBottom:16}}>
-          <div style={{color:VIKING,fontSize:11,fontWeight:700,letterSpacing:.8,marginBottom:6}}>🪓 ANALYSE BARBE VIKING</div>
-          <div style={{fontSize:12,color:"#a0bcaa",lineHeight:1.6}}>VitaScann analyse la densité, les zones clairsemées et te donne des astuces naturelles de grand-mère pour booster ta croissance.</div>
+          <div style={{color:VIKING,fontSize:11,fontWeight:700,letterSpacing:.8,marginBottom:6}}>{t("capture_beard_title")}</div>
+          <div style={{fontSize:12,color:"#a0bcaa",lineHeight:1.6}}>{t("capture_beard_sub")}</div>
         </div>
       )}
 
-      {/* Dents spéciale */}
       {zone.id==="teeth"&&(
         <div className="fu2" style={{background:"#0a1a14",border:"1px solid #1a3028",borderRadius:14,padding:14,marginBottom:16}}>
-          <div style={{color:"#e2e8f0",fontSize:11,fontWeight:700,letterSpacing:.8,marginBottom:6}}>🦷 CONSEILS PHOTO</div>
-          <div style={{fontSize:12,color:"#a0bcaa",lineHeight:1.6}}>Sourire large, lèvres bien ouvertes. Bonne lumière directe. Photo de face.</div>
+          <div style={{color:"#e2e8f0",fontSize:11,fontWeight:700,letterSpacing:.8,marginBottom:6}}>{t("capture_teeth_title")}</div>
+          <div style={{fontSize:12,color:"#a0bcaa",lineHeight:1.6}}>{t("capture_teeth_sub")}</div>
         </div>
       )}
 
@@ -824,168 +1432,143 @@ function Capture({zone,onCapture,onBack}) {
       </div>
 
       <div className="fu3 card" style={{marginBottom:16}}>
-        <div style={{color:GOLD,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:8}}>💡 CONSEILS PHOTO</div>
-        {["Lumière naturelle ou LED blanche","Bonne mise au point, pas floue","Distance adaptée à la zone"].map(t=>(
-          <div key={t} style={{display:"flex",gap:7,marginBottom:5,fontSize:12,color:MUT}}>
-            <div style={{width:5,height:5,borderRadius:"50%",background:GOLD,marginTop:4,flexShrink:0}}/>{t}
+        <div style={{color:GOLD,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:8}}>{t("capture_tips_title")}</div>
+        {[t("capture_tip1"),t("capture_tip2"),t("capture_tip3")].map(tip=>(
+          <div key={tip} style={{display:"flex",gap:7,marginBottom:5,fontSize:12,color:MUT}}>
+            <div style={{width:5,height:5,borderRadius:"50%",background:GOLD,marginTop:4,flexShrink:0}}/>{tip}
           </div>
         ))}
       </div>
 
       <div className="fu4">
-        <PhotoPicker onCapture={onCapture} color={zone.color} icon={zone.icon} hint={zone.hint} label={zone.label}/>
+        <PhotoPicker onCapture={onCapture} color={zone.color} icon={zone.icon} hint={zone.hint} label={zone.label} t={t}/>
       </div>
     </div>
   );
 }
 
 // ─── CAPTURE REPAS ───
-function MealCapture({onCapture,onBack,user,onPaywall}) {
+function MealCapture({onCapture,onBack,user,onPaywall,t}) {
   if(user?.plan!=="premium"&&!user?.isDemo) return (
     <div style={{minHeight:"100vh",padding:"52px 24px 40px",display:"flex",flexDirection:"column"}}>
-      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:32,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:32,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
       <div style={{textAlign:"center",marginBottom:24}}>
         <div style={{fontSize:60,marginBottom:12}}>🍽️</div>
-        <div className="serif" style={{fontSize:24,fontWeight:700,marginBottom:8,color:GOLD}}>Scan Repas</div>
+        <div className="serif" style={{fontSize:24,fontWeight:700,marginBottom:8,color:GOLD}}>{t("meal_capture_title")}</div>
         <div style={{color:MUT,fontSize:14,lineHeight:1.7,marginBottom:20}}>
-          Photographiez votre assiette et obtenez :<br/>
-          <span style={{color:"#edf5ef"}}>calories · protéines · glucides · lipides</span><br/>et quelles carences ce repas comble.
+          {t("meal_capture_sub")}<br/>
+          <span style={{color:"#edf5ef"}}>{t("meal_capture_macros")}</span><br/>{t("meal_capture_deficiencies")}
         </div>
       </div>
       <div className="card" style={{marginBottom:24,border:`1px solid ${GOLD}33`}}>
-        {["📸 Analyse visuelle de n'importe quel repas","🔢 Calories et macros estimés","💊 Carences comblées","🌙 Statut halal automatique","🔗 Croisé avec vos scans corporels"].map((f,i)=>(
+        {[t("meal_feature1"),t("meal_feature2"),t("meal_feature3"),t("meal_feature4"),t("meal_feature5")].map((f,i)=>(
           <div key={i} style={{display:"flex",gap:10,marginBottom:i<4?10:0,fontSize:13,color:"#b0c8b8"}}>
             <span style={{color:EM}}>✓</span>{f}
           </div>
         ))}
       </div>
-      <button className="bgold" onClick={onPaywall} style={{marginBottom:10}}>👑 Débloquer le Scan Repas — 7,99$/mois</button>
-      <button className="bgh" onClick={onBack}>Retour</button>
+      <button className="bgold" onClick={onPaywall} style={{marginBottom:10}}>{t("meal_unlock")}</button>
+      <button className="bgh" onClick={onBack}>{t("back")}</button>
     </div>
   );
 
   return (
     <div style={{minHeight:"100vh",padding:"52px 20px 40px",display:"flex",flexDirection:"column"}}>
-      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:20,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
-      <div className="serif fu" style={{fontSize:22,fontWeight:700,marginBottom:3}}>Scan Repas</div>
-      <div className="fu1" style={{color:GOLD,fontSize:15,fontWeight:600,marginBottom:20}}>🍽️ Photographiez votre assiette</div>
-      <div className="fu2" style={{flex:1,maxHeight:200,background:"#080f0a",borderRadius:24,border:`2px solid ${GOLD}38`,position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:20,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
+      <div className="serif fu" style={{fontSize:22,fontWeight:700,marginBottom:3}}>{t("meal_capture_title")}</div>
+
+      <div className="fu2" style={{flex:1,maxHeight:200,background:"#0a0d06",borderRadius:24,border:`2px solid ${GOLD}38`,position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
         <div style={{position:"absolute",left:16,right:16,height:2,background:`linear-gradient(90deg,transparent,${GOLD},transparent)`,animation:"scanPulse 2s ease-in-out infinite",top:"50%"}}/>
         <div style={{textAlign:"center",zIndex:1}}>
           <div style={{fontSize:48,marginBottom:8}}>🍽️</div>
-          <div style={{color:GOLD,fontWeight:600,fontSize:13}}>Vue du dessus, repas complet visible</div>
+          <div style={{color:GOLD,fontWeight:600,fontSize:13}}>{t("meal_photo_sub")}</div>
         </div>
       </div>
+
       <div className="fu3 card" style={{marginBottom:16}}>
-        <div style={{color:GOLD,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:8}}>💡 POUR UN MEILLEUR RÉSULTAT</div>
-        {["Photo du dessus, tout visible","Bonne lumière naturelle ou LED","Évitez les assiettes à motifs"].map(t=>(
-          <div key={t} style={{display:"flex",gap:7,marginBottom:5,fontSize:12,color:MUT}}>
-            <div style={{width:5,height:5,borderRadius:"50%",background:GOLD,marginTop:4,flexShrink:0}}/>{t}
+        <div style={{color:GOLD,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:8}}>{t("meal_photo_title")}</div>
+        {[t("capture_tip1"),t("capture_tip2"),t("capture_tip3")].map(tip=>(
+          <div key={tip} style={{display:"flex",gap:7,marginBottom:5,fontSize:12,color:MUT}}>
+            <div style={{width:5,height:5,borderRadius:"50%",background:GOLD,marginTop:4,flexShrink:0}}/>{tip}
           </div>
         ))}
       </div>
+
       <div className="fu4">
-        <PhotoPicker onCapture={onCapture} color={GOLD} icon="🍽️" hint="Vue du dessus" label="Repas"/>
+        <PhotoPicker onCapture={onCapture} color={GOLD} icon="🍽️" hint={t("meal_photo_sub")} label="Repas" t={t}/>
       </div>
     </div>
   );
 }
 
 // ─── PREVIEW ───
-function Preview({zone,preview,onAnalyze,onRetake,isMeal}) {
+function Preview({zone,preview,onAnalyze,onRetake,isMeal,t}) {
   return (
-    <div style={{minHeight:"100vh",padding:"52px 20px 40px"}}>
-      <div className="serif fu" style={{fontSize:22,fontWeight:700,marginBottom:16}}>{isMeal?"Aperçu du repas":"Aperçu du scan"}</div>
-      <div className="fu1" style={{borderRadius:22,overflow:"hidden",marginBottom:16,position:"relative",boxShadow:"0 20px 60px #00000066"}}>
-        <img src={preview} alt="scan" style={{width:"100%",maxHeight:300,objectFit:"cover",display:"block"}}/>
-        <div style={{position:"absolute",bottom:14,left:14}}>
-          <span style={{background:isMeal?GOLD:zone?.color,color:"#000",borderRadius:20,padding:"3px 11px",fontSize:11,fontWeight:700}}>
-            {isMeal?"🍽️ Repas":zone?.icon+" "+zone?.label}
-          </span>
-        </div>
+    <div style={{minHeight:"100vh",padding:"52px 20px 40px",display:"flex",flexDirection:"column"}}>
+      <div className="serif fu" style={{fontSize:22,fontWeight:700,marginBottom:3}}>{isMeal?"🍽️":zone?.icon} {isMeal?t("meal_capture_title"):zone?.label}</div>
+      <div style={{color:MUT,fontSize:13,marginBottom:16}}>{isMeal?t("meal_photo_sub"):zone?.hint}</div>
+      <div style={{borderRadius:20,overflow:"hidden",marginBottom:20,border:`2px solid ${isMeal?GOLD:zone?.color||EM}44`,maxHeight:320}}>
+        <img src={preview} alt="preview" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
       </div>
-      <button className="bem fu2" onClick={onAnalyze} style={{marginBottom:10,background:isMeal?`linear-gradient(135deg,${GOLD},#c49a2e)`:undefined,color:isMeal?"#080400":undefined}}>
-        {isMeal?"🍽️ Analyser ce repas":"🔬 Analyser avec VitaScann IA"}
+      <button className="bem" onClick={onAnalyze} style={{marginBottom:10}}>
+        ✨ {isMeal?(t("lang_label")==="en"?"Analyze this meal":"Analyser ce repas"):(t("lang_label")==="en"?"Analyze this photo":"Analyser cette photo")}
       </button>
-      <button className="bgh fu3" onClick={onRetake}>↩ Reprendre la photo</button>
+      <button className="bgh" onClick={onRetake}>{t("back")}</button>
     </div>
   );
 }
 
 // ─── ANALYZING ───
-function Analyzing({zone,isMeal}) {
-  const [cur,setCur]=useState(0);
-  const steps=isMeal
-    ?["Identification du repas...","Calcul des calories...","Analyse des nutriments...","Rapport prêt..."]
-    :zone?.id==="beard"
-      ?["Analyse de la densité...","Détection zones clairsemées...","Calcul potentiel Viking...","Astuces grand-mère...","Rapport prêt..."]
-      :zone?.id==="teeth"
-        ?["Analyse de l'émail...","Détection des taches...","Évaluation minéralisation...","Rapport prêt..."]
-        :["Détection de la zone...","Analyse des pigmentations...","Comparaison base nutritionnelle...","Génération du rapport..."];
-  useEffect(()=>{const t=setInterval(()=>setCur(s=>Math.min(s+1,steps.length-1)),850);return()=>clearInterval(t);},[]);
-  const color=isMeal?GOLD:zone?.id==="beard"?VIKING:zone?.color;
+function Analyzing({zone,isMeal,t}) {
+  const [dots,setDots] = useState(".");
+  useEffect(()=>{const i=setInterval(()=>setDots(d=>d.length>=3?".":"d"+"."),500);return()=>clearInterval(i);},[]);
   return (
-    <div style={{height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px"}}>
-      <div style={{position:"relative",width:120,height:120,marginBottom:28}}>
-        <div style={{position:"absolute",inset:0,borderRadius:"50%",border:`3px solid ${color}20`}}/>
-        <div style={{position:"absolute",inset:0,borderRadius:"50%",border:"3px solid transparent",borderTopColor:color,animation:"spin 1s linear infinite"}}/>
-        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:42}}>{isMeal?"🍽️":zone?.icon}</div>
+    <div style={{height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,textAlign:"center"}}>
+      <div style={{fontSize:64,marginBottom:24,animation:"floatY 2s ease-in-out infinite"}}>{isMeal?"🍽️":zone?.icon||"🔬"}</div>
+      <div className="serif" style={{fontSize:24,fontWeight:700,marginBottom:8}}>{t("analyzing_title")}</div>
+      <div style={{color:MUT,fontSize:14,marginBottom:32}}>{t("analyzing_sub")}</div>
+      <div style={{display:"flex",gap:8,marginBottom:32}}>
+        {[0,1,2].map(i=><div key={i} style={{width:10,height:10,borderRadius:"50%",background:EM,animation:`pulse 1.2s ${i*.2}s ease-in-out infinite`}}/>)}
       </div>
-      <div className="serif" style={{fontSize:22,fontWeight:700,marginBottom:6}}>Analyse en cours</div>
-      <div style={{color:MUT,fontSize:13,marginBottom:36}}>
-        {zone?.id==="beard"?"Analyse de votre barbe 🪓":zone?.id==="teeth"?"Analyse de vos dents 🦷":isMeal?"Analyse nutritionnelle":`Examen de vos ${zone?.label}`}
-      </div>
-      <div style={{width:"100%",maxWidth:300}}>
-        {steps.map((s,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,opacity:i<=cur?1:.18,transition:"opacity .4s"}}>
-            <div style={{width:9,height:9,borderRadius:"50%",flexShrink:0,background:i<cur?EM:i===cur?color:BDR,transition:"background .3s"}}/>
-            <div style={{fontSize:13,color:i<=cur?"#edf5ef":MUT,fontWeight:i===cur?600:400}}>{s}</div>
-            {i<cur&&<div style={{marginLeft:"auto",color:EM,fontSize:13}}>✓</div>}
-          </div>
-        ))}
-      </div>
+      <div style={{background:"#0c1810",border:`1px solid ${BDR}`,borderRadius:12,padding:"10px 16px",fontSize:12,color:MUT}}>{t("analyzing_disclaimer")}</div>
     </div>
   );
 }
 
-// ─── CHAT IA POST-SCAN ───
-function ChatIA({result,zone,profile,onClose}) {
-  const [msgs,setMsgs] = useState([{role:"assistant",text:`Bonjour ! J'ai analysé vos ${zone?.label||"résultats"}. Posez-moi vos questions nutrition ! 💬`}]);
+// ─── CHAT IA ───
+function ChatIA({result,zone,profile,onClose,t}) {
+  const [msgs,setMsgs] = useState([{role:"assistant",text:t("chat_welcome")}]);
   const [input,setInput] = useState("");
   const [load,setLoad] = useState(false);
   const endRef = useRef();
 
-  useEffect(()=>endRef.current?.scrollIntoView({behavior:"smooth"}),[msgs]);
+  useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
 
   const send = async () => {
     if(!input.trim()||load)return;
-    const q = input.trim(); setInput("");
-    setMsgs(m=>[...m,{role:"user",text:q}]);
+    const userMsg = {role:"user",text:input.trim()};
+    setMsgs(m=>[...m,userMsg]);
+    setInput("");
     setLoad(true);
     try {
-      const context = `Résultats scan ${zone?.label}: Score ${result.score}/100. Carences: ${result.carences?.map(c=>c.nom).join(", ")||"aucune"}. Profil: ${profile?.age||"?"}ans, ${profile?.sexe||"?"}, objectif: ${profile?.objectif||"?"}.`;
+      const ctx = `Zone: ${zone?.label}. Score: ${result?.score}/100. Carences: ${result?.carences?.map(c=>c.nom).join(", ")||"aucune"}. Conseil: ${result?.conseil||""}. Profil: ${profile?JSON.stringify(profile):"non renseigné"}.`;
       const res = await fetch("https://api.anthropic.com/v1/messages",{
         method:"POST",
         headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:300,system:CHAT_SYSTEM,messages:[
-          {role:"user",content:`${context}\n\nQuestion: ${q}`}
-        ]})
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:300,system:CHAT_SYSTEM,messages:[{role:"user",content:`${ctx}\n\nQuestion: ${userMsg.text}`}]})
       });
       const data = await res.json();
-      const text = data.content?.map(b=>b.text||"").join("")||"Désolé, réessayez.";
-      setMsgs(m=>[...m,{role:"assistant",text}]);
-    } catch(e) { setMsgs(m=>[...m,{role:"assistant",text:"Erreur de connexion. Réessayez."}]); }
+      const reply = data.content?.map(b=>b.text||"").join("")||"";
+      setMsgs(m=>[...m,{role:"assistant",text:reply}]);
+    } catch(e) { setMsgs(m=>[...m,{role:"assistant",text:t("error")}]); }
     finally { setLoad(false); }
   };
 
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",zIndex:100,display:"flex",flexDirection:"column",maxWidth:430,margin:"0 auto"}}>
-      <div style={{background:CARD,borderBottom:`1px solid ${BDR}`,padding:"16px 18px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div>
-          <div style={{fontWeight:700,fontSize:15}}>💬 Nutritionniste IA</div>
-          <div style={{color:MUT,fontSize:11}}>Posez vos questions sur vos résultats</div>
-        </div>
-        <button onClick={onClose} style={{background:"none",border:"none",color:MUT,fontSize:22,cursor:"pointer"}}>×</button>
+    <div style={{position:"fixed",inset:0,zIndex:100,background:"#060d08",display:"flex",flexDirection:"column",maxWidth:430,margin:"0 auto"}}>
+      <div style={{padding:"52px 18px 14px",background:"#0c1810",borderBottom:`1px solid ${BDR}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{fontWeight:700,fontSize:15}}>{t("chat_title")}</div>
+        <button onClick={onClose} style={{background:"none",border:`1px solid ${BDR}`,borderRadius:8,padding:"6px 12px",color:MUT,fontSize:12,cursor:"pointer"}}>{t("back")}</button>
       </div>
       <div style={{flex:1,overflowY:"auto",padding:"16px 18px"}}>
         {msgs.map((m,i)=>(
@@ -1003,7 +1586,7 @@ function ChatIA({result,zone,profile,onClose}) {
       <div style={{padding:"12px 18px",background:CARD,borderTop:`1px solid ${BDR}`,display:"flex",gap:10}}>
         <input className="inp" value={input} onChange={e=>setInput(e.target.value)}
           onKeyDown={e=>e.key==="Enter"&&send()}
-          placeholder="Posez votre question..." style={{flex:1,padding:"12px 16px"}}/>
+          placeholder={t("chat_placeholder")} style={{flex:1,padding:"12px 16px"}}/>
         <button onClick={send} disabled={!input.trim()||load}
           style={{background:EM,border:"none",borderRadius:12,padding:"12px 16px",fontSize:18,cursor:"pointer",opacity:!input.trim()||load?.5:1}}>→</button>
       </div>
@@ -1012,10 +1595,10 @@ function ChatIA({result,zone,profile,onClose}) {
 }
 
 // ─── RÉSULTAT CORPOREL ───
-async function shareResult(result,zone) {
-  const text=`🌿 Mon rapport VitaScann\n\nZone : ${zone.icon} ${zone.label}\nScore : ${result.score}/100\n${result.type_analyse==="body_fat"?`Gras : ${result.pct_gras_estime}%\nAbdos : ${result.abdos_visibles}`:result.type_analyse==="beard"?`Potentiel Viking : ${result.potentiel_viking} 🪓`:""}\n\n💬 ${result.conseil||""}\n\n🔬 vitascann.vercel.app`;
-  if(navigator.share){await navigator.share({title:"Mon rapport VitaScann",text,url:"https://vitascann.vercel.app"}).catch(()=>{});}
-  else{await navigator.clipboard.writeText(text);alert("📋 Résultats copiés !");}
+async function shareResult(result,zone,t) {
+  const text=`🌿 VitaScann Report\n\n${zone.icon} ${zone.label}\nScore: ${result.score}/100\n${result.type_analyse==="body_fat"?`Fat: ${result.pct_gras_estime}%`:result.type_analyse==="beard"?`Viking Potential: ${result.potentiel_viking} 🪓`:""}\n\n💬 ${result.conseil||""}\n\n🔬 vitascann.vercel.app`;
+  if(navigator.share){await navigator.share({title:"VitaScann",text,url:"https://vitascann.vercel.app"}).catch(()=>{});}
+  else{await navigator.clipboard.writeText(text);alert("📋 Copied!");}
 }
 
 async function generatePDF(result,zone,user) {
@@ -1026,31 +1609,21 @@ async function generatePDF(result,zone,user) {
   const rgb=c=>doc.setTextColor(...c);const fill=c=>doc.setFillColor(...c);const line=c=>doc.setDrawColor(...c);
   fill(DARK);doc.rect(0,0,W,297,"F");fill([0,30,15]);doc.rect(0,0,W,44,"F");
   doc.setFontSize(26);doc.setFont("helvetica","bold");rgb(WHITE);doc.text("VitaScann",MARGIN+4,16);
-  doc.setFontSize(9);doc.setFont("helvetica","normal");rgb(GRAY);doc.text("INTELLIGENCE NUTRITIONNELLE",MARGIN+4,22);
+  doc.setFontSize(9);doc.setFont("helvetica","normal");rgb(GRAY);doc.text("NUTRITIONAL INTELLIGENCE",MARGIN+4,22);
   const now=new Date();
-  doc.setFontSize(8);rgb(GRAY);doc.text(`Rapport généré le ${now.toLocaleDateString("fr-CA",{day:"2-digit",month:"long",year:"numeric"})}`,W-MARGIN,12,{align:"right"});
-  doc.text(`Patient : ${user?.name||"Utilisateur"}`,W-MARGIN,18,{align:"right"});
+  doc.setFontSize(8);rgb(GRAY);doc.text(`Report generated ${now.toLocaleDateString()}`,W-MARGIN,12,{align:"right"});
+  doc.text(`User: ${user?.name||"User"}`,W-MARGIN,18,{align:"right"});
   const isPremium=user?.plan==="premium";fill(isPremium?GOLDC:GREEN);doc.roundedRect(W-MARGIN-28,24,28,8,2,2,"F");
-  doc.setFontSize(7);doc.setFont("helvetica","bold");rgb(DARK);doc.text(isPremium?"PREMIUM":"GRATUIT",W-MARGIN-14,29.5,{align:"center"});
+  doc.setFontSize(7);doc.setFont("helvetica","bold");rgb(DARK);doc.text(isPremium?"PREMIUM":"FREE",W-MARGIN-14,29.5,{align:"center"});
   y=50;fill([12,24,16]);doc.roundedRect(MARGIN,y,COL,28,3,3,"F");line(GREEN);doc.setLineWidth(0.3);doc.roundedRect(MARGIN,y,COL,28,3,3,"S");
-  doc.setFontSize(8);doc.setFont("helvetica","normal");rgb(GRAY);doc.text("ZONE ANALYSEE",MARGIN+8,y+7);
+  doc.setFontSize(8);doc.setFont("helvetica","normal");rgb(GRAY);doc.text("ANALYZED ZONE",MARGIN+8,y+7);
   doc.setFontSize(14);doc.setFont("helvetica","bold");rgb(WHITE);doc.text(`${zone?.label||""}`,MARGIN+8,y+17);
   const score=result?.score||0;const sc2=score>=75?GREEN:score>=50?ORANGE:RED;
   fill(sc2);doc.circle(W-MARGIN-20,y+14,12,"F");doc.setFontSize(14);doc.setFont("helvetica","bold");rgb(DARK);doc.text(`${score}`,W-MARGIN-20,y+15.5,{align:"center"});
   doc.setFontSize(6);doc.text("/100",W-MARGIN-20,y+20,{align:"center"});
   y+=35;
-  if(result?.type_analyse==="beard"&&result?.astuces_grand_mere?.length>0){
-    const bH=12+result.astuces_grand_mere.length*8;fill([12,8,20]);doc.roundedRect(MARGIN,y,COL,bH,3,3,"F");line([139,92,246]);doc.setLineWidth(0.3);doc.roundedRect(MARGIN,y,COL,bH,3,3,"S");
-    doc.setFontSize(8);doc.setFont("helvetica","bold");rgb([192,132,252]);doc.text("ASTUCES GRAND-MERE BARBE",MARGIN+6,y+6);y+=10;
-    result.astuces_grand_mere.forEach(a=>{doc.setFontSize(7);doc.setFont("helvetica","normal");rgb([200,180,220]);doc.text(`• ${a}`,MARGIN+6,y);y+=8;});y+=4;
-  }
-  if(result?.type_analyse==="teeth"&&result?.astuces_grand_mere?.length>0){
-    const bH=12+result.astuces_grand_mere.length*8;fill([8,18,14]);doc.roundedRect(MARGIN,y,COL,bH,3,3,"F");line(GREEN);doc.setLineWidth(0.3);doc.roundedRect(MARGIN,y,COL,bH,3,3,"S");
-    doc.setFontSize(8);doc.setFont("helvetica","bold");rgb(GREEN);doc.text("REMEDES NATURELS DENTS",MARGIN+6,y+6);y+=10;
-    result.astuces_grand_mere.forEach(a=>{doc.setFontSize(7);doc.setFont("helvetica","normal");rgb([160,200,180]);doc.text(`• ${a}`,MARGIN+6,y);y+=8;});y+=4;
-  }
   if(result?.carences?.length>0){
-    doc.setFontSize(10);doc.setFont("helvetica","bold");rgb(WHITE);doc.text("Carences identifiees",MARGIN,y);y+=6;
+    doc.setFontSize(10);doc.setFont("helvetica","bold");rgb(WHITE);doc.text("Identified deficiencies",MARGIN,y);y+=6;
     result.carences.forEach(c=>{
       if(y>250){doc.addPage();fill(DARK);doc.rect(0,0,W,297,"F");y=20;}
       const nc=c.niveau==="critique"?RED:c.niveau==="faible"?ORANGE:c.niveau==="limite"?[251,191,36]:GREEN;
@@ -1060,8 +1633,8 @@ async function generatePDF(result,zone,user) {
       fill(nc);doc.roundedRect(W-MARGIN-30,y+3,28,7,2,2,"F");doc.setFontSize(7);doc.setFont("helvetica","bold");rgb(DARK);doc.text((c.niveau||"").toUpperCase(),W-MARGIN-16,y+8,{align:"center"});
       doc.setFontSize(8);doc.setFont("helvetica","normal");rgb([176,200,184]);doc.text(doc.splitTextToSize(c.signes||"",COL-16),MARGIN+8,y+17);
       fill([20,32,24]);doc.roundedRect(MARGIN+8,y+21,COL-16,3,1,1,"F");fill(nc);doc.roundedRect(MARGIN+8,y+21,(COL-16)*((c.pct||50)/100),3,1,1,"F");
-      doc.setFontSize(7);doc.setFont("helvetica","bold");rgb(GREEN);doc.text(`Aliments : ${(c.aliments||[]).slice(0,4).join(" - ")}`,MARGIN+8,y+29);
-      if(c.complement){rgb(PURPLE);doc.text(`Complement : ${c.complement}${c.dose?" — "+c.dose:""}`,MARGIN+8,y+36);}
+      doc.setFontSize(7);doc.setFont("helvetica","bold");rgb(GREEN);doc.text(`Foods: ${(c.aliments||[]).slice(0,4).join(" - ")}`,MARGIN+8,y+29);
+      if(c.complement){rgb(PURPLE);doc.text(`Supplement: ${c.complement}${c.dose?" — "+c.dose:""}`,MARGIN+8,y+36);}
       y+=44;
     });
   }
@@ -1069,15 +1642,15 @@ async function generatePDF(result,zone,user) {
     if(y>240){doc.addPage();fill(DARK);doc.rect(0,0,W,297,"F");y=20;}
     const cl=doc.splitTextToSize(result.conseil,COL-12);const cH=12+cl.length*6;
     fill([24,16,6]);doc.roundedRect(MARGIN,y,COL,cH,3,3,"F");line(GOLDC);doc.setLineWidth(0.3);doc.roundedRect(MARGIN,y,COL,cH,3,3,"S");
-    doc.setFontSize(8);doc.setFont("helvetica","bold");rgb(GOLDC);doc.text("CONSEIL PERSONNALISE",MARGIN+6,y+6);
+    doc.setFontSize(8);doc.setFont("helvetica","bold");rgb(GOLDC);doc.text("PERSONALIZED ADVICE",MARGIN+6,y+6);
     doc.setFontSize(8.5);doc.setFont("helvetica","normal");rgb([160,188,170]);doc.text(cl,MARGIN+6,y+13);y+=cH+6;
   }
   const pc=doc.getNumberOfPages();
   for(let i=1;i<=pc;i++){doc.setPage(i);fill([0,20,10]);doc.rect(0,285,W,12,"F");doc.setFontSize(7);doc.setFont("helvetica","normal");rgb(GRAY);doc.text("vitascann.vercel.app",MARGIN,291);doc.text(`Page ${i} / ${pc}`,W/2,291,{align:"center"});doc.text("© 2026 VitaScann",W-MARGIN,291,{align:"right"});}
-  doc.save(`VitaScann_${zone?.label||"rapport"}_${now.toISOString().slice(0,10)}.pdf`);
+  doc.save(`VitaScann_${zone?.label||"report"}_${now.toISOString().slice(0,10)}.pdf`);
 }
 
-function Result({result,zone,user,profile,onNewScan,onHome}) {
+function Result({result,zone,user,profile,onNewScan,onHome,t}) {
   const [exp,setExp]=useState(null);
   const [sharing,setSharing]=useState(false);
   const [showChat,setShowChat]=useState(false);
@@ -1088,33 +1661,33 @@ function Result({result,zone,user,profile,onNewScan,onHome}) {
 
   return (
     <>
-    {showChat&&<ChatIA result={result} zone={zone} profile={profile} onClose={()=>setShowChat(false)}/>}
+    {showChat&&<ChatIA result={result} zone={zone} profile={profile} onClose={()=>setShowChat(false)} t={t}/>}
     <div style={{minHeight:"100vh",paddingBottom:80,overflowY:"auto"}}>
       <div style={{padding:"52px 22px 22px",background:"radial-gradient(ellipse at 50% 0%,#071c0c 0%,#060d08 70%)"}}>
         <div className="fu" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-          <div className="serif" style={{fontSize:22,fontWeight:700}}>Votre rapport</div>
+          <div className="serif" style={{fontSize:22,fontWeight:700}}>{t("result_title")}</div>
           <span style={{background:`${uc}14`,color:uc,borderRadius:20,padding:"3px 12px",fontSize:11,fontWeight:700}}>
-            {result?.urgence==="urgent"?"⚠️ Urgent":result?.urgence==="attention"?"👁 Attention":"✅ Normal"}
+            {result?.urgence==="urgent"?t("result_urgent"):result?.urgence==="attention"?t("result_attention"):t("result_normal")}
           </span>
         </div>
         <div className="fu1" style={{display:"flex",alignItems:"center",gap:18}}>
           <ScoreRing score={result?.score||0} size={110}/>
           <div>
-            <div style={{color:MUT,fontSize:11,marginBottom:3}}>Zone analysée</div>
+            <div style={{color:MUT,fontSize:11,marginBottom:3}}>{t("result_zone")}</div>
             <div style={{fontWeight:700,fontSize:15}}>{zone.icon} {zone.label}</div>
             {isBodyFat?(
               <>
-                <div style={{color:MUT,fontSize:11,marginTop:8}}>Gras estimé</div>
+                <div style={{color:MUT,fontSize:11,marginTop:8}}>{t("result_body_fat_label")}</div>
                 <div style={{color:"#f97316",fontWeight:700,fontSize:24}}>{result.pct_gras_estime}<span style={{fontSize:13}}>%</span></div>
               </>
             ):isBeard?(
               <>
-                <div style={{color:MUT,fontSize:11,marginTop:8}}>Potentiel Viking</div>
+                <div style={{color:MUT,fontSize:11,marginTop:8}}>{t("result_viking")}</div>
                 <div style={{color:VIKING,fontWeight:700,fontSize:16}}>🪓 {result.potentiel_viking}</div>
               </>
             ):(
               <>
-                <div style={{color:MUT,fontSize:11,marginTop:8}}>Carences</div>
+                <div style={{color:MUT,fontSize:11,marginTop:8}}>{t("result_deficiencies")}</div>
                 <div style={{color:result?.carences?.length>0?DANGER:EM,fontWeight:700,fontSize:24}}>{result?.carences?.length||0}</div>
               </>
             )}
@@ -1123,24 +1696,22 @@ function Result({result,zone,user,profile,onNewScan,onHome}) {
       </div>
 
       <div style={{padding:"0 18px"}}>
-
-        {/* % GRAS */}
         {isBodyFat&&(
           <div className="fu2 card" style={{marginBottom:14}}>
-            <div style={{fontWeight:700,fontSize:13,marginBottom:14}}>💪 Composition corporelle</div>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:14}}>{t("result_body_comp")}</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
               <div style={{background:"#0a140c",borderRadius:12,padding:"14px",textAlign:"center"}}>
                 <div style={{fontSize:28,fontWeight:700,color:"#f97316"}}>{result.pct_gras_estime}<span style={{fontSize:14}}>%</span></div>
-                <div style={{fontSize:11,color:MUT,marginTop:2}}>Gras corporel</div>
+                <div style={{fontSize:11,color:MUT,marginTop:2}}>{t("result_body_fat")}</div>
               </div>
               <div style={{background:"#0a140c",borderRadius:12,padding:"14px",textAlign:"center"}}>
                 <div style={{fontSize:28,fontWeight:700,color:result.abdos_visibles==="oui"?EM:result.abdos_visibles==="partiellement"?WARN:MUT}}>
                   {result.abdos_visibles==="oui"?"✅":result.abdos_visibles==="partiellement"?"〰️":"❌"}
                 </div>
-                <div style={{fontSize:11,color:MUT,marginTop:2}}>Abdos visibles</div>
+                <div style={{fontSize:11,color:MUT,marginTop:2}}>{t("result_abs")}</div>
               </div>
             </div>
-            {[["Catégorie","#f97316",result.categorie_gras],["Morphologie",EM,result.morphologie]].map(([l,c,v])=>v&&(
+            {[[t("result_category"),"#f97316",result.categorie_gras],[t("result_morpho"),EM,result.morphologie]].map(([l,c,v])=>v&&(
               <div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0a140c",borderRadius:12,padding:"10px 14px",marginBottom:8}}>
                 <span style={{fontSize:12,color:MUT}}>{l}</span>
                 <span style={{fontWeight:700,fontSize:13,color:c,textTransform:"capitalize"}}>{v}</span>
@@ -1149,23 +1720,22 @@ function Result({result,zone,user,profile,onNewScan,onHome}) {
           </div>
         )}
 
-        {/* BARBE */}
         {isBeard&&(
           <div className="fu2 card" style={{marginBottom:14,border:`1px solid ${VIKING}33`}}>
-            <div style={{fontWeight:700,fontSize:13,marginBottom:14,color:VIKING}}>🪓 Analyse barbe</div>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:14,color:VIKING}}>{t("result_beard_title")}</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
               <div style={{background:"#0a0514",borderRadius:12,padding:"12px",textAlign:"center"}}>
                 <div style={{fontSize:13,fontWeight:700,color:VIKING,textTransform:"capitalize"}}>{result.densite||"?"}</div>
-                <div style={{fontSize:10,color:MUT,marginTop:2}}>Densité</div>
+                <div style={{fontSize:10,color:MUT,marginTop:2}}>{t("result_density")}</div>
               </div>
               <div style={{background:"#0a0514",borderRadius:12,padding:"12px",textAlign:"center"}}>
                 <div style={{fontSize:13,fontWeight:700,color:GOLD}}>🪓 {result.potentiel_viking}</div>
-                <div style={{fontSize:10,color:MUT,marginTop:2}}>Potentiel Viking</div>
+                <div style={{fontSize:10,color:MUT,marginTop:2}}>{t("result_viking_potential")}</div>
               </div>
             </div>
             {result.zones_clairsemees?.length>0&&(
               <div style={{marginBottom:12}}>
-                <div style={{fontSize:11,color:MUT,marginBottom:6}}>Zones clairsemées :</div>
+                <div style={{fontSize:11,color:MUT,marginBottom:6}}>{t("result_sparse")}</div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
                   {result.zones_clairsemees.map(z=><span key={z} style={{background:`${WARN}14`,color:WARN,borderRadius:20,padding:"3px 10px",fontSize:11}}>{z}</span>)}
                 </div>
@@ -1174,11 +1744,10 @@ function Result({result,zone,user,profile,onNewScan,onHome}) {
           </div>
         )}
 
-        {/* ASTUCES GRAND-MÈRE */}
         {(isBeard||isTeeth)&&result?.astuces_grand_mere?.length>0&&(
           <div className="fu3 card" style={{marginBottom:14,border:`1px solid ${isBeard?VIKING:EM}33`}}>
             <div style={{fontWeight:700,fontSize:13,marginBottom:12,color:isBeard?VIKING:EM}}>
-              {isBeard?"🧙‍♂️ Astuces grand-mère — Barbe":"🌿 Remèdes naturels — Dents"}
+              {isBeard?t("result_grandma_beard"):t("result_grandma_teeth")}
             </div>
             {result.astuces_grand_mere.map((a,i)=>(
               <div key={i} style={{display:"flex",gap:10,marginBottom:i<result.astuces_grand_mere.length-1?10:0,paddingBottom:i<result.astuces_grand_mere.length-1?10:0,borderBottom:i<result.astuces_grand_mere.length-1?`1px solid ${BDR}`:"none"}}>
@@ -1189,11 +1758,10 @@ function Result({result,zone,user,profile,onNewScan,onHome}) {
           </div>
         )}
 
-        {/* CARENCES */}
         {result?.carences?.length>0&&(
           <div className="fu2 card" style={{marginBottom:14}}>
             <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>
-              {isBodyFat?"💊 Nutriments à optimiser":isBeard?"💊 Nutriments pour la barbe":isTeeth?"💊 Nutriments pour les dents":"🔍 Carences identifiées"}
+              {isBodyFat?t("result_nutrients_body"):isBeard?t("result_nutrients_beard"):isTeeth?t("result_nutrients_teeth"):t("result_deficiencies_found")}
             </div>
             {result.carences.map((c,i)=>(
               <div key={i} style={{marginBottom:14,borderBottom:i<result.carences.length-1?`1px solid ${BDR}`:"none",paddingBottom:i<result.carences.length-1?14:0}}>
@@ -1207,13 +1775,13 @@ function Result({result,zone,user,profile,onNewScan,onHome}) {
                 <div style={{fontSize:12,color:MUT,marginBottom:5,lineHeight:1.5}}>{c.signes}</div>
                 <Bar v={c.pct||50} c={c.niveau==="critique"?DANGER:c.niveau==="faible"?WARN:"#c084fc"}/>
                 <button onClick={()=>setExp(exp===i?null:i)} style={{background:"none",border:"none",color:EM,fontSize:11,fontWeight:600,cursor:"pointer",marginTop:7,padding:0}}>
-                  {exp===i?"▲ Masquer":"▼ Recommandations"}
+                  {exp===i?t("result_hide"):t("result_show")}
                 </button>
                 {exp===i&&(
                   <div style={{marginTop:10}}>
                     {c.aliments?.length>0&&(
                       <div style={{marginBottom:10}}>
-                        <div style={{color:EM,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:6}}>🥗 ALIMENTS</div>
+                        <div style={{color:EM,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:6}}>{t("result_food")}</div>
                         <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
                           {c.aliments.map(a=><span key={a} style={{background:`${EM}12`,color:EM,borderRadius:20,padding:"3px 11px",fontSize:11,fontWeight:600}}>{a}</span>)}
                         </div>
@@ -1221,7 +1789,7 @@ function Result({result,zone,user,profile,onNewScan,onHome}) {
                     )}
                     {c.complement&&(
                       <div style={{background:"#14102a",border:"1px solid #2a1f50",borderRadius:12,padding:"10px 13px"}}>
-                        <div style={{color:"#c084fc",fontSize:10,fontWeight:700,marginBottom:3}}>💊 COMPLÉMENT</div>
+                        <div style={{color:"#c084fc",fontSize:10,fontWeight:700,marginBottom:3}}>{t("result_supplement")}</div>
                         <div style={{fontWeight:600,fontSize:13}}>{c.complement}</div>
                         {c.dose&&<div style={{color:MUT,fontSize:11,marginTop:2}}>{c.dose}</div>}
                       </div>
@@ -1234,75 +1802,82 @@ function Result({result,zone,user,profile,onNewScan,onHome}) {
         )}
 
         {result?.positifs?.length>0&&(
-          <div className="fu3" style={{background:"#081408",border:`1px solid ${EM}28`,borderRadius:16,padding:16,marginBottom:14}}>
-            <div style={{color:EM,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:8}}>✅ POINTS POSITIFS</div>
-            {result.positifs.map((p,i)=><div key={i} style={{fontSize:13,color:"#b0c8b8",marginBottom:5,lineHeight:1.5}}>• {p}</div>)}
+          <div className="fu3 card" style={{marginBottom:14,border:`1px solid ${EM}22`}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:12,color:EM}}>{t("result_positives")}</div>
+            {result.positifs.map((p,i)=>(
+              <div key={i} style={{display:"flex",gap:8,marginBottom:i<result.positifs.length-1?8:0,fontSize:13,color:"#a0bcaa"}}>
+                <span style={{color:EM}}>✓</span>{p}
+              </div>
+            ))}
           </div>
         )}
 
         {result?.conseil&&(
           <div className="fu4 card" style={{border:`1px solid ${GOLD}28`,marginBottom:14}}>
-            <div style={{color:GOLD,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:7}}>💬 CONSEIL PERSONNALISÉ</div>
+            <div style={{color:GOLD,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:7}}>{t("result_advice")}</div>
             <div style={{fontSize:13,color:"#a0bcaa",lineHeight:1.7}}>{result.conseil}</div>
-            {result.prochain&&<div style={{marginTop:10,fontSize:11,color:MUT}}>📍 Prochain scan : <span style={{color:GOLD,fontWeight:600}}>{result.prochain}</span></div>}
           </div>
         )}
 
         <div style={{background:"#120f06",border:"1px solid #2a2010",borderRadius:12,padding:"10px 14px",fontSize:11,color:"#806040",lineHeight:1.6,marginBottom:16}}>
-          ⚠️ Rapport indicatif. Consultez un professionnel de santé pour tout diagnostic médical.
+          {t("result_disclaimer")}
         </div>
 
-        <button onClick={()=>setShowChat(true)}
-          style={{width:"100%",background:`linear-gradient(135deg,${EM}15,#071a0a)`,border:`1.5px solid ${EM}55`,borderRadius:12,padding:"14px",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:700,color:EM,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          💬 Poser une question au nutritionniste IA
+        <button onClick={()=>setShowChat(true)} style={{width:"100%",background:`${EM}10`,border:`1.5px solid ${EM}44`,borderRadius:12,padding:"14px",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:700,color:EM,cursor:"pointer",marginBottom:10}}>
+          {t("result_chat")}
         </button>
-        <button onClick={async()=>{setSharing(true);await shareResult(result,zone);setSharing(false);}}
+        <button onClick={async()=>{setSharing(true);await shareResult(result,zone,t);setSharing(false);}}
           style={{width:"100%",background:"linear-gradient(135deg,#1a2e20,#0f1e14)",border:`1.5px solid ${EM}55`,borderRadius:12,padding:"14px",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:700,color:EM,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          {sharing?"Partage...":"📤 Partager mon score"}
+          {sharing?<Spin/>:t("result_share")}
         </button>
-        <button className="bem" onClick={()=>generatePDF(result,zone,user)} style={{marginBottom:10,background:"linear-gradient(135deg,#e2b84a,#c49a2e)",color:"#080400"}}>📄 Télécharger le rapport PDF</button>
-        <button className="bem" onClick={onNewScan} style={{marginBottom:10}}>🔬 Scanner une autre zone</button>
-        <button className="bgh" onClick={onHome}>🏠 Retour à l'accueil</button>
+        {user?.plan==="premium"&&(
+          <button onClick={()=>generatePDF(result,zone,user)}
+            style={{width:"100%",background:"linear-gradient(135deg,#18100a,#100a06)",border:`1.5px solid ${GOLD}44`,borderRadius:12,padding:"14px",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:700,color:GOLD,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            {t("result_pdf")}
+          </button>
+        )}
+        <button className="bem" onClick={onNewScan} style={{marginBottom:10}}>{t("result_new_scan")}</button>
+        <button className="bgh" onClick={onHome}>{t("result_home")}</button>
       </div>
     </div>
     </>
   );
 }
 
-// ─── RÉSULTAT REPAS ───
-function MealResult({result,onNewScan,onHome}) {
+// ─── MEAL RESULT ───
+function MealResult({result,onNewScan,onHome,t}) {
   const sc=result?.score_nutrition||0;
   const scoreColor=sc>=75?EM:sc>=50?WARN:DANGER;
   const handleShare=async()=>{
-    const text=`🍽️ Mon analyse repas VitaScann\n\n${result.nom_repas||"Mon repas"} — ${result.calories_estimees} kcal\nScore : ${sc}/100\n\n🌿 vitascann.vercel.app`;
-    if(navigator.share){await navigator.share({title:"Mon repas VitaScann",text}).catch(()=>{});}
-    else{await navigator.clipboard.writeText(text);alert("📋 Copié !");}
+    const text=`🍽️ VitaScann Meal Analysis\n\n${result.nom_repas||"My meal"} — ${result.calories_estimees} kcal\nScore: ${sc}/100\n\n🌿 vitascann.vercel.app`;
+    if(navigator.share){await navigator.share({title:"VitaScann",text}).catch(()=>{});}
+    else{await navigator.clipboard.writeText(text);alert("📋 Copied!");}
   };
   return (
     <div style={{minHeight:"100vh",paddingBottom:80,overflowY:"auto"}}>
       <div style={{padding:"52px 22px 22px",background:"radial-gradient(ellipse at 50% 0%,#1a1200 0%,#060d08 70%)"}}>
         <div className="fu" style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-          <div className="serif" style={{fontSize:22,fontWeight:700}}>Analyse repas</div>
+          <div className="serif" style={{fontSize:22,fontWeight:700}}>{t("meal_result_title")}</div>
           <span style={{background:`${scoreColor}14`,color:scoreColor,borderRadius:20,padding:"3px 12px",fontSize:11,fontWeight:700}}>
-            {sc>=75?"✅ Excellent":sc>=50?"👁 Correct":"⚠️ Incomplet"}
+            {sc>=75?t("meal_excellent"):sc>=50?t("meal_ok"):t("meal_incomplete")}
           </span>
         </div>
         <div className="fu1" style={{display:"flex",alignItems:"center",gap:18}}>
           <ScoreRing score={sc} size={100}/>
           <div>
-            <div style={{fontWeight:700,fontSize:16,color:GOLD}}>{result.nom_repas||"Votre repas"}</div>
-            {result.note_halal==="halal"&&<span style={{background:`${GOLD}14`,color:GOLD,borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700,marginTop:4,display:"inline-block"}}>🌙 Halal</span>}
-            {result.note_halal==="attention"&&<span style={{background:`${WARN}14`,color:WARN,borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700,marginTop:4,display:"inline-block"}}>⚠️ Vérifier halal</span>}
-            <div style={{color:MUT,fontSize:11,marginTop:8}}>Calories estimées</div>
+            <div style={{fontWeight:700,fontSize:16,color:GOLD}}>{result.nom_repas||"Your meal"}</div>
+            {result.note_halal==="halal"&&<span style={{background:`${GOLD}14`,color:GOLD,borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700,marginTop:4,display:"inline-block"}}>{t("meal_halal")}</span>}
+            {result.note_halal==="attention"&&<span style={{background:`${WARN}14`,color:WARN,borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700,marginTop:4,display:"inline-block"}}>{t("meal_halal_check")}</span>}
+            <div style={{color:MUT,fontSize:11,marginTop:8}}>{t("meal_calories")}</div>
             <div style={{color:GOLD,fontWeight:700,fontSize:24}}>{result.calories_estimees}<span style={{fontSize:12,fontWeight:400}}> kcal</span></div>
           </div>
         </div>
       </div>
       <div style={{padding:"14px 18px"}}>
         <div className="fu2 card" style={{marginBottom:14}}>
-          <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>📊 Macronutriments</div>
+          <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>{t("meal_macros")}</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-            {[["Protéines",result.proteines_g,"g","#38bdf8"],["Glucides",result.glucides_g,"g","#fbbf24"],["Lipides",result.lipides_g,"g","#fb923c"]].map(([l,v,u,c])=>(
+            {[[t("meal_protein"),result.proteines_g,"g","#38bdf8"],[t("meal_carbs"),result.glucides_g,"g","#fbbf24"],[t("meal_fat"),result.lipides_g,"g","#fb923c"]].map(([l,v,u,c])=>(
               <div key={l} style={{background:"#0a140c",borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
                 <div style={{fontSize:18,fontWeight:700,color:c}}>{v||"?"}</div>
                 <div style={{fontSize:10,color:MUT,marginTop:2}}>{l} ({u})</div>
@@ -1312,7 +1887,7 @@ function MealResult({result,onNewScan,onHome}) {
         </div>
         {result.carences_comblees?.length>0&&(
           <div className="fu3 card" style={{marginBottom:14}}>
-            <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>✅ Carences comblées</div>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>{t("meal_covered")}</div>
             <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
               {result.carences_comblees.map((c,i)=>{
                 const col=c.niveau==="bien"?EM:c.niveau==="moyen"?WARN:MUT;
@@ -1323,7 +1898,7 @@ function MealResult({result,onNewScan,onHome}) {
         )}
         {result.manque?.length>0&&(
           <div className="fu3 card" style={{marginBottom:14,border:`1px solid ${WARN}22`}}>
-            <div style={{fontWeight:700,fontSize:13,marginBottom:12,color:WARN}}>⚠️ Ce qui manque</div>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:12,color:WARN}}>{t("meal_missing")}</div>
             {result.manque.map((m,i)=>(
               <div key={i} style={{marginBottom:i<result.manque.length-1?10:0,paddingBottom:i<result.manque.length-1?10:0,borderBottom:i<result.manque.length-1?`1px solid ${BDR}`:"none"}}>
                 <div style={{fontWeight:600,fontSize:13,marginBottom:3}}>{m.nutriment}</div>
@@ -1334,32 +1909,32 @@ function MealResult({result,onNewScan,onHome}) {
         )}
         {result.conseil_global&&(
           <div className="fu4 card" style={{border:`1px solid ${GOLD}28`,marginBottom:14}}>
-            <div style={{color:GOLD,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:7}}>💬 CONSEIL</div>
+            <div style={{color:GOLD,fontSize:10,fontWeight:700,letterSpacing:.8,marginBottom:7}}>{t("meal_global_advice")}</div>
             <div style={{fontSize:13,color:"#a0bcaa",lineHeight:1.7}}>{result.conseil_global}</div>
           </div>
         )}
         <div style={{background:"#120f06",border:"1px solid #2a2010",borderRadius:12,padding:"10px 14px",fontSize:11,color:"#806040",lineHeight:1.6,marginBottom:16}}>
-          ⚠️ Estimation indicative basée sur l'analyse visuelle.
+          {t("meal_disclaimer")}
         </div>
         <button onClick={handleShare} style={{width:"100%",background:"linear-gradient(135deg,#1a2e20,#0f1e14)",border:`1.5px solid ${EM}55`,borderRadius:12,padding:"14px",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:700,color:EM,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          📤 Partager mon analyse
+          {t("meal_share")}
         </button>
-        <button className="bem" onClick={onNewScan} style={{marginBottom:10}}>🍽️ Scanner un autre repas</button>
-        <button className="bgh" onClick={onHome}>🏠 Retour à l'accueil</button>
+        <button className="bem" onClick={onNewScan} style={{marginBottom:10}}>{t("meal_new")}</button>
+        <button className="bgh" onClick={onHome}>{t("meal_home")}</button>
       </div>
     </div>
   );
 }
 
 // ─── PROGRESSION ───
-function Progress({history,onBack}) {
+function Progress({history,onBack,t}) {
   const scores = history.filter(h=>h.score).slice(0,10).reverse();
   const max = Math.max(...scores.map(s=>s.score),100);
   return (
     <div style={{minHeight:"100vh",padding:"52px 20px 40px"}}>
-      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
-      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>📈 Ma progression</div>
-      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>Évolution de vos scores</div>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
+      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>{t("progress_title")}</div>
+      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>{t("progress_sub")}</div>
       {scores.length>0?(
         <div className="fu2 card" style={{marginBottom:20}}>
           <div style={{display:"flex",alignItems:"flex-end",gap:6,height:120,padding:"10px 0"}}>
@@ -1379,15 +1954,15 @@ function Progress({history,onBack}) {
       ):(
         <div className="card" style={{textAlign:"center",padding:32}}>
           <div style={{fontSize:40,marginBottom:12}}>📊</div>
-          <div style={{color:MUT}}>Faites vos premiers scans pour voir votre progression !</div>
+          <div style={{color:MUT}}>{t("progress_empty")}</div>
         </div>
       )}
       {scores.length>0&&(
         <div className="fu3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
           {[
-            ["Meilleur",Math.max(...scores.map(s=>s.score)),EM],
-            ["Moyen",Math.round(scores.reduce((a,s)=>a+s.score,0)/scores.length),WARN],
-            ["Scans",history.length,GOLD],
+            [t("progress_best"),Math.max(...scores.map(s=>s.score)),EM],
+            [t("progress_avg"),Math.round(scores.reduce((a,s)=>a+s.score,0)/scores.length),WARN],
+            [t("progress_scans"),history.length,GOLD],
           ].map(([l,v,c])=>(
             <div key={l} className="card" style={{textAlign:"center",border:`1px solid ${c}22`}}>
               <div style={{fontSize:22,fontWeight:700,color:c}}>{v}</div>
@@ -1401,7 +1976,7 @@ function Progress({history,onBack}) {
 }
 
 // ─── PLAN REPAS ───
-function MealPlan({profile,onBack,user}) {
+function MealPlan({profile,onBack,user,t}) {
   const [plan,setPlan] = useState(null);
   const [load,setLoad] = useState(false);
 
@@ -1424,19 +1999,19 @@ function MealPlan({profile,onBack,user}) {
 
   return (
     <div style={{minHeight:"100vh",padding:"52px 20px 40px",overflowY:"auto"}}>
-      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
-      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>🗓️ Plan repas 7 jours</div>
-      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>Personnalisé selon votre profil et vos carences</div>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
+      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>{t("mealplan_title")}</div>
+      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>{t("mealplan_sub")}</div>
       {!plan?(
         <button className="bem" onClick={generate} disabled={load}>
-          {load?<Spin/>:"✨ Générer mon plan personnalisé"}
+          {load?<Spin/>:t("mealplan_generate")}
         </button>
       ):(
         <div>
           {plan.semaine?.map((j,i)=>(
             <div key={i} className="card" style={{marginBottom:12}}>
               <div style={{color:GOLD,fontWeight:700,fontSize:13,marginBottom:10}}>📅 {j.jour}</div>
-              {[["🌅 Petit-déj",j.petit_dej],["☀️ Déjeuner",j.dejeuner],["🌙 Dîner",j.diner],j.snack&&["🍎 Snack",j.snack]].filter(Boolean).map(([l,v])=>(
+              {[[t("mealplan_breakfast"),j.petit_dej],[t("mealplan_lunch"),j.dejeuner],[t("mealplan_dinner"),j.diner],j.snack&&[t("mealplan_snack"),j.snack]].filter(Boolean).map(([l,v])=>(
                 <div key={l} style={{marginBottom:6}}>
                   <span style={{color:MUT,fontSize:11}}>{l} : </span>
                   <span style={{fontSize:12,color:"#b0c8b8"}}>{v}</span>
@@ -1449,7 +2024,7 @@ function MealPlan({profile,onBack,user}) {
               )}
             </div>
           ))}
-          <button className="bgh" onClick={()=>setPlan(null)} style={{marginTop:10}}>Régénérer</button>
+          <button className="bgh" onClick={()=>setPlan(null)} style={{marginTop:10}}>{t("mealplan_regen")}</button>
         </div>
       )}
     </div>
@@ -1457,7 +2032,7 @@ function MealPlan({profile,onBack,user}) {
 }
 
 // ─── FAMILLE ───
-function Family({user,family,onSave,onBack,onSwitchProfile}) {
+function Family({user,family,onSave,onBack,onSwitchProfile,t}) {
   const [name,setName] = useState("");
   const [members,setMembers] = useState(family||[]);
 
@@ -1472,18 +2047,18 @@ function Family({user,family,onSave,onBack,onSwitchProfile}) {
 
   return (
     <div style={{minHeight:"100vh",padding:"52px 20px 40px"}}>
-      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
-      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>👨‍👩‍👧 Ma famille</div>
-      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>Suivez la santé de toute votre famille</div>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
+      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>{t("family_title")}</div>
+      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>{t("family_sub")}</div>
 
       <div className="fu2" style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
         <div style={{display:"flex",alignItems:"center",gap:10,background:`${EM}14`,border:`1.5px solid ${EM}44`,borderRadius:16,padding:"14px 16px"}}>
           <div style={{width:44,height:44,borderRadius:12,background:`${EM}20`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>👤</div>
           <div style={{flex:1}}>
-            <div style={{fontWeight:700,fontSize:14,color:EM}}>{user.name} (Moi)</div>
-            <div style={{fontSize:11,color:MUT,marginTop:2}}>{user.plan==="premium"?"👑 Premium":"Gratuit"}</div>
+            <div style={{fontWeight:700,fontSize:14,color:EM}}>{user.name} ({t("family_me")})</div>
+            <div style={{fontSize:11,color:MUT,marginTop:2}}>{user.plan==="premium"?"👑 Premium":t("db_free").replace(" ·","")}</div>
           </div>
-          <div style={{color:EM,fontSize:12,fontWeight:600}}>Actif</div>
+          <div style={{color:EM,fontSize:12,fontWeight:600}}>{t("family_active")}</div>
         </div>
         {members.map((m,i)=>(
           <button key={m.id} onClick={()=>onSwitchProfile(m)}
@@ -1495,7 +2070,7 @@ function Family({user,family,onSave,onBack,onSwitchProfile}) {
             </div>
             <div style={{flex:1}}>
               <div style={{fontWeight:700,fontSize:14}}>{m.name}</div>
-              <div style={{fontSize:11,color:MUT,marginTop:2}}>Appuyer pour scanner</div>
+              <div style={{fontSize:11,color:MUT,marginTop:2}}>{t("family_tap")}</div>
             </div>
             <div style={{color:MUT,fontSize:18}}>›</div>
           </button>
@@ -1503,37 +2078,37 @@ function Family({user,family,onSave,onBack,onSwitchProfile}) {
       </div>
 
       <div className="fu3 card" style={{marginBottom:16}}>
-        <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>➕ Ajouter un membre</div>
-        <Input value={name} onChange={setName} placeholder="Prénom du membre" left="👤"/>
-        <button className="bem" onClick={add} disabled={!name.trim()}>Ajouter →</button>
+        <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>{t("family_add_title")}</div>
+        <Input value={name} onChange={setName} placeholder={t("family_add_ph")} left="👤"/>
+        <button className="bem" onClick={add} disabled={!name.trim()}>{t("family_add_btn")}</button>
       </div>
     </div>
   );
 }
 
 // ─── DÉFI 30 JOURS ───
-function Challenge({history,onBack}) {
+function Challenge({history,onBack,t}) {
   const done = Math.min(30,history?.length||0);
   const badges = [
-    {day:1,icon:"🌱",label:"Premier pas",done:done>=1},
-    {day:5,icon:"⚡",label:"5 scans",done:done>=5},
-    {day:10,icon:"🔥",label:"10 scans",done:done>=10},
-    {day:20,icon:"💎",label:"20 scans",done:done>=20},
-    {day:30,icon:"👑",label:"Défi complet",done:done>=30},
+    {day:1,icon:"🌱",label:t("badge_first"),done:done>=1},
+    {day:5,icon:"⚡",label:t("badge_5"),done:done>=5},
+    {day:10,icon:"🔥",label:t("badge_10"),done:done>=10},
+    {day:20,icon:"💎",label:t("badge_20"),done:done>=20},
+    {day:30,icon:"👑",label:t("badge_30"),done:done>=30},
   ];
   return (
     <div style={{minHeight:"100vh",padding:"52px 20px 40px"}}>
-      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
-      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>🏆 Défi 30 jours</div>
-      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>Améliorez votre santé en 30 scans</div>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
+      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>{t("challenge_title")}</div>
+      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>{t("challenge_sub")}</div>
 
       <div className="fu2 card" style={{marginBottom:20,textAlign:"center"}}>
         <div style={{fontSize:48,fontWeight:700,color:GOLD,marginBottom:4}}>{done}<span style={{fontSize:20,color:MUT}}>/30</span></div>
-        <div style={{color:MUT,fontSize:13,marginBottom:14}}>scans complétés</div>
+        <div style={{color:MUT,fontSize:13,marginBottom:14}}>{t("challenge_done")}</div>
         <div style={{background:"#142018",borderRadius:8,height:10,overflow:"hidden",marginBottom:8}}>
           <div style={{width:`${(done/30)*100}%`,height:"100%",background:`linear-gradient(90deg,${GOLD},${EM})`,borderRadius:8,transition:"width 1.2s ease"}}/>
         </div>
-        <div style={{fontSize:12,color:EM,fontWeight:600}}>{done>=30?"🎉 Défi terminé !":done>0?`Plus que ${30-done} scans !`:"Commencez votre premier scan !"}</div>
+        <div style={{fontSize:12,color:EM,fontWeight:600}}>{done>=30?t("challenge_complete"):done>0?`${t("challenge_left")} ${30-done} ${t("challenge_left2")}`:t("challenge_start")}</div>
       </div>
 
       <div className="fu3" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -1541,8 +2116,8 @@ function Challenge({history,onBack}) {
           <div key={b.day} style={{background:b.done?`${GOLD}12`:CARD,border:`1px solid ${b.done?GOLD:BDR}`,borderRadius:16,padding:"16px",textAlign:"center",transition:"all .3s"}}>
             <div style={{fontSize:32,marginBottom:6,filter:b.done?"none":"grayscale(1) opacity(0.4)"}}>{b.icon}</div>
             <div style={{fontWeight:700,fontSize:12,color:b.done?GOLD:"#edf5ef"}}>{b.label}</div>
-            <div style={{fontSize:10,color:MUT,marginTop:2}}>Jour {b.day}</div>
-            {b.done&&<div style={{color:GOLD,fontSize:11,fontWeight:700,marginTop:4}}>✓ Obtenu !</div>}
+            <div style={{fontSize:10,color:MUT,marginTop:2}}>{t("badge_day")} {b.day}</div>
+            {b.done&&<div style={{color:GOLD,fontSize:11,fontWeight:700,marginTop:4}}>{t("badge_obtained")}</div>}
           </div>
         ))}
       </div>
@@ -1551,9 +2126,9 @@ function Challenge({history,onBack}) {
 }
 
 // ─── PAYWALL ───
-function Paywall({user,onBack,onSuccess}) {
+function Paywall({user,onBack,onSuccess,t}) {
   const [secs,setSecs]=useState(12*60);
-  useEffect(()=>{const t=setInterval(()=>setSecs(s=>s>0?s-1:0),1000);return()=>clearInterval(t);},[]);
+  useEffect(()=>{const timer=setInterval(()=>setSecs(s=>s>0?s-1:0),1000);return()=>clearInterval(timer);},[]);
   const mm=String(Math.floor(secs/60)).padStart(2,"0");
   const ss=String(secs%60).padStart(2,"0");
   const urgent=secs<3*60;
@@ -1563,37 +2138,39 @@ function Paywall({user,onBack,onSuccess}) {
     window.location.href=url;
   };
 
+  const features = [
+    ["🔬",t("pw_f1_title"),t("pw_f1_sub")],
+    ["🍽️",t("pw_f2_title"),t("pw_f2_sub")],
+    ["💬",t("pw_f3_title"),t("pw_f3_sub")],
+    ["🗓️",t("pw_f4_title"),t("pw_f4_sub")],
+    ["📈",t("pw_f5_title"),t("pw_f5_sub")],
+    ["👨‍👩‍👧",t("pw_f6_title"),t("pw_f6_sub")],
+    ["🌙",t("pw_f7_title"),t("pw_f7_sub")],
+    ["📄",t("pw_f8_title"),t("pw_f8_sub")],
+  ];
+
   return (
     <div style={{minHeight:"100vh",padding:"52px 24px 40px",overflowY:"auto"}}>
-      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:20,display:"flex",alignItems:"center",gap:6}}>← Retour</button>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:20,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
       <div style={{background:urgent?"#1a0505":"#0f1505",border:`1.5px solid ${urgent?DANGER:GOLD}44`,borderRadius:14,padding:"12px 16px",marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <div>
-          <div style={{fontSize:11,color:urgent?DANGER:GOLD,fontWeight:700,letterSpacing:.8}}>{urgent?"🔥 OFFRE EXPIRE BIENTÔT":"⏰ OFFRE DE LANCEMENT"}</div>
+          <div style={{fontSize:11,color:urgent?DANGER:GOLD,fontWeight:700,letterSpacing:.8}}>{urgent?t("pw_timer_urgent"):t("pw_timer_label")}</div>
           <div style={{fontSize:24,fontWeight:700,color:urgent?DANGER:GOLD,fontVariantNumeric:"tabular-nums",animation:urgent?"pulse 1s ease infinite":undefined}}>{mm}:{ss}</div>
         </div>
         <div style={{textAlign:"right"}}>
-          <div style={{fontSize:12,color:MUT}}>Prix habituel</div>
+          <div style={{fontSize:12,color:MUT}}>{t("pw_regular")}</div>
           <div style={{fontSize:14,color:MUT,textDecoration:"line-through"}}>14,99$/mois</div>
           <div style={{fontSize:18,fontWeight:700,color:GOLD}}>7,99$/mois</div>
         </div>
       </div>
       <div style={{textAlign:"center",marginBottom:24}}>
         <div style={{fontSize:50,marginBottom:12}}>👑</div>
-        <div className="serif" style={{fontSize:26,fontWeight:700,color:GOLD,marginBottom:8}}>VitaScann Premium</div>
-        <div style={{color:MUT,fontSize:14,lineHeight:1.7}}>Moins cher qu'un café par semaine.</div>
+        <div className="serif" style={{fontSize:26,fontWeight:700,color:GOLD,marginBottom:8}}>{t("pw_title")}</div>
+        <div style={{color:MUT,fontSize:14,lineHeight:1.7}}>{t("pw_subtitle")}</div>
       </div>
       <div className="card" style={{marginBottom:20,border:`1px solid ${GOLD}33`}}>
-        <div style={{color:GOLD,fontSize:11,fontWeight:700,letterSpacing:.8,marginBottom:14}}>✨ CE QUE VOUS DÉBLOQUEZ</div>
-        {[
-          ["🔬","11 zones corporelles","Dont Dents 🦷 et Barbe 🧔 — unique au monde"],
-          ["🍽️","Scan Repas","Calories, macros, carences comblées"],
-          ["💬","Chat nutritionniste IA","Posez vos questions après chaque scan"],
-          ["🗓️","Plan repas 7 jours","Personnalisé selon vos carences"],
-          ["📈","Suivi progression","Courbe de vos scores dans le temps"],
-          ["👨‍👩‍👧","Profils famille","Toute la famille sur un compte"],
-          ["🌙","Mode halal","Compléments et aliments conformes"],
-          ["📄","Rapport PDF","Partageable avec votre médecin"],
-        ].map(([ic,title,sub],i)=>(
+        <div style={{color:GOLD,fontSize:11,fontWeight:700,letterSpacing:.8,marginBottom:14}}>{t("pw_unlock")}</div>
+        {features.map(([ic,title,sub],i)=>(
           <div key={i} style={{display:"flex",gap:12,marginBottom:i<7?14:0,paddingBottom:i<7?14:0,borderBottom:i<7?`1px solid ${BDR}`:"none"}}>
             <div style={{width:36,height:36,borderRadius:10,background:`${GOLD}12`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{ic}</div>
             <div>
@@ -1608,14 +2185,14 @@ function Paywall({user,onBack,onSuccess}) {
           <span style={{color:MUT,fontSize:15,textDecoration:"line-through"}}>14,99$</span>
           <div className="serif" style={{fontSize:44,fontWeight:700,color:GOLD}}>7,99<span style={{fontSize:20}}>$ CAD</span></div>
         </div>
-        <div style={{color:MUT,fontSize:13}}>par mois · Annulez quand vous voulez</div>
-        <div style={{color:EM,fontSize:12,fontWeight:600,marginTop:4}}>✅ -47% tarif de lancement</div>
+        <div style={{color:MUT,fontSize:13}}>{t("pw_per_month")}</div>
+        <div style={{color:EM,fontSize:12,fontWeight:600,marginTop:4}}>{t("pw_discount")}</div>
       </div>
       <button className="bgold" onClick={handleCheckout} style={{marginBottom:12,fontSize:16,padding:"18px"}}>
-        💳 S'abonner maintenant →
+        {t("pw_btn")}
       </button>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
-        {[["🔒","Paiement sécurisé Stripe"],["❌","Sans engagement"],["💬","Support rapide"]].map(([ic,lb])=>(
+        {[["🔒",t("pw_secure")],["❌",t("pw_cancel")],["💬",t("pw_support")]].map(([ic,lb])=>(
           <div key={lb} style={{background:CARD,borderRadius:10,padding:"8px 6px",textAlign:"center"}}>
             <div style={{fontSize:16,marginBottom:3}}>{ic}</div>
             <div style={{fontSize:9,color:MUT,lineHeight:1.4}}>{lb}</div>
@@ -1623,7 +2200,7 @@ function Paywall({user,onBack,onSuccess}) {
         ))}
       </div>
       <div style={{background:"#0a1a0c",border:`1px solid ${BDR}`,borderRadius:12,padding:14,fontSize:12,color:MUT,lineHeight:1.6,textAlign:"center"}}>
-        ⚠️ VitaScann fournit des <strong style={{color:"#edf5ef"}}>pistes nutritionnelles indicatives</strong>, pas des diagnostics médicaux.
+        {t("pw_disclaimer")}
       </div>
     </div>
   );
@@ -1631,6 +2208,9 @@ function Paywall({user,onBack,onSuccess}) {
 
 // ─── MAIN APP ───
 export default function VitaScann() {
+  const [lang,setLang] = useState(()=>localStorage.getItem("vs_lang")||"fr");
+  const t = (key) => T[lang]?.[key] || T["fr"]?.[key] || key;
+
   const [screen,setScreen]=useState("splash");
   const [user,setUser]=useState(null);
   const [zone,setZone]=useState(null);
@@ -1643,6 +2223,8 @@ export default function VitaScann() {
   const [family,setFamily]=useState([]);
   const [demoUsed,setDemoUsed]=useState(false);
   const [isMeal,setIsMeal]=useState(false);
+
+  const ZONES = getZones(lang);
 
   // Fix bouton back Android PWA
   useEffect(()=>{
@@ -1774,34 +2356,36 @@ export default function VitaScann() {
   };
 
   const handleMealScan=()=>{
-    if(user?.plan!=="premium"&&!user?.isDemo&&history.length>=1){setScreen("paywall");return;}
+    if(user?.plan!=="premium"&&!user?.isDemo&&history.length>=2){setScreen("paywall");return;}
     setIsMeal(true);setScreen("meal_capture");
   };
+
+  const commonProps = {lang, setLang, t};
 
   return (
     <>
       <style>{G}</style>
       <div className="app" style={{overflowY:"auto"}}>
-        {screen==="splash"       && <Splash onDone={()=>{}}/>}
-        {screen==="onboarding"   && <Onboarding onDemo={handleDemo} onRegister={()=>{localStorage.setItem("vs_onboarding","1");setScreen("register");}} onLogin={()=>{localStorage.setItem("vs_onboarding","1");setScreen("login");}}/>}
-        {screen==="register"     && <Register onSuccess={handleAuthSuccess} onLogin={()=>setScreen("login")}/>}
-        {screen==="login"        && <Login onSuccess={handleAuthSuccess} onRegister={()=>setScreen("register")} onForgot={()=>setScreen("forgot")}/>}
-        {screen==="forgot"       && <ForgotPassword onBack={()=>setScreen("login")}/>}
-        {screen==="profile"      && <ProfileSetup user={user} onSave={p=>{setProfile(p);setScreen("dashboard");}} onSkip={()=>setScreen("dashboard")}/>}
-        {screen==="dashboard"    && user && <Dashboard user={user} onScan={handleScan} onMealScan={handleMealScan} onPaywall={()=>setScreen("paywall")} onLogout={handleLogout} onProfile={()=>setScreen("profile")} onFamily={()=>setScreen("family")} onChallenge={()=>setScreen("challenge")} onProgress={()=>user.plan==="premium"?setScreen("progress"):setScreen("paywall")} onMealPlan={()=>user.plan==="premium"?setScreen("mealplan"):setScreen("paywall")} history={history} profile={profile}/>}
-        {screen==="zones"        && <ZonePick onSelect={z=>{setZone(z);setScreen("capture");}} onBack={()=>setScreen("dashboard")} user={user} onPaywall={()=>setScreen("paywall")}/>}
-        {screen==="capture"      && zone && <Capture zone={zone} onCapture={(b,p)=>{setB64(b);setPrev(p);setScreen("preview");}} onBack={()=>setScreen("zones")}/>}
-        {screen==="meal_capture" && <MealCapture onCapture={(b,p)=>{setB64(b);setPrev(p);setScreen("meal_preview");}} onBack={()=>setScreen("dashboard")} user={user} onPaywall={()=>setScreen("paywall")}/>}
-        {screen==="preview"      && zone && <Preview zone={zone} preview={prev} onAnalyze={analyze} onRetake={()=>setScreen("capture")} isMeal={false}/>}
-        {screen==="meal_preview" && <Preview zone={null} preview={prev} onAnalyze={analyzeMeal} onRetake={()=>setScreen("meal_capture")} isMeal={true}/>}
-        {screen==="analyzing"    && <Analyzing zone={zone} isMeal={isMeal}/>}
-        {screen==="result"       && result&&zone && <Result result={result} zone={zone} user={user} profile={profile} onNewScan={()=>setScreen("zones")} onHome={()=>setScreen("dashboard")}/>}
-        {screen==="meal_result"  && mealResult && <MealResult result={mealResult} onNewScan={()=>setScreen("meal_capture")} onHome={()=>setScreen("dashboard")}/>}
-        {screen==="paywall"      && <Paywall user={user} onBack={()=>setScreen(user&&!user.isDemo?"dashboard":"onboarding")} onSuccess={()=>{setUser(u=>({...u,plan:"premium"}));setScreen("dashboard");}}/>}
-        {screen==="progress"     && <Progress history={history} onBack={()=>setScreen("dashboard")}/>}
-        {screen==="mealplan"     && <MealPlan profile={profile} onBack={()=>setScreen("dashboard")} user={user}/>}
-        {screen==="family"       && <Family user={user} family={family} onSave={setFamily} onBack={()=>setScreen("dashboard")} onSwitchProfile={m=>{setUser(u=>({...u,name:m.name,isFamily:true}));setScreen("zones");}}/>}
-        {screen==="challenge"    && <Challenge history={history} onBack={()=>setScreen("dashboard")}/>}
+        {screen==="splash"       && <Splash onDone={()=>{const seen=localStorage.getItem("vs_onboarding");setScreen(seen?"login":"onboarding");}} lang={lang} setLang={setLang}/>}
+        {screen==="onboarding"   && <Onboarding onDemo={handleDemo} onRegister={()=>{localStorage.setItem("vs_onboarding","1");setScreen("register");}} onLogin={()=>{localStorage.setItem("vs_onboarding","1");setScreen("login");}} {...commonProps}/>}
+        {screen==="register"     && <Register onSuccess={handleAuthSuccess} onLogin={()=>setScreen("login")} t={t}/>}
+        {screen==="login"        && <Login onSuccess={handleAuthSuccess} onRegister={()=>setScreen("register")} onForgot={()=>setScreen("forgot")} t={t}/>}
+        {screen==="forgot"       && <ForgotPassword onBack={()=>setScreen("login")} t={t}/>}
+        {screen==="profile"      && <ProfileSetup user={user} onSave={p=>{setProfile(p);setScreen("dashboard");}} onSkip={()=>setScreen("dashboard")} t={t}/>}
+        {screen==="dashboard"    && user && <Dashboard user={user} onScan={handleScan} onMealScan={handleMealScan} onPaywall={()=>setScreen("paywall")} onLogout={handleLogout} onProfile={()=>setScreen("profile")} onFamily={()=>setScreen("family")} onChallenge={()=>setScreen("challenge")} onProgress={()=>user.plan==="premium"?setScreen("progress"):setScreen("paywall")} onMealPlan={()=>user.plan==="premium"?setScreen("mealplan"):setScreen("paywall")} history={history} profile={profile} {...commonProps}/>}
+        {screen==="zones"        && <ZonePick onSelect={z=>{setZone(z);setScreen("capture");}} onBack={()=>setScreen("dashboard")} user={user} onPaywall={()=>setScreen("paywall")} lang={lang} t={t}/>}
+        {screen==="capture"      && zone && <Capture zone={zone} onCapture={(b,p)=>{setB64(b);setPrev(p);setScreen("preview");}} onBack={()=>setScreen("zones")} t={t}/>}
+        {screen==="meal_capture" && <MealCapture onCapture={(b,p)=>{setB64(b);setPrev(p);setScreen("meal_preview");}} onBack={()=>setScreen("dashboard")} user={user} onPaywall={()=>setScreen("paywall")} t={t}/>}
+        {screen==="preview"      && zone && <Preview zone={zone} preview={prev} onAnalyze={analyze} onRetake={()=>setScreen("capture")} isMeal={false} t={t}/>}
+        {screen==="meal_preview" && <Preview zone={null} preview={prev} onAnalyze={analyzeMeal} onRetake={()=>setScreen("meal_capture")} isMeal={true} t={t}/>}
+        {screen==="analyzing"    && <Analyzing zone={zone} isMeal={isMeal} t={t}/>}
+        {screen==="result"       && result&&zone && <Result result={result} zone={zone} user={user} profile={profile} onNewScan={()=>setScreen("zones")} onHome={()=>setScreen("dashboard")} t={t}/>}
+        {screen==="meal_result"  && mealResult && <MealResult result={mealResult} onNewScan={()=>setScreen("meal_capture")} onHome={()=>setScreen("dashboard")} t={t}/>}
+        {screen==="paywall"      && <Paywall user={user} onBack={()=>setScreen(user&&!user.isDemo?"dashboard":"onboarding")} onSuccess={()=>{setUser(u=>({...u,plan:"premium"}));setScreen("dashboard");}} t={t}/>}
+        {screen==="progress"     && <Progress history={history} onBack={()=>setScreen("dashboard")} t={t}/>}
+        {screen==="mealplan"     && <MealPlan profile={profile} onBack={()=>setScreen("dashboard")} user={user} t={t}/>}
+        {screen==="family"       && <Family user={user} family={family} onSave={setFamily} onBack={()=>setScreen("dashboard")} onSwitchProfile={m=>{setUser(u=>({...u,name:m.name,isFamily:true}));setScreen("zones");}} t={t}/>}
+        {screen==="challenge"    && <Challenge history={history} onBack={()=>setScreen("dashboard")} t={t}/>}
       </div>
     </>
   );
