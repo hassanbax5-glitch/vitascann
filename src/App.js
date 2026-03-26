@@ -348,6 +348,54 @@ const T = {
     rank_title: "🏆 Classement",
     rank_global: "Mondial",
     rank_you: "Vous",
+    // VitaCoins
+    coins_title: "🪙 VitaCoins",
+    coins_earned: "gagnées",
+    coins_balance: "Votre solde",
+    coins_history: "Historique",
+    coins_redeem: "Échanger",
+    coins_how: "Comment gagner",
+    coins_per_scan: "+10 par scan",
+    coins_per_streak: "+50 streak 7 jours",
+    coins_per_steps: "+5 par 1000 pas",
+    coins_per_ref: "+200 par parrainage",
+    coins_reward_100: "1 semaine Premium",
+    coins_reward_300: "1 mois Premium",
+    coins_reward_500: "Bon Amazon 5$",
+    coins_reward_1000: "Cashback 10$ PayPal",
+    coins_not_enough: "Pas assez de VitaCoins",
+    coins_redeemed: "Récompense débloquée ! 🎉",
+    coins_req: "VitaCoins requis",
+    // Pedometer
+    steps_title: "🚶 Podomètre",
+    steps_today: "Pas aujourd'hui",
+    steps_goal: "Objectif",
+    steps_coins: "VitaCoins gagnés",
+    steps_locked: "🔒 Débloqué après 15 scans",
+    steps_unlock_msg: "Encore",
+    steps_unlock_msg2: "scans pour débloquer",
+    steps_congrats: "Objectif atteint ! 🎉",
+    // Exercises
+    ex_title: "💪 Exercices personnalisés",
+    ex_sub: "Basés sur vos carences",
+    ex_complete: "Exercice complété !",
+    ex_coins: "+15 VitaCoins gagnés",
+    ex_locked: "🔒 Débloqué après 15 scans",
+    ex_start: "Commencer",
+    ex_done: "✅ Complété",
+    ex_mins: "min",
+    // Referral
+    ref_title: "👥 Parrainage",
+    ref_sub: "Invite tes amis, gagne des VitaCoins",
+    ref_your_link: "Ton lien unique",
+    ref_copy: "📋 Copier le lien",
+    ref_copied: "✅ Copié !",
+    ref_share: "📤 Partager",
+    ref_count: "Amis parrainés",
+    ref_earned: "VitaCoins gagnés",
+    ref_how1: "Tu invites un ami → +200 VitaCoins pour toi",
+    ref_how2: "Ton ami s'inscrit → +100 VitaCoins pour lui",
+    ref_bonus: "🎁 Bonus parrainage",
   },
   en: {
     // Global
@@ -654,6 +702,54 @@ const T = {
     rank_title: "🏆 Ranking",
     rank_global: "Global",
     rank_you: "You",
+    // VitaCoins
+    coins_title: "🪙 VitaCoins",
+    coins_earned: "earned",
+    coins_balance: "Your balance",
+    coins_history: "History",
+    coins_redeem: "Redeem",
+    coins_how: "How to earn",
+    coins_per_scan: "+10 per scan",
+    coins_per_streak: "+50 for 7-day streak",
+    coins_per_steps: "+5 per 1000 steps",
+    coins_per_ref: "+200 per referral",
+    coins_reward_100: "1 Premium week",
+    coins_reward_300: "1 Premium month",
+    coins_reward_500: "$5 Amazon gift card",
+    coins_reward_1000: "$10 PayPal cashback",
+    coins_not_enough: "Not enough VitaCoins",
+    coins_redeemed: "Reward unlocked! 🎉",
+    coins_req: "VitaCoins required",
+    // Pedometer
+    steps_title: "🚶 Pedometer",
+    steps_today: "Steps today",
+    steps_goal: "Goal",
+    steps_coins: "VitaCoins earned",
+    steps_locked: "🔒 Unlocked after 15 scans",
+    steps_unlock_msg: "Only",
+    steps_unlock_msg2: "scans left to unlock",
+    steps_congrats: "Goal reached! 🎉",
+    // Exercises
+    ex_title: "💪 Personalized Exercises",
+    ex_sub: "Based on your deficiencies",
+    ex_complete: "Exercise completed!",
+    ex_coins: "+15 VitaCoins earned",
+    ex_locked: "🔒 Unlocked after 15 scans",
+    ex_start: "Start",
+    ex_done: "✅ Completed",
+    ex_mins: "min",
+    // Referral
+    ref_title: "👥 Referral",
+    ref_sub: "Invite friends, earn VitaCoins",
+    ref_your_link: "Your unique link",
+    ref_copy: "📋 Copy link",
+    ref_copied: "✅ Copied!",
+    ref_share: "📤 Share",
+    ref_count: "Friends referred",
+    ref_earned: "VitaCoins earned",
+    ref_how1: "You invite a friend → +200 VitaCoins for you",
+    ref_how2: "Friend signs up → +100 VitaCoins for them",
+    ref_bonus: "🎁 Referral bonus",
   }
 };
 
@@ -691,6 +787,417 @@ const ScanService = {
   saveProfile: async (userId, profile) => { await setDoc(doc(db, "users", userId), { profile }, { merge: true }); },
   saveFamily: async (userId, family) => { await setDoc(doc(db, "users", userId), { family }, { merge: true }); },
 };
+
+// ─── VITACOINS SERVICE ───
+const CoinsService = {
+  getBalance: async (userId) => {
+    const d = await getDoc(doc(db,"users",userId));
+    return d.data()?.vitaCoins || 0;
+  },
+  add: async (userId, amount, reason) => {
+    const ref = doc(db,"users",userId);
+    const d = await getDoc(ref);
+    const current = d.data()?.vitaCoins || 0;
+    const history = d.data()?.coinsHistory || [];
+    await setDoc(ref, {
+      vitaCoins: current + amount,
+      coinsHistory: [{amount,reason,date:new Date().toISOString()},...history].slice(0,50)
+    }, {merge:true});
+    return current + amount;
+  },
+  spend: async (userId, amount) => {
+    const ref = doc(db,"users",userId);
+    const d = await getDoc(ref);
+    const current = d.data()?.vitaCoins || 0;
+    if(current < amount) return false;
+    await setDoc(ref, {vitaCoins: current - amount}, {merge:true});
+    return true;
+  },
+  getReferralCount: async (userId) => {
+    const q = query(collection(db,"users"), where("referredBy","==",userId));
+    const snap = await getDocs(q);
+    return snap.size;
+  },
+  processReferral: async (newUserId, referrerId) => {
+    if(!referrerId || referrerId === newUserId) return;
+    await setDoc(doc(db,"users",newUserId),{referredBy:referrerId},{merge:true});
+    await CoinsService.add(referrerId, 200, "Parrainage ami");
+    await CoinsService.add(newUserId, 100, "Bonus inscription parrainage");
+  },
+};
+
+// ─── EXERCISES DATA ───
+const EXERCISES_BY_ZONE = {
+  nails: [
+    {id:"e1",name:"Yoga des mains",emoji:"🧘",duration:10,desc:"Étirements et rotations pour améliorer la circulation vers les ongles.",coins:15},
+    {id:"e2",name:"Marche rapide",emoji:"🚶",duration:20,desc:"20 min de marche active booste l'absorption du Fer.",coins:15},
+  ],
+  eyes: [
+    {id:"e3",name:"Exercices oculaires",emoji:"👁️",duration:5,desc:"Rotations et focus pour détendre et renforcer les muscles oculaires.",coins:15},
+    {id:"e4",name:"Plein air 20min",emoji:"☀️",duration:20,desc:"S'exposer à la lumière naturelle améliore la Vitamine A.",coins:15},
+  ],
+  skin: [
+    {id:"e5",name:"Cardio léger",emoji:"🏃",duration:15,desc:"Améliore la circulation et l'oxygénation de la peau.",coins:15},
+    {id:"e6",name:"Stretching",emoji:"🤸",duration:10,desc:"Réduit le cortisol, facteur de problèmes de peau.",coins:15},
+  ],
+  hair: [
+    {id:"e7",name:"Massage cuir chevelu",emoji:"💆",duration:5,desc:"Massage circulaire 5min stimule les follicules pileux.",coins:15},
+    {id:"e8",name:"Yoga inversé",emoji:"🙃",duration:10,desc:"Postures tête en bas augmentent le flux sanguin vers le cuir chevelu.",coins:15},
+  ],
+  belly: [
+    {id:"e9",name:"Marche post-repas",emoji:"🚶",duration:15,desc:"15 min après chaque repas régule la glycémie et réduit le ventre.",coins:15},
+    {id:"e10",name:"Gainage",emoji:"💪",duration:10,desc:"3 séries de 30s planche renforce les abdominaux profonds.",coins:15},
+  ],
+  body_fat: [
+    {id:"e11",name:"HIIT 20min",emoji:"🔥",duration:20,desc:"Intervalles haute intensité : brûle-graisses optimal.",coins:20},
+    {id:"e12",name:"Musculation",emoji:"🏋️",duration:30,desc:"30 min de musculation booste le métabolisme 24h.",coins:20},
+  ],
+  beard: [
+    {id:"e13",name:"Cardio 20min",emoji:"🏃",duration:20,desc:"Le cardio booste la testostérone et favorise la croissance de la barbe.",coins:15},
+    {id:"e14",name:"Musculation compound",emoji:"🏋️",duration:30,desc:"Squats, deadlifts = testostérone naturelle = barbe dense.",coins:20},
+  ],
+  teeth: [
+    {id:"e15",name:"Brossage technique",emoji:"🦷",duration:3,desc:"Technique Bass : 45° sur la gencive, petits cercles 2 min.",coins:10},
+    {id:"e16",name:"Oil pulling",emoji:"🥥",duration:10,desc:"Gargarisme huile coco 10min à jeun — antibactérien naturel.",coins:15},
+  ],
+  feet: [
+    {id:"e17",name:"Marche pieds nus",emoji:"🦶",duration:15,desc:"15 min pieds nus sur herbe ou sable stimule la circulation.",coins:15},
+    {id:"e18",name:"Étirements chevilles",emoji:"🔄",duration:10,desc:"Rotations et étirements pour activer la circulation.",coins:10},
+  ],
+  tongue: [
+    {id:"e19",name:"Respiration profonde",emoji:"🫁",duration:5,desc:"Respiration abdominale améliore l'oxygénation et la digestion.",coins:10},
+    {id:"e20",name:"Marche digestive",emoji:"🚶",duration:15,desc:"Marche légère 30min après repas améliore l'absorption B12.",coins:15},
+  ],
+  scalp: [
+    {id:"e21",name:"Massage cuir chevelu",emoji:"💆",duration:5,desc:"Massage avec huile de nigelle 5min chaque soir.",coins:15},
+    {id:"e22",name:"Inversions yoga",emoji:"🧘",duration:10,desc:"Posture du chien tête en bas 3x2min pour la circulation.",coins:15},
+  ],
+};
+
+// ─── PHASE 1 : VITACOINS WALLET ───
+function VitaCoinsWallet({user, vitaCoins, coinsHistory, onRedeem, t, lang, onClose}) {
+  const [tab, setTab] = useState("wallet");
+  const [redeeming, setRedeeming] = useState(null);
+  const [msg, setMsg] = useState("");
+
+  const REWARDS = [
+    {coins:100, label:t("coins_reward_100"), icon:"⭐", type:"week"},
+    {coins:300, label:t("coins_reward_300"), icon:"👑", type:"month"},
+    {coins:500, label:t("coins_reward_500"), icon:"🛒", type:"amazon"},
+    {coins:1000, label:t("coins_reward_1000"), icon:"💸", type:"paypal"},
+  ];
+
+  const handleRedeem = async (reward) => {
+    if(vitaCoins < reward.coins){ setMsg(t("coins_not_enough")); setTimeout(()=>setMsg(""),2500); return; }
+    setRedeeming(reward.type);
+    const ok = await CoinsService.spend(user.uid, reward.coins);
+    if(ok){ setMsg(t("coins_redeemed")); onRedeem(reward); }
+    setRedeeming(null);
+    setTimeout(()=>setMsg(""),3000);
+  };
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:999,background:"rgba(0,0,0,.85)",display:"flex",alignItems:"flex-end"}}>
+      <div style={{background:"#0c1810",borderRadius:"24px 24px 0 0",width:"100%",maxHeight:"90vh",overflowY:"auto",padding:"24px 20px 40px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <div>
+            <div className="serif" style={{fontSize:22,fontWeight:700,color:GOLD}}>🪙 VitaCoins</div>
+            <div style={{color:MUT,fontSize:12}}>{t("coins_balance")}</div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div className="serif" style={{fontSize:36,fontWeight:700,color:GOLD}}>{vitaCoins}</div>
+            <button onClick={onClose} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:12}}>✕ Fermer</button>
+          </div>
+        </div>
+
+        {msg&&<div style={{background:`${EM}14`,border:`1px solid ${EM}33`,borderRadius:10,padding:"10px 14px",color:EM,fontSize:12,marginBottom:14,textAlign:"center"}}>{msg}</div>}
+
+        <div style={{display:"flex",gap:8,marginBottom:20}}>
+          {[["wallet","💰 Solde"],["redeem","🎁 Échanger"],["how","❓ Comment"]].map(([k,l])=>(
+            <button key={k} onClick={()=>setTab(k)} style={{flex:1,background:tab===k?`${GOLD}18`:"transparent",border:`1.5px solid ${tab===k?GOLD:BDR}`,borderRadius:10,padding:"8px 4px",fontFamily:"'Outfit',sans-serif",fontSize:11,fontWeight:700,color:tab===k?GOLD:MUT,cursor:"pointer"}}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {tab==="wallet"&&(
+          <div>
+            <div style={{background:"linear-gradient(135deg,#1a1005,#0f0d06)",border:`1px solid ${GOLD}33`,borderRadius:16,padding:20,marginBottom:16,textAlign:"center"}}>
+              <div style={{fontSize:48}}>🪙</div>
+              <div className="serif" style={{fontSize:52,fontWeight:700,color:GOLD,lineHeight:1}}>{vitaCoins}</div>
+              <div style={{color:MUT,fontSize:12,marginTop:4}}>VitaCoins disponibles</div>
+            </div>
+            {coinsHistory?.length>0&&(
+              <div>
+                <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>{t("coins_history")}</div>
+                {coinsHistory.slice(0,8).map((h,i)=>(
+                  <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:i<Math.min(7,coinsHistory.length-1)?`1px solid ${BDR}`:"none"}}>
+                    <div style={{fontSize:12,color:"#a0bcaa"}}>{h.reason}</div>
+                    <div style={{color:GOLD,fontWeight:700,fontSize:13}}>+{h.amount} 🪙</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab==="redeem"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {REWARDS.map(r=>(
+              <div key={r.type} style={{background:CARD,border:`1px solid ${vitaCoins>=r.coins?GOLD+"33":BDR}`,borderRadius:16,padding:"16px",display:"flex",alignItems:"center",justifyContent:"space-between",opacity:vitaCoins>=r.coins?1:.6}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{fontSize:28}}>{r.icon}</div>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:13}}>{r.label}</div>
+                    <div style={{color:GOLD,fontSize:11,fontWeight:700}}>{r.coins} 🪙 {t("coins_req")}</div>
+                  </div>
+                </div>
+                <button onClick={()=>handleRedeem(r)} disabled={redeeming===r.type||vitaCoins<r.coins}
+                  style={{background:vitaCoins>=r.coins?`linear-gradient(135deg,${GOLD},#c49a2e)`:"#1a2a1e",color:vitaCoins>=r.coins?"#060400":MUT,border:"none",borderRadius:10,padding:"8px 14px",fontFamily:"'Outfit',sans-serif",fontSize:12,fontWeight:700,cursor:vitaCoins>=r.coins?"pointer":"not-allowed"}}>
+                  {redeeming===r.type?"...":t("coins_redeem")}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab==="how"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {[
+              {ic:"🔬",text:t("coins_per_scan"),coins:10},
+              {ic:"🔥",text:t("coins_per_streak"),coins:50},
+              {ic:"🚶",text:t("coins_per_steps"),coins:5},
+              {ic:"👥",text:t("coins_per_ref"),coins:200},
+            ].map((item,i)=>(
+              <div key={i} style={{background:CARD,border:`1px solid ${BDR}`,borderRadius:14,padding:"14px 16px",display:"flex",alignItems:"center",gap:12}}>
+                <div style={{fontSize:24}}>{item.ic}</div>
+                <div style={{flex:1,fontSize:13,color:"#a0bcaa"}}>{item.text}</div>
+                <div style={{color:GOLD,fontWeight:700,fontSize:14}}>+{item.coins} 🪙</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── PHASE 2 : PODOMÈTRE ───
+function Pedometer({totalScans, vitaCoins, user, onCoinsEarned, t, lang, onBack}) {
+  const [steps, setSteps] = useState(()=>parseInt(localStorage.getItem("vs_steps_today")||"0"));
+  const [lastReset, setLastReset] = useState(()=>localStorage.getItem("vs_steps_date")||"");
+  const [coinsFromSteps, setCoinsFromSteps] = useState(()=>parseInt(localStorage.getItem("vs_steps_coins")||"0"));
+  const GOAL = 10000;
+  const locked = totalScans < 15;
+
+  useEffect(()=>{
+    const today = new Date().toDateString();
+    if(lastReset !== today){ setSteps(0); setCoinsFromSteps(0); localStorage.setItem("vs_steps_today","0"); localStorage.setItem("vs_steps_coins","0"); localStorage.setItem("vs_steps_date",today); setLastReset(today); }
+  },[]);
+
+  useEffect(()=>{
+    if(locked) return;
+    let lastAcc = null;
+    const handleMotion = (e) => {
+      const acc = e.accelerationIncludingGravity;
+      if(!acc) return;
+      const mag = Math.sqrt(acc.x**2+acc.y**2+acc.z**2);
+      if(lastAcc!==null){ const delta=Math.abs(mag-lastAcc); if(delta>3){ setSteps(s=>{ const ns=s+1; localStorage.setItem("vs_steps_today",ns.toString()); const earned=Math.floor(ns/1000)*5; if(earned>coinsFromSteps){ const diff=earned-coinsFromSteps; setCoinsFromSteps(earned); localStorage.setItem("vs_steps_coins",earned.toString()); if(user?.uid&&!user?.isDemo) CoinsService.add(user.uid,diff,"Pas marchés"); onCoinsEarned?.(diff); } return ns; }); } }
+      lastAcc=mag;
+    };
+    if(window.DeviceMotionEvent) window.addEventListener("devicemotion",handleMotion);
+    return()=>window.removeEventListener("devicemotion",handleMotion);
+  },[locked,coinsFromSteps]);
+
+  const pct = Math.min(100,(steps/GOAL)*100);
+
+  return (
+    <div style={{minHeight:"100vh",padding:"52px 20px 80px",overflowY:"auto"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
+      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>{t("steps_title")}</div>
+
+      {locked?(
+        <div style={{background:CARD,border:`1px solid ${BDR}`,borderRadius:20,padding:32,textAlign:"center",marginTop:20}}>
+          <div style={{fontSize:48,marginBottom:16}}>🔒</div>
+          <div style={{fontWeight:700,fontSize:16,marginBottom:8}}>{t("steps_locked")}</div>
+          <div style={{color:MUT,fontSize:13}}>{t("steps_unlock_msg")} {Math.max(0,15-totalScans)} {t("steps_unlock_msg2")}</div>
+          <div style={{marginTop:20,background:"#142018",borderRadius:8,height:8,overflow:"hidden"}}>
+            <div style={{width:`${(totalScans/15)*100}%`,height:"100%",background:`linear-gradient(90deg,${EM},${GOLD})`,borderRadius:8}}/>
+          </div>
+          <div style={{color:MUT,fontSize:11,marginTop:6}}>{totalScans}/15 scans</div>
+        </div>
+      ):(
+        <div>
+          <div style={{background:"linear-gradient(135deg,#0a1a0c,#121008)",border:`1px solid ${EM}33`,borderRadius:20,padding:28,textAlign:"center",marginBottom:20}}>
+            <div style={{fontSize:64,marginBottom:4}}>🚶</div>
+            <div className="serif" style={{fontSize:56,fontWeight:700,color:steps>=GOAL?EM:GOLD,lineHeight:1}}>{steps.toLocaleString()}</div>
+            <div style={{color:MUT,fontSize:13,marginTop:4}}>{t("steps_today")} · {t("steps_goal")}: {GOAL.toLocaleString()}</div>
+            {steps>=GOAL&&<div style={{color:EM,fontWeight:700,fontSize:14,marginTop:8}}>{t("steps_congrats")}</div>}
+          </div>
+          <div style={{background:CARD,border:`1px solid ${BDR}`,borderRadius:16,padding:16,marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+              <span style={{fontSize:12,color:MUT}}>{Math.round(pct)}% de l'objectif</span>
+              <span style={{fontSize:12,color:GOLD,fontWeight:700}}>{coinsFromSteps} 🪙 {t("steps_coins")}</span>
+            </div>
+            <div style={{background:"#142018",borderRadius:6,height:12,overflow:"hidden"}}>
+              <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${EM},${GOLD})`,borderRadius:6,transition:"width .5s ease"}}/>
+            </div>
+          </div>
+          <div style={{background:CARD,border:`1px solid ${BDR}`,borderRadius:16,padding:16}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>📊 Paliers de la journée</div>
+            {[2000,5000,7500,10000].map(goal=>(
+              <div key={goal} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                <div style={{width:24,height:24,borderRadius:6,background:steps>=goal?`${EM}20`:"#142018",border:`1px solid ${steps>=goal?EM:BDR}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,flexShrink:0}}>
+                  {steps>=goal?"✓":"○"}
+                </div>
+                <div style={{flex:1,fontSize:12,color:steps>=goal?"#a0bcaa":MUT}}>{goal.toLocaleString()} pas</div>
+                <div style={{fontSize:11,color:GOLD,fontWeight:700}}>+{Math.floor(goal/1000)*5} 🪙</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PHASE 3 : EXERCICES ───
+function Exercises({zone, totalScans, user, onCoinsEarned, t, lang, onBack}) {
+  const [done, setDone] = useState(()=>JSON.parse(localStorage.getItem("vs_ex_done")||"[]"));
+  const [msg, setMsg] = useState("");
+  const locked = totalScans < 15;
+  const exList = EXERCISES_BY_ZONE[zone?.id] || EXERCISES_BY_ZONE["belly"];
+
+  const complete = async (ex) => {
+    if(done.includes(ex.id)) return;
+    const nd = [...done, ex.id];
+    setDone(nd);
+    localStorage.setItem("vs_ex_done", JSON.stringify(nd));
+    if(user?.uid&&!user?.isDemo){ await CoinsService.add(user.uid, ex.coins, `Exercice: ${ex.name}`); onCoinsEarned?.(ex.coins); }
+    setMsg(`${t("ex_complete")} ${t("ex_coins")}`);
+    setTimeout(()=>setMsg(""),3000);
+  };
+
+  return (
+    <div style={{minHeight:"100vh",padding:"52px 20px 80px",overflowY:"auto"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
+      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>{t("ex_title")}</div>
+      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:20}}>{zone?.icon} {zone?.label} · {t("ex_sub")}</div>
+
+      {msg&&<div style={{background:`${EM}14`,border:`1px solid ${EM}33`,borderRadius:10,padding:"10px 14px",color:EM,fontSize:12,marginBottom:14,textAlign:"center"}}>{msg}</div>}
+
+      {locked?(
+        <div style={{background:CARD,border:`1px solid ${BDR}`,borderRadius:20,padding:32,textAlign:"center"}}>
+          <div style={{fontSize:48,marginBottom:16}}>🔒</div>
+          <div style={{fontWeight:700,fontSize:16,marginBottom:8}}>{t("ex_locked")}</div>
+          <div style={{color:MUT,fontSize:13}}>{t("steps_unlock_msg")} {Math.max(0,15-totalScans)} {t("steps_unlock_msg2")}</div>
+        </div>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          {exList.map(ex=>{
+            const isDone = done.includes(ex.id);
+            return (
+              <div key={ex.id} style={{background:isDone?`${EM}08`:CARD,border:`1px solid ${isDone?EM+"33":BDR}`,borderRadius:18,padding:18,transition:"all .2s"}}>
+                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
+                  <div style={{fontSize:32}}>{ex.emoji}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:700,fontSize:14}}>{ex.name}</div>
+                    <div style={{color:MUT,fontSize:11}}>{ex.duration} {t("ex_mins")} · <span style={{color:GOLD}}>+{ex.coins} 🪙</span></div>
+                  </div>
+                  {isDone&&<span style={{color:EM,fontSize:18}}>✅</span>}
+                </div>
+                <div style={{fontSize:12,color:"#a0bcaa",lineHeight:1.6,marginBottom:12}}>{ex.desc}</div>
+                <button onClick={()=>complete(ex)} disabled={isDone}
+                  style={{width:"100%",background:isDone?`${EM}10`:`linear-gradient(135deg,${EM},#00cc66)`,color:isDone?EM:"#020a04",border:isDone?`1px solid ${EM}33`:"none",borderRadius:10,padding:"12px",fontFamily:"'Outfit',sans-serif",fontSize:13,fontWeight:700,cursor:isDone?"default":"pointer"}}>
+                  {isDone?t("ex_done"):t("ex_start")}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PHASE 4 : PARRAINAGE ───
+function Referral({user, vitaCoins, t, lang, onBack}) {
+  const [copied, setCopied] = useState(false);
+  const [refCount, setRefCount] = useState(0);
+  const refLink = `https://vitascann.vercel.app?ref=${user?.uid?.slice(0,8)||"xxx"}`;
+
+  useEffect(()=>{
+    if(user?.uid&&!user?.isDemo) CoinsService.getReferralCount(user.uid).then(setRefCount);
+  },[user]);
+
+  const copyLink = async () => {
+    await navigator.clipboard.writeText(refLink).catch(()=>{});
+    setCopied(true); setTimeout(()=>setCopied(false),2500);
+  };
+
+  const shareLink = async () => {
+    if(navigator.share){ await navigator.share({title:"VitaScann",text:lang==="fr"?"Essaie VitaScann — l'IA qui détecte tes carences en 30s ! 🔬":"Try VitaScann — AI that detects your deficiencies in 30s! 🔬",url:refLink}).catch(()=>{}); }
+    else copyLink();
+  };
+
+  return (
+    <div style={{minHeight:"100vh",padding:"52px 20px 80px",overflowY:"auto"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:22,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
+      <div className="serif fu" style={{fontSize:26,fontWeight:700,marginBottom:4}}>{t("ref_title")}</div>
+      <div className="fu1" style={{color:MUT,fontSize:13,marginBottom:24}}>{t("ref_sub")}</div>
+
+      <div style={{background:"linear-gradient(135deg,#0a1a0c,#121008)",border:`1px solid ${EM}33`,borderRadius:20,padding:24,marginBottom:16,textAlign:"center"}}>
+        <div style={{fontSize:48,marginBottom:8}}>👥</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div style={{background:`${EM}10`,borderRadius:12,padding:14}}>
+            <div className="serif" style={{fontSize:32,fontWeight:700,color:EM}}>{refCount}</div>
+            <div style={{color:MUT,fontSize:11}}>{t("ref_count")}</div>
+          </div>
+          <div style={{background:`${GOLD}10`,borderRadius:12,padding:14}}>
+            <div className="serif" style={{fontSize:32,fontWeight:700,color:GOLD}}>{refCount*200}</div>
+            <div style={{color:MUT,fontSize:11}}>🪙 {t("ref_earned")}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{background:CARD,border:`1px solid ${BDR}`,borderRadius:16,padding:16,marginBottom:16}}>
+        <div style={{fontSize:11,color:MUT,marginBottom:6}}>{t("ref_your_link")}</div>
+        <div style={{background:"#0a0f0a",borderRadius:10,padding:"10px 12px",fontSize:12,color:EM,wordBreak:"break-all",marginBottom:12,fontFamily:"monospace"}}>{refLink}</div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={copyLink} style={{flex:1,background:copied?`${EM}14`:"#0a140c",border:`1px solid ${copied?EM:BDR}`,borderRadius:10,padding:"12px",fontFamily:"'Outfit',sans-serif",fontSize:12,fontWeight:700,color:copied?EM:MUT,cursor:"pointer"}}>
+            {copied?t("ref_copied"):t("ref_copy")}
+          </button>
+          <button onClick={shareLink} style={{flex:1,background:`linear-gradient(135deg,${EM},#00cc66)`,color:"#020a04",border:"none",borderRadius:10,padding:"12px",fontFamily:"'Outfit',sans-serif",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+            {t("ref_share")}
+          </button>
+        </div>
+      </div>
+
+      <div style={{background:CARD,border:`1px solid ${GOLD}28`,borderRadius:16,padding:16}}>
+        <div style={{fontWeight:700,fontSize:13,color:GOLD,marginBottom:12}}>{t("ref_bonus")}</div>
+        {[t("ref_how1"),t("ref_how2")].map((txt,i)=>(
+          <div key={i} style={{display:"flex",gap:10,marginBottom:i===0?10:0,fontSize:13,color:"#a0bcaa"}}>
+            <span>{i===0?"👤":"🎁"}</span>{txt}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── VITACOINS TOAST ───
+function CoinsToast({amount, onDone}) {
+  useEffect(()=>{ const t=setTimeout(onDone,2500); return()=>clearTimeout(t); },[]);
+  return (
+    <div style={{position:"fixed",top:70,right:16,zIndex:9998,background:"linear-gradient(135deg,#1a1005,#0f0d06)",border:`1.5px solid ${GOLD}`,borderRadius:14,padding:"10px 16px",animation:"slideIn .3s ease",boxShadow:"0 4px 20px #00000066",display:"flex",alignItems:"center",gap:8}}>
+      <span style={{fontSize:22}}>🪙</span>
+      <div>
+        <div style={{color:GOLD,fontWeight:700,fontSize:14}}>+{amount} VitaCoins !</div>
+        <div style={{color:MUT,fontSize:11}}>Ajoutés à ton wallet</div>
+      </div>
+    </div>
+  );
+}
 
 // ─── PUSH NOTIFICATIONS ───
 const NotifService = {
@@ -1612,7 +2119,7 @@ function ProfileSetup({user,onSave,onSkip,t}) {
 }
 
 // ─── DASHBOARD ───
-function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily,onChallenge,onProgress,onMealPlan,history,profile,lang,setLang,t}) {
+function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily,onChallenge,onProgress,onMealPlan,onPedometer,onReferral,onWallet,history,profile,vitaCoins,lang,setLang,t}) {
   const scansLeft = user.plan==="free"?Math.max(0,3-(history?.length||0)):null;
   const challengeDay = Math.min(30, history?.length||0);
   const totalScans = history?.length||0;
@@ -1636,6 +2143,9 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             <LangToggle lang={lang} setLang={setLang}/>
+            <button onClick={onWallet} style={{background:`${GOLD}14`,border:`1px solid ${GOLD}33`,borderRadius:10,padding:"6px 12px",color:GOLD,fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
+              🪙 {vitaCoins}
+            </button>
             <button onClick={onLogout} style={{background:"none",border:`1px solid ${BDR}`,borderRadius:10,padding:"6px 12px",color:MUT,fontSize:12,cursor:"pointer"}}>{t("db_logout")}</button>
           </div>
         </div>
@@ -1674,6 +2184,9 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
             {ic:"👨‍👩‍👧",lb:t("db_family"),fn:onFamily,premium:false},
             {ic:"🏆",lb:t("db_challenge"),fn:onChallenge,premium:false},
             {ic:"🧬",lb:t("db_my_profile"),fn:onProfile,premium:false},
+            {ic:"🚶",lb:lang==="en"?"Steps":"Podomètre",fn:onPedometer,premium:false},
+            {ic:"👥",lb:lang==="en"?"Referral":"Parrainage",fn:onReferral,premium:false},
+            {ic:"🪙",lb:"VitaCoins",fn:onWallet,premium:false},
           ].map(({ic,lb,fn,premium})=>(
             <button key={lb} onClick={premium&&user.plan!=="premium"?onPaywall:fn}
               style={{background:CARD,border:`1px solid ${BDR}`,borderRadius:14,padding:"12px 6px",cursor:"pointer",textAlign:"center",position:"relative"}}>
@@ -2060,7 +2573,7 @@ async function generatePDF(result,zone,user) {
   doc.save(`VitaScann_${zone?.label||"report"}_${now.toISOString().slice(0,10)}.pdf`);
 }
 
-function Result({result,zone,user,profile,onNewScan,onHome,history,t,lang}) {
+function Result({result,zone,user,profile,onNewScan,onHome,onExercises,history,t,lang}) {
   const [exp,setExp]=useState(null);
   const [sharing,setSharing]=useState(false);
   const [showChat,setShowChat]=useState(false);
@@ -2246,6 +2759,12 @@ function Result({result,zone,user,profile,onNewScan,onHome,history,t,lang}) {
         )}
 
         <IslamicTipsCard zone={zone} profile={profile} t={t} lang={lang}/>
+
+        {onExercises&&(
+          <button onClick={onExercises} style={{width:"100%",background:`linear-gradient(135deg,#0a1a0c,#121008)`,border:`1.5px solid ${EM}44`,borderRadius:12,padding:"14px",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:700,color:EM,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            💪 {lang==="en"?"Personalized exercises +15 🪙":"Exercices personnalisés +15 🪙"}
+          </button>
+        )}
 
         <div style={{background:"#120f06",border:"1px solid #2a2010",borderRadius:12,padding:"10px 14px",fontSize:11,color:"#806040",lineHeight:1.6,marginBottom:16}}>
           {t("result_disclaimer")}
@@ -2651,9 +3170,25 @@ export default function VitaScann() {
   const [family,setFamily]=useState([]);
   const [demoUsed,setDemoUsed]=useState(false);
   const [isMeal,setIsMeal]=useState(false);
+  const [vitaCoins,setVitaCoins]=useState(0);
+  const [coinsHistory,setCoinsHistory]=useState([]);
+  const [coinsToast,setCoinsToast]=useState(null);
+  const [showWallet,setShowWallet]=useState(false);
 
-  // Init notifications au démarrage
-  useEffect(()=>{ NotifService.init(); },[]);
+  const addCoins = async (amount, reason) => {
+    if(!user?.uid||user?.isDemo) return;
+    const newBal = await CoinsService.add(user.uid, amount, reason);
+    setVitaCoins(newBal);
+    setCoinsToast(amount);
+  };
+
+  // Init notifications au démarrage + check referral
+  useEffect(()=>{
+    NotifService.init();
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if(ref) localStorage.setItem("vs_pending_ref", ref);
+  },[]);
 
   const ZONES = getZones(lang);
 
@@ -2667,7 +3202,7 @@ export default function VitaScann() {
       else if(screen==="capture")setScreen("zones");
       else if(screen==="preview")setScreen("capture");
       else if(screen==="meal_preview")setScreen("meal_capture");
-      else if(screen==="paywall"||screen==="progress"||screen==="mealplan"||screen==="family"||screen==="challenge")setScreen("dashboard");
+      else if(screen==="paywall"||screen==="progress"||screen==="mealplan"||screen==="family"||screen==="challenge"||screen==="pedometer"||screen==="exercises"||screen==="referral")setScreen("dashboard");
       else if(screen==="profile")setScreen("dashboard");
       else if(screen==="analyzing")return;
       else setScreen("dashboard");
@@ -2697,8 +3232,18 @@ export default function VitaScann() {
         setUser(u);
         if(userData.profile)setProfile(userData.profile);
         if(userData.family)setFamily(userData.family);
+        setVitaCoins(userData.vitaCoins||0);
+        setCoinsHistory(userData.coinsHistory||[]);
         const h=await ScanService.getHistory(firebaseUser.uid);
         setHistory(h);
+        // Process pending referral
+        const pendingRef = localStorage.getItem("vs_pending_ref");
+        if(pendingRef && !userData.referredBy){
+          await CoinsService.processReferral(firebaseUser.uid, pendingRef);
+          localStorage.removeItem("vs_pending_ref");
+          const updated = await getDoc(doc(db,"users",firebaseUser.uid));
+          setVitaCoins(updated.data()?.vitaCoins||0);
+        }
         setScreen(userData.profile?"dashboard":"profile");
       } else {
         const seen=localStorage.getItem("vs_onboarding");
@@ -2729,6 +3274,7 @@ export default function VitaScann() {
         setHistory(h=>[{...sd,createdAt:{toDate:()=>new Date()}},...h]);
         await ScanService.saveScan(user.uid,sd);
         NotifService.scheduleLocalReminder(user.uid);
+        await addCoins(10, `Scan ${zone?.label}`);
       }
       if(user?.isDemo)setDemoUsed(true);
       setScreen("result");
@@ -2771,6 +3317,7 @@ export default function VitaScann() {
   const handleLogout=async()=>{
     await AuthService.logout();
     setUser(null);setHistory([]);setProfile(null);setFamily([]);
+    setVitaCoins(0);setCoinsHistory([]);
     setScreen("login");
   };
 
@@ -2799,26 +3346,31 @@ export default function VitaScann() {
       <style>{G}</style>
       <div className="app" style={{overflowY:"auto"}}>
         <NotifBanner lang={lang} onDismiss={()=>{}} />
+        {coinsToast&&<CoinsToast amount={coinsToast} onDone={()=>setCoinsToast(null)}/>}
+        {showWallet&&user&&<VitaCoinsWallet user={user} vitaCoins={vitaCoins} coinsHistory={coinsHistory} onRedeem={()=>{}} t={t} lang={lang} onClose={()=>setShowWallet(false)}/>}
         {screen==="splash"       && <Splash onDone={()=>{const seen=localStorage.getItem("vs_onboarding");setScreen(seen?"login":"onboarding");}} lang={lang} setLang={setLang}/>}
         {screen==="onboarding"   && <Onboarding onDemo={handleDemo} onRegister={()=>{localStorage.setItem("vs_onboarding","1");setScreen("register");}} onLogin={()=>{localStorage.setItem("vs_onboarding","1");setScreen("login");}} {...commonProps}/>}
         {screen==="register"     && <Register onSuccess={handleAuthSuccess} onLogin={()=>setScreen("login")} t={t}/>}
         {screen==="login"        && <Login onSuccess={handleAuthSuccess} onRegister={()=>setScreen("register")} onForgot={()=>setScreen("forgot")} t={t}/>}
         {screen==="forgot"       && <ForgotPassword onBack={()=>setScreen("login")} t={t}/>}
         {screen==="profile"      && <ProfileSetup user={user} onSave={p=>{setProfile(p);setScreen("dashboard");}} onSkip={()=>setScreen("dashboard")} t={t}/>}
-        {screen==="dashboard"    && user && <Dashboard user={user} onScan={handleScan} onMealScan={handleMealScan} onPaywall={()=>setScreen("paywall")} onLogout={handleLogout} onProfile={()=>setScreen("profile")} onFamily={()=>setScreen("family")} onChallenge={()=>setScreen("challenge")} onProgress={()=>user.plan==="premium"?setScreen("progress"):setScreen("paywall")} onMealPlan={()=>user.plan==="premium"?setScreen("mealplan"):setScreen("paywall")} history={history} profile={profile} {...commonProps}/>}
+        {screen==="dashboard"    && user && <Dashboard user={user} onScan={handleScan} onMealScan={handleMealScan} onPaywall={()=>setScreen("paywall")} onLogout={handleLogout} onProfile={()=>setScreen("profile")} onFamily={()=>setScreen("family")} onChallenge={()=>setScreen("challenge")} onProgress={()=>user.plan==="premium"?setScreen("progress"):setScreen("paywall")} onMealPlan={()=>user.plan==="premium"?setScreen("mealplan"):setScreen("paywall")} onPedometer={()=>setScreen("pedometer")} onReferral={()=>setScreen("referral")} onWallet={()=>setShowWallet(true)} history={history} profile={profile} vitaCoins={vitaCoins} {...commonProps}/>}
         {screen==="zones"        && <ZonePick onSelect={z=>{setZone(z);setScreen("capture");}} onBack={()=>setScreen("dashboard")} user={user} onPaywall={()=>setScreen("paywall")} lang={lang} t={t} profile={profile}/>}
         {screen==="capture"      && zone && <Capture zone={zone} onCapture={(b,p)=>{setB64(b);setPrev(p);setScreen("preview");}} onBack={()=>setScreen("zones")} t={t}/>}
         {screen==="meal_capture" && <MealCapture onCapture={(b,p)=>{setB64(b);setPrev(p);setScreen("meal_preview");}} onBack={()=>setScreen("dashboard")} user={user} onPaywall={()=>setScreen("paywall")} t={t}/>}
         {screen==="preview"      && zone && <Preview zone={zone} preview={prev} onAnalyze={analyze} onRetake={()=>setScreen("capture")} isMeal={false} t={t}/>}
         {screen==="meal_preview" && <Preview zone={null} preview={prev} onAnalyze={analyzeMeal} onRetake={()=>setScreen("meal_capture")} isMeal={true} t={t}/>}
         {screen==="analyzing"    && <Analyzing zone={zone} isMeal={isMeal} t={t}/>}
-        {screen==="result"       && result&&zone && <Result result={result} zone={zone} user={user} profile={profile} history={history} onNewScan={()=>setScreen("zones")} onHome={()=>setScreen("dashboard")} lang={lang} t={t}/>}
+        {screen==="result"       && result&&zone && <Result result={result} zone={zone} user={user} profile={profile} history={history} onNewScan={()=>setScreen("zones")} onHome={()=>setScreen("dashboard")} onExercises={()=>setScreen("exercises")} lang={lang} t={t}/>}
         {screen==="meal_result"  && mealResult && <MealResult result={mealResult} onNewScan={()=>setScreen("meal_capture")} onHome={()=>setScreen("dashboard")} t={t}/>}
         {screen==="paywall"      && <Paywall user={user} onBack={()=>setScreen(user&&!user.isDemo?"dashboard":"onboarding")} onSuccess={()=>{setUser(u=>({...u,plan:"premium"}));setScreen("dashboard");}} t={t}/>}
         {screen==="progress"     && <Progress history={history} onBack={()=>setScreen("dashboard")} t={t}/>}
         {screen==="mealplan"     && <MealPlan profile={profile} onBack={()=>setScreen("dashboard")} user={user} t={t}/>}
         {screen==="family"       && <Family user={user} family={family} onSave={setFamily} onBack={()=>setScreen("dashboard")} onSwitchProfile={m=>{setUser(u=>({...u,name:m.name,isFamily:true}));setScreen("zones");}} t={t}/>}
         {screen==="challenge"    && <Challenge history={history} onBack={()=>setScreen("dashboard")} t={t}/>}
+        {screen==="pedometer"    && <Pedometer totalScans={history.length} vitaCoins={vitaCoins} user={user} onCoinsEarned={amt=>addCoins(amt,"Pas marchés")} t={t} lang={lang} onBack={()=>setScreen("dashboard")}/>}
+        {screen==="exercises"    && <Exercises zone={zone} totalScans={history.length} user={user} onCoinsEarned={amt=>addCoins(amt,"Exercice complété")} t={t} lang={lang} onBack={()=>setScreen("result")}/>}
+        {screen==="referral"     && <Referral user={user} vitaCoins={vitaCoins} t={t} lang={lang} onBack={()=>setScreen("dashboard")}/>}
       </div>
     </>
   );
