@@ -328,6 +328,26 @@ const T = {
     nav_family: "Famille",
     // Language selector
     lang_label: "Langue / Language",
+    // Islamic tips
+    islamic_title: "🌙 Médecine du Prophète ﷺ",
+    grandma_title: "🧕 Remèdes de grand-mère",
+    islamic_sub: "Tibb an-Nabawi — Sagesse millénaire",
+    // Gamification
+    xp_title: "⚡ Points gagnés",
+    xp_pts: "pts",
+    level_title: "Votre niveau",
+    streak_title: "🔥 Série en cours",
+    streak_days: "jours consécutifs",
+    reward_title: "🎁 Récompense débloquée !",
+    reward_week: "1 semaine Premium offerte 🎉",
+    reward_month: "1 mois Premium offert 👑",
+    reward_badge: "Badge débloqué",
+    scan_count_title: "📊 Vos stats",
+    total_scans: "Scans totaux",
+    // Ranking
+    rank_title: "🏆 Classement",
+    rank_global: "Mondial",
+    rank_you: "Vous",
   },
   en: {
     // Global
@@ -614,6 +634,26 @@ const T = {
     nav_family: "Family",
     // Language selector
     lang_label: "Langue / Language",
+    // Islamic tips
+    islamic_title: "🌙 Prophet's Medicine ﷺ",
+    grandma_title: "🧕 Grandmother Remedies",
+    islamic_sub: "Tibb an-Nabawi — Millennial Wisdom",
+    // Gamification
+    xp_title: "⚡ Points earned",
+    xp_pts: "pts",
+    level_title: "Your level",
+    streak_title: "🔥 Current streak",
+    streak_days: "consecutive days",
+    reward_title: "🎁 Reward unlocked!",
+    reward_week: "1 free Premium week 🎉",
+    reward_month: "1 free Premium month 👑",
+    reward_badge: "Badge unlocked",
+    scan_count_title: "📊 Your stats",
+    total_scans: "Total scans",
+    // Ranking
+    rank_title: "🏆 Ranking",
+    rank_global: "Global",
+    rank_you: "You",
   }
 };
 
@@ -689,6 +729,254 @@ html,body{background:#060d08;}
 
 const EM="#00ff88",GOLD="#e2b84a",MUT="#4a6e52",DANGER="#ff5555",WARN="#ffaa33",VIKING="#8b5cf6";
 const CARD="#0c1810",BDR="#192c1d";
+
+// ─── ISLAMIC / GRANDMA TIPS ───
+const ISLAMIC_TIPS = {
+  nails: {
+    islamic: [
+      "Le Prophète ﷺ a recommandé le henné (Lawsonia) pour renforcer les ongles et les protéger.",
+      "Frotter les ongles avec de l'huile de nigelle (Habatus Sawda) nourrit et renforce naturellement.",
+      "Le miel de Sidr appliqué sur les cuticules favorise la croissance selon la médecine traditionnelle.",
+    ],
+    grandma: [
+      "Tremper les ongles 10min dans de l'huile d'olive tiède + quelques gouttes de citron chaque soir.",
+      "Mélange ail écrasé + huile de coco : appliquer 15min, rincer. Renforce les ongles cassants.",
+      "Frotter les ongles avec l'intérieur d'une peau de banane — les tanins nourrissent la kératine.",
+    ],
+  },
+  eyes: {
+    islamic: [
+      "Le Prophète ﷺ utilisait le kohol (antimoine) pour les yeux et recommandait de l'appliquer la nuit.",
+      "La nigelle (Habbatus Sawda) est citée dans les hadiths pour soigner de nombreux maux, dont les yeux fatigués.",
+      "Les dattes consommées chaque matin apportent du fer et de la vitamine A bénéfiques pour la vision.",
+    ],
+    grandma: [
+      "Compresses de camomille froide 10min sur les yeux fatigués — anti-inflammatoire naturel.",
+      "Eau de rose pure (sans alcool) en collyre naturel pour soulager les yeux rouges.",
+      "Massages doux avec huile d'amande douce autour des yeux pour décontracter et nourrir.",
+    ],
+  },
+  skin: {
+    islamic: [
+      "Le Prophète ﷺ utilisait de l'huile d'olive sur sa peau et ses cheveux — mentionné dans plusieurs hadiths.",
+      "Le miel est décrit dans le Coran (An-Nahl) comme guérison — excellent masque nourrissant pour la peau.",
+      "L'eau de Zamzam bue régulièrement est associée à une peau lumineuse selon la tradition islamique.",
+    ],
+    grandma: [
+      "Masque argile blanche + eau de rose + huile d'argan : 20min, 2x/semaine. Peau nette et lumineuse.",
+      "Gommage sucre de canne + huile d'olive + quelques gouttes citron — exfoliation douce maison.",
+      "Aloe vera frais appliqué directement sur la peau sèche : hydratation immédiate et durable.",
+    ],
+  },
+  hair: {
+    islamic: [
+      "Le Prophète ﷺ oignait ses cheveux d'huile et les peignait régulièrement — sunnah du soin capillaire.",
+      "L'huile de nigelle mélangée à l'huile d'olive, appliquée sur le cuir chevelu, est une pratique prophétique.",
+      "Le henné (Lawsonia) est une sunnah pour teindre et renforcer les cheveux selon les hadiths.",
+    ],
+    grandma: [
+      "Masque œuf entier + huile d'olive + miel : 30min sous bonnet chauffant. Brillance et force exceptionnelles.",
+      "Eau de riz fermentée (rinçage final) : riche en inositol, répare la fibre capillaire abîmée.",
+      "Huile de ricin chauffée + massage cuir chevelu 10min avant shampooing : stimule la pousse.",
+    ],
+  },
+  tongue: {
+    islamic: [
+      "Le Prophète ﷺ recommandait le siwak (bâton d'arak) pour purifier la bouche et la langue chaque matin.",
+      "La nigelle consommée avec du miel est bénéfique pour la digestion et l'hygiène buccale selon les hadiths.",
+      "Rincer la bouche avec de l'eau salée est une pratique traditionnelle islamique pour l'hygiène orale.",
+    ],
+    grandma: [
+      "Gratter doucement la langue chaque matin avec un gratte-langue en cuivre — élimine les bactéries.",
+      "Gargarisme huile de coco 5-10min à jeun (oil pulling) — détoxifie et blanchit naturellement.",
+      "Tisane gingembre + curcuma + miel le matin : anti-inflammatoire puissant pour toute la sphère ORL.",
+    ],
+  },
+  feet: {
+    islamic: [
+      "Le Prophète ﷺ accordait une grande importance à la propreté des pieds lors des ablutions (wudhu).",
+      "Masser les pieds avec de l'huile de nigelle est recommandé pour les douleurs et la fatigue.",
+      "Le henné appliqué sur les pieds a des propriétés anti-fongiques reconnues dans la médecine traditionnelle.",
+    ],
+    grandma: [
+      "Bain de pieds eau chaude + vinaigre de cidre + sel de mer : anti-fongique et adoucissant puissant.",
+      "Pierre ponce + huile de coco + sucre : gommage talons fissurés, appliquer après bain chaud.",
+      "Chaussettes coton imbibées d'huile d'olive la nuit : talons réparés en 1 semaine.",
+    ],
+  },
+  belly: {
+    islamic: [
+      "Le Prophète ﷺ recommandait de manger en petites quantités — remplir un tiers de l'estomac seulement.",
+      "Le gingembre est mentionné dans le Coran (Al-Insan) — excellent pour la digestion et réduire l'inflammation.",
+      "Le jeûne (Sawm) pratiqué régulièrement est bénéfique pour le microbiome intestinal selon la science moderne.",
+    ],
+    grandma: [
+      "Tisane menthe poivrée + fenouil + anis vert après repas : carminatif naturel contre les ballonnements.",
+      "Massage ventre sens des aiguilles d'une montre avec huile de ricin tiède : stimule le transit.",
+      "Eau chaude + citron + gingembre frais à jeun : détoxifie le foie et booste le métabolisme.",
+    ],
+  },
+  scalp: {
+    islamic: [
+      "Le Prophète ﷺ prenait soin de son cuir chevelu avec de l'huile — pratique rapportée dans les hadiths.",
+      "La nigelle appliquée sur le cuir chevelu est traditionnellement utilisée contre les pellicules et démangeaisons.",
+      "Se couvrir la tête (port du taqiya/hijab) protège le cuir chevelu des agressions extérieures.",
+    ],
+    grandma: [
+      "Mélange huile d'argan + quelques gouttes d'huile essentielle de tea tree : anti-pelliculaire naturel puissant.",
+      "Jus d'oignon appliqué 30min sur le cuir chevelu : soufre organique stimule la repousse.",
+      "Vinaigre de cidre dilué (1:3) en rinçage final : rééquilibre le pH et lutte contre les démangeaisons.",
+    ],
+  },
+  body_fat: {
+    islamic: [
+      "Le Prophète ﷺ marchait régulièrement et encourageait l'activité physique — sunnah de l'exercice.",
+      "Le jeûne d'Ashura et les jeûnes volontaires du lundi/jeudi aident à réguler le métabolisme.",
+      "Manger en position assise et mastiquer lentement (sunnah) améliore la satiété et la digestion.",
+    ],
+    grandma: [
+      "Thé vert + cannelle + gingembre le matin à jeun : booste le métabolisme naturellement.",
+      "Eau chaude avec citron et poivre de Cayenne 20min avant repas : coupe-faim et brûle-graisses.",
+      "Marcher 30min après le dîner : améliore la glycémie et favorise la combustion des graisses nocturnes.",
+    ],
+  },
+  teeth: {
+    islamic: [
+      "Le Prophète ﷺ utilisait le siwak (miswak) jusqu'à 5 fois par jour — antibactérien naturel prouvé.",
+      "Se rincer la bouche (madhmadhah) lors des ablutions est une sunnah qui maintient l'hygiène dentaire.",
+      "Le miel de Sidr appliqué sur les gencives est un remède traditionnel islamique contre les inflammations.",
+    ],
+    grandma: [
+      "Pâte bicarbonate + quelques gouttes d'huile essentielle de clou de girofle : blanchissant et analgésique.",
+      "Rinçage eau salée tiède matin et soir : anti-inflammatoire et cicatrisant pour les gencives.",
+      "Frotter les dents avec l'intérieur d'une écorce de citron 1x/semaine : détartre et blanchit naturellement.",
+    ],
+  },
+  beard: {
+    islamic: [
+      "Le Prophète ﷺ a ordonné de laisser pousser la barbe et de lui faire honneur — symbol de virilité islamique.",
+      "Oindre la barbe d'huile est une sunnah — le Prophète ﷺ utilisait de l'huile de myrte selon les hadiths.",
+      "La nigelle mélangée à l'huile d'olive appliquée sur la barbe est un remède prophétique pour la croissance.",
+    ],
+    grandma: [
+      "Huile de ricin + huile de jojoba (50/50) : massage 5min chaque soir — résultats visibles en 4-6 semaines.",
+      "Cannelle en poudre + miel de Manuka : masque 20min, stimule la circulation sanguine du follicule.",
+      "Eau de rose + gingembre frais mixé : lotion tonique matin après lavage — anti-chute et densifiant.",
+    ],
+  },
+};
+
+// ─── GAMIFICATION SYSTEM ───
+const LEVELS = [
+  {min:0,    max:99,   name:"Débutant",     nameEn:"Beginner",    icon:"🌱", color:"#4a6e52"},
+  {min:100,  max:299,  name:"Curieux",      nameEn:"Curious",     icon:"🔍", color:"#38bdf8"},
+  {min:300,  max:599,  name:"Explorateur",  nameEn:"Explorer",    icon:"🗺️", color:"#c084fc"},
+  {min:600,  max:999,  name:"Expert Santé", nameEn:"Health Expert",icon:"⚡", color:"#f97316"},
+  {min:1000, max:1999, name:"Maître",       nameEn:"Master",      icon:"🏆", color:"#e2b84a"},
+  {min:2000, max:9999, name:"VitaScann Elite",nameEn:"VitaScann Elite",icon:"👑",color:"#00ff88"},
+];
+
+const MILESTONES = [
+  {scans:1,  reward:"badge",  label:"Premier Pas 🌱",         labelEn:"First Step 🌱"},
+  {scans:5,  reward:"badge",  label:"5 Scans 🔍",             labelEn:"5 Scans 🔍"},
+  {scans:10, reward:"week",   label:"10 Scans — 1 semaine offerte 🎉", labelEn:"10 Scans — 1 free week 🎉"},
+  {scans:20, reward:"badge",  label:"20 Scans — Expert 🏆",   labelEn:"20 Scans — Expert 🏆"},
+  {scans:30, reward:"month",  label:"30 Scans — 1 mois offert 👑",labelEn:"30 Scans — 1 free month 👑"},
+  {scans:50, reward:"badge",  label:"50 Scans — Légende ⚡",   labelEn:"50 Scans — Legend ⚡"},
+  {scans:100,reward:"month",  label:"100 Scans — Elite 👑",    labelEn:"100 Scans — Elite 👑"},
+];
+
+function getLevel(xp) {
+  return LEVELS.slice().reverse().find(l => xp >= l.min) || LEVELS[0];
+}
+
+function getXpForScan(score) {
+  if(score >= 80) return 30;
+  if(score >= 60) return 20;
+  return 10;
+}
+
+function calcStreak(history) {
+  if(!history || history.length === 0) return 0;
+  const today = new Date(); today.setHours(0,0,0,0);
+  let streak = 0;
+  let checkDate = new Date(today);
+  const sortedDates = history
+    .map(h => { const d = h.createdAt?.toDate?.() || new Date(); d.setHours(0,0,0,0); return d; })
+    .sort((a,b) => b-a);
+  for(let i=0; i<sortedDates.length; i++){
+    const diff = Math.round((checkDate - sortedDates[i]) / 86400000);
+    if(diff === 0 || diff === 1){ streak++; checkDate = new Date(sortedDates[i]); }
+    else break;
+  }
+  return streak;
+}
+
+// ─── REWARD POPUP ───
+function RewardPopup({reward, onClose, t, lang}) {
+  useEffect(()=>{ const tm=setTimeout(onClose,4000); return()=>clearTimeout(tm); },[onClose]);
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",background:"#00000088"}}
+      onClick={onClose}>
+      <div style={{background:"linear-gradient(135deg,#0f1a0a,#1a1005)",border:`2px solid ${GOLD}`,borderRadius:24,padding:"32px 28px",textAlign:"center",maxWidth:300,animation:"pop .4s ease"}}
+        onClick={e=>e.stopPropagation()}>
+        <div style={{fontSize:64,marginBottom:12,animation:"floatY 2s ease-in-out infinite"}}>🎁</div>
+        <div className="serif" style={{fontSize:22,fontWeight:700,color:GOLD,marginBottom:8}}>{t("reward_title")}</div>
+        <div style={{fontSize:16,color:"#edf5ef",lineHeight:1.6,marginBottom:20}}>
+          {reward==="week"?t("reward_week"):reward==="month"?t("reward_month"):t("reward_badge")}
+        </div>
+        <button className="bgold" onClick={onClose} style={{fontSize:14}}>Super, merci ! 🙏</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── XP BADGE (affiché après scan) ───
+function XpBadge({xp, level, streak, t}) {
+  const [show,setShow] = useState(true);
+  useEffect(()=>{ const tm=setTimeout(()=>setShow(false),3500); return()=>clearTimeout(tm); },[]);
+  if(!show) return null;
+  return (
+    <div style={{position:"fixed",top:20,right:16,zIndex:999,background:"linear-gradient(135deg,#0c1810,#1a1005)",border:`1.5px solid ${GOLD}`,borderRadius:16,padding:"12px 16px",animation:"slideIn .4s ease",boxShadow:"0 8px 32px #00000066"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div style={{fontSize:28}}>{level.icon}</div>
+        <div>
+          <div style={{color:GOLD,fontWeight:700,fontSize:13}}>+{xp} {t("xp_pts")} ⚡</div>
+          <div style={{color:MUT,fontSize:11}}>{level.name}</div>
+          {streak>1&&<div style={{color:"#f97316",fontSize:10,fontWeight:700}}>🔥 {streak} jours</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ISLAMIC TIPS CARD ───
+function IslamicTipsCard({zone, profile, t, lang}) {
+  const [tab, setTab] = useState("islamic");
+  const tips = ISLAMIC_TIPS[zone?.id] || ISLAMIC_TIPS["nails"];
+  const list = tab === "islamic" ? tips.islamic : tips.grandma;
+  return (
+    <div className="fu4 card" style={{marginBottom:14,border:`1px solid #2a1f0a`,background:"linear-gradient(135deg,#0f0d06,#16120a)"}}>
+      <div style={{display:"flex",gap:8,marginBottom:14}}>
+        <button onClick={()=>setTab("islamic")} style={{flex:1,background:tab==="islamic"?`${GOLD}18`:"transparent",border:`1.5px solid ${tab==="islamic"?GOLD:BDR}`,borderRadius:10,padding:"8px 6px",fontFamily:"'Outfit',sans-serif",fontSize:11,fontWeight:700,color:tab==="islamic"?GOLD:MUT,cursor:"pointer"}}>
+          🌙 {t("islamic_title")}
+        </button>
+        <button onClick={()=>setTab("grandma")} style={{flex:1,background:tab==="grandma"?`${EM}14`:"transparent",border:`1.5px solid ${tab==="grandma"?EM:BDR}`,borderRadius:10,padding:"8px 6px",fontFamily:"'Outfit',sans-serif",fontSize:11,fontWeight:700,color:tab==="grandma"?EM:MUT,cursor:"pointer"}}>
+          🧕 {t("grandma_title")}
+        </button>
+      </div>
+      <div style={{color:MUT,fontSize:10,marginBottom:10,fontStyle:"italic"}}>{tab==="islamic"?t("islamic_sub"):(lang==="en"?"Traditional remedies passed down through generations":"Remèdes transmis de génération en génération")}</div>
+      {list.map((tip,i)=>(
+        <div key={i} style={{display:"flex",gap:10,marginBottom:i<list.length-1?12:0,paddingBottom:i<list.length-1?12:0,borderBottom:i<list.length-1?`1px solid #1a1400`:"none"}}>
+          <div style={{width:28,height:28,borderRadius:8,background:tab==="islamic"?`${GOLD}12`:`${EM}10`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>
+            {tab==="islamic"?"🌙":"🧕"}
+          </div>
+          <div style={{fontSize:12,color:"#c8b080",lineHeight:1.65,paddingTop:3}}>{tip}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ─── ZONES ───
 const getZones = (t, sexe) => [
@@ -1240,6 +1528,11 @@ function ProfileSetup({user,onSave,onSkip,t}) {
 function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily,onChallenge,onProgress,onMealPlan,history,profile,lang,setLang,t}) {
   const scansLeft = user.plan==="free"?Math.max(0,3-(history?.length||0)):null;
   const challengeDay = Math.min(30, history?.length||0);
+  const totalScans = history?.length||0;
+  const totalXp = totalScans * 20;
+  const currentLevel = getLevel(totalXp);
+  const streak = calcStreak(history||[]);
+  const nextMilestone = MILESTONES.find(m => m.scans > totalScans);
 
   return (
     <div style={{minHeight:"100vh",paddingBottom:90,overflowY:"auto"}}>
@@ -1313,6 +1606,36 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
             <div style={{width:`${(challengeDay/30)*100}%`,height:"100%",background:`linear-gradient(90deg,${GOLD},${EM})`,borderRadius:6,transition:"width 1s ease"}}/>
           </div>
           <div style={{fontSize:11,color:MUT}}>{30-challengeDay} {t("db_challenge_left")}</div>
+        </div>
+
+        {/* XP / Niveau / Streak */}
+        <div className="fu3 card" style={{marginBottom:14,border:`1px solid ${currentLevel.color}33`,background:"linear-gradient(135deg,#0a0e0b,#0f1205)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+            <div style={{fontSize:36}}>{currentLevel.icon}</div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700,fontSize:14,color:currentLevel.color}}>{lang==="en"?currentLevel.nameEn:currentLevel.name}</div>
+              <div style={{color:MUT,fontSize:11}}>{totalXp} XP · {totalScans} {t("total_scans")}</div>
+            </div>
+            {streak>0&&(
+              <div style={{textAlign:"center",background:"#1a0f00",border:`1px solid #f9731633`,borderRadius:12,padding:"8px 12px"}}>
+                <div style={{fontSize:18}}>🔥</div>
+                <div style={{fontWeight:700,fontSize:14,color:"#f97316"}}>{streak}</div>
+                <div style={{fontSize:9,color:MUT}}>{lang==="en"?"days":"jours"}</div>
+              </div>
+            )}
+          </div>
+          {nextMilestone&&(
+            <>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                <span style={{fontSize:11,color:MUT}}>{lang==="en"?"Next reward":"Prochaine récompense"}</span>
+                <span style={{fontSize:11,color:GOLD,fontWeight:700}}>{nextMilestone.scans - totalScans} {lang==="en"?"scans left":"scans restants"}</span>
+              </div>
+              <div style={{background:"#142018",borderRadius:6,height:6,overflow:"hidden"}}>
+                <div style={{width:`${Math.min(100,((totalScans-(MILESTONES[Math.max(0,MILESTONES.indexOf(nextMilestone)-1)]?.scans||0))/(nextMilestone.scans-(MILESTONES[Math.max(0,MILESTONES.indexOf(nextMilestone)-1)]?.scans||0)))*100)}%`,height:"100%",background:`linear-gradient(90deg,${GOLD},${EM})`,borderRadius:6,transition:"width 1s ease"}}/>
+              </div>
+              <div style={{fontSize:11,color:MUT,marginTop:6}}>🎯 {lang==="en"?nextMilestone.labelEn:nextMilestone.label}</div>
+            </>
+          )}
         </div>
 
         {history.length>0&&(
@@ -1650,17 +1973,33 @@ async function generatePDF(result,zone,user) {
   doc.save(`VitaScann_${zone?.label||"report"}_${now.toISOString().slice(0,10)}.pdf`);
 }
 
-function Result({result,zone,user,profile,onNewScan,onHome,t}) {
+function Result({result,zone,user,profile,onNewScan,onHome,history,t,lang}) {
   const [exp,setExp]=useState(null);
   const [sharing,setSharing]=useState(false);
   const [showChat,setShowChat]=useState(false);
+  const [showReward,setShowReward]=useState(null);
   const uc=result?.urgence==="urgent"?DANGER:result?.urgence==="attention"?WARN:EM;
   const isBodyFat=result?.type_analyse==="body_fat";
   const isBeard=result?.type_analyse==="beard";
   const isTeeth=result?.type_analyse==="teeth";
+  const xpEarned = getXpForScan(result?.score||0);
+  const totalScans = history?.length||0;
+  const totalXp = totalScans * 20 + xpEarned;
+  const currentLevel = getLevel(totalXp);
+  const streak = calcStreak(history||[]);
+  const milestone = MILESTONES.find(m => m.scans === totalScans);
+
+  useEffect(()=>{
+    if(milestone && (milestone.reward==="week"||milestone.reward==="month")){
+      const timer = setTimeout(()=>setShowReward(milestone.reward), 1200);
+      return ()=>clearTimeout(timer);
+    }
+  },[milestone]);
 
   return (
     <>
+    {showReward&&<RewardPopup reward={showReward} onClose={()=>setShowReward(null)} t={t} lang={lang}/>}
+    <XpBadge xp={xpEarned} level={currentLevel} streak={streak} t={t}/>
     {showChat&&<ChatIA result={result} zone={zone} profile={profile} onClose={()=>setShowChat(false)} t={t}/>}
     <div style={{minHeight:"100vh",paddingBottom:80,overflowY:"auto"}}>
       <div style={{padding:"52px 22px 22px",background:"radial-gradient(ellipse at 50% 0%,#071c0c 0%,#060d08 70%)"}}>
@@ -1818,6 +2157,8 @@ function Result({result,zone,user,profile,onNewScan,onHome,t}) {
             <div style={{fontSize:13,color:"#a0bcaa",lineHeight:1.7}}>{result.conseil}</div>
           </div>
         )}
+
+        <IslamicTipsCard zone={zone} profile={profile} t={t} lang={lang}/>
 
         <div style={{background:"#120f06",border:"1px solid #2a2010",borderRadius:12,padding:"10px 14px",fontSize:11,color:"#806040",lineHeight:1.6,marginBottom:16}}>
           {t("result_disclaimer")}
@@ -2379,7 +2720,7 @@ export default function VitaScann() {
         {screen==="preview"      && zone && <Preview zone={zone} preview={prev} onAnalyze={analyze} onRetake={()=>setScreen("capture")} isMeal={false} t={t}/>}
         {screen==="meal_preview" && <Preview zone={null} preview={prev} onAnalyze={analyzeMeal} onRetake={()=>setScreen("meal_capture")} isMeal={true} t={t}/>}
         {screen==="analyzing"    && <Analyzing zone={zone} isMeal={isMeal} t={t}/>}
-        {screen==="result"       && result&&zone && <Result result={result} zone={zone} user={user} profile={profile} onNewScan={()=>setScreen("zones")} onHome={()=>setScreen("dashboard")} t={t}/>}
+        {screen==="result"       && result&&zone && <Result result={result} zone={zone} user={user} profile={profile} history={history} onNewScan={()=>setScreen("zones")} onHome={()=>setScreen("dashboard")} lang={lang} t={t}/>}
         {screen==="meal_result"  && mealResult && <MealResult result={mealResult} onNewScan={()=>setScreen("meal_capture")} onHome={()=>setScreen("dashboard")} t={t}/>}
         {screen==="paywall"      && <Paywall user={user} onBack={()=>setScreen(user&&!user.isDemo?"dashboard":"onboarding")} onSuccess={()=>{setUser(u=>({...u,plan:"premium"}));setScreen("dashboard");}} t={t}/>}
         {screen==="progress"     && <Progress history={history} onBack={()=>setScreen("dashboard")} t={t}/>}
