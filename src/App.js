@@ -986,7 +986,7 @@ const getZones = (t, sexe) => [
   {id:"hair",     icon:"💇", label:t==="en"?"Hair":"Cheveux",         hint:t==="en"?"Scalp, roots visible":"Cuir chevelu, racines visibles",           vitamins:"Biotine · Fer · B7",        color:"#f472b6", premium:true},
   {id:"tongue",   icon:"👅", label:t==="en"?"Tongue":"Langue",        hint:t==="en"?"Stuck out, good light":"Tirée, bonne lumière",                     vitamins:"B2 · B3 · B12",             color:"#f87171", premium:true},
   {id:"feet",     icon:"🦶", label:t==="en"?"Feet":"Pieds",           hint:t==="en"?"Sole, heels":"Plante du pied, talons",                   vitamins:"B3 · E · Zinc",             color:"#a3e635", premium:true},
-  {id:"belly",    icon:profile?.sexe==="femme"?"🤰":"🫃", label:t==="en"?"Belly":"Ventre",         hint:t==="en"?"Abdomen, torso visible":"Zone abdominale, torse visible",           vitamins:"D · Magnésium · B12",       color:"#fbbf24", premium:true},
+  {id:"belly",    icon:sexe==="femme"?"🤰":"🫃", label:t==="en"?"Belly":"Ventre",         hint:t==="en"?"Abdomen, torso visible":"Zone abdominale, torse visible",           vitamins:"D · Magnésium · B12",       color:"#fbbf24", premium:true},
   {id:"scalp",    icon:"🧠", label:t==="en"?"Scalp":"Cuir chev.",     hint:t==="en"?"Loss or irritation zones":"Zones de chute ou irritation",             vitamins:"Biotine · Zinc · B5",       color:"#e879f9", premium:true},
   {id:"body_fat", icon:"💪", label:t==="en"?"Body Fat %":"% Gras corporel", hint:t==="en"?"Torso or abdomen visible, good light":"Torse ou abdomen visible, bonne lumière",  vitamins:t==="en"?"Body composition":"Composition corporelle",    color:"#f97316", premium:true},
   {id:"teeth",    icon:"🦷", label:t==="en"?"Teeth":"Dents",          hint:t==="en"?"Wide smile, good light":"Sourire large, bonne lumière",             vitamins:"Calcium · D · K2",          color:"#e2e8f0", premium:true},
@@ -1687,7 +1687,7 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
 }
 
 // ─── ZONE PICKER ───
-function ZonePick({onSelect,onBack,user,onPaywall,lang,t}) {
+function ZonePick({onSelect,onBack,user,onPaywall,lang,t,profile}) {
   const ZONES = getZones(lang, profile?.sexe);
   return (
     <div style={{minHeight:"100vh",padding:"52px 20px 40px"}}>
@@ -2714,7 +2714,7 @@ export default function VitaScann() {
         {screen==="forgot"       && <ForgotPassword onBack={()=>setScreen("login")} t={t}/>}
         {screen==="profile"      && <ProfileSetup user={user} onSave={p=>{setProfile(p);setScreen("dashboard");}} onSkip={()=>setScreen("dashboard")} t={t}/>}
         {screen==="dashboard"    && user && <Dashboard user={user} onScan={handleScan} onMealScan={handleMealScan} onPaywall={()=>setScreen("paywall")} onLogout={handleLogout} onProfile={()=>setScreen("profile")} onFamily={()=>setScreen("family")} onChallenge={()=>setScreen("challenge")} onProgress={()=>user.plan==="premium"?setScreen("progress"):setScreen("paywall")} onMealPlan={()=>user.plan==="premium"?setScreen("mealplan"):setScreen("paywall")} history={history} profile={profile} {...commonProps}/>}
-        {screen==="zones"        && <ZonePick onSelect={z=>{setZone(z);setScreen("capture");}} onBack={()=>setScreen("dashboard")} user={user} onPaywall={()=>setScreen("paywall")} lang={lang} t={t}/>}
+        {screen==="zones"        && <ZonePick onSelect={z=>{setZone(z);setScreen("capture");}} onBack={()=>setScreen("dashboard")} user={user} onPaywall={()=>setScreen("paywall")} lang={lang} t={t} profile={profile}/>}
         {screen==="capture"      && zone && <Capture zone={zone} onCapture={(b,p)=>{setB64(b);setPrev(p);setScreen("preview");}} onBack={()=>setScreen("zones")} t={t}/>}
         {screen==="meal_capture" && <MealCapture onCapture={(b,p)=>{setB64(b);setPrev(p);setScreen("meal_preview");}} onBack={()=>setScreen("dashboard")} user={user} onPaywall={()=>setScreen("paywall")} t={t}/>}
         {screen==="preview"      && zone && <Preview zone={zone} preview={prev} onAnalyze={analyze} onRetake={()=>setScreen("capture")} isMeal={false} t={t}/>}
