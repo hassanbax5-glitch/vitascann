@@ -692,6 +692,93 @@ const ScanService = {
   saveFamily: async (userId, family) => { await setDoc(doc(db, "users", userId), { family }, { merge: true }); },
 };
 
+// ─── PUSH NOTIFICATIONS ───
+const NotifService = {
+  isSupported: () => "Notification" in window && "serviceWorker" in navigator,
+  requestPermission: async () => {
+    if(!NotifService.isSupported()) return false;
+    const perm = await Notification.requestPermission();
+    return perm === "granted";
+  },
+  scheduleLocalReminder: (userId) => {
+    localStorage.setItem("vs_last_scan", Date.now().toString());
+    localStorage.setItem("vs_user_id", userId || "");
+  },
+  checkAndNotify: () => {
+    if(!("Notification" in window)) return;
+    if(Notification.permission !== "granted") return;
+    const last = parseInt(localStorage.getItem("vs_last_scan") || "0");
+    if(!last) return;
+    const daysSince = (Date.now() - last) / (1000 * 60 * 60 * 24);
+    const lang = localStorage.getItem("vs_lang") || "fr";
+    const alreadyKey = "vs_notif_" + Date.now().toString().slice(0,8);
+    if(daysSince >= 3 && !localStorage.getItem(alreadyKey)) {
+      const msgs = {
+        fr: { title: "🌿 VitaScann t'attend !", body: "Tu n'as pas scanné depuis 3 jours. Ton corps a peut-être quelque chose à te dire. 🔬" },
+        en: { title: "🌿 VitaScann misses you!", body: "You haven't scanned in 3 days. Your body might have something to tell you. 🔬" },
+      };
+      const m = msgs[lang] || msgs.fr;
+      try {
+        new Notification(m.title, { body: m.body, icon: "/logo.svg", tag: "vitascann-reminder", renotify: true });
+        localStorage.setItem(alreadyKey, "1");
+      } catch(e) {}
+    }
+  },
+  init: () => {
+    if(!("Notification" in window)) return;
+    NotifService.checkAndNotify();
+    setInterval(NotifService.checkAndNotify, 1000 * 60 * 60);
+  },
+};
+
+function NotifBanner({lang, onDismiss}) {
+  const [show, setShow] = useState(false);
+  useEffect(()=>{
+    const dismissed = localStorage.getItem("vs_notif_dismissed");
+    const granted = "Notification" in window && Notification.permission === "granted";
+    if("Notification" in window && !dismissed && !granted) {
+      setTimeout(()=>setShow(true), 4000);
+    }
+  },[]);
+  if(!show) return null;
+  const handleAccept = async () => {
+    const ok = await NotifService.requestPermission();
+    if(ok) NotifService.init();
+    setShow(false);
+    localStorage.setItem("vs_notif_dismissed","1");
+    onDismiss?.();
+  };
+  const handleDismiss = () => {
+    setShow(false);
+    localStorage.setItem("vs_notif_dismissed","1");
+  };
+  return (
+    <div style={{position:"fixed",bottom:90,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 32px)",maxWidth:398,zIndex:888,background:"linear-gradient(135deg,#0f1a0a,#1a1005)",border:`1.5px solid ${EM}44`,borderRadius:18,padding:"16px 18px",boxShadow:"0 8px 40px #00000088",animation:"slideIn .4s ease"}}>
+      <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+        <div style={{fontSize:32,flexShrink:0}}>🔔</div>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>
+            {lang==="en"?"Stay on track":"Ne rate aucun rappel"}
+          </div>
+          <div style={{color:MUT,fontSize:12,lineHeight:1.6,marginBottom:12}}>
+            {lang==="en"
+              ?"Get notified if you haven't scanned in 3 days. 🌿"
+              :"Reçois une notif si tu n'as pas scanné depuis 3 jours. 🌿"}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={handleAccept} style={{flex:1,background:EM,color:"#020a04",border:"none",borderRadius:10,padding:"10px",fontFamily:"'Outfit',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+              {lang==="en"?"Activate 🔔":"Activer 🔔"}
+            </button>
+            <button onClick={handleDismiss} style={{background:"transparent",color:MUT,border:`1px solid ${BDR}`,borderRadius:10,padding:"10px 14px",fontFamily:"'Outfit',sans-serif",fontSize:12,cursor:"pointer"}}>
+              {lang==="en"?"Later":"Plus tard"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── STYLES ───
 const G = `
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Outfit:wght@300;400;500;600;700&display=swap');
@@ -2565,6 +2652,9 @@ export default function VitaScann() {
   const [demoUsed,setDemoUsed]=useState(false);
   const [isMeal,setIsMeal]=useState(false);
 
+  // Init notifications au démarrage
+  useEffect(()=>{ NotifService.init(); },[]);
+
   const ZONES = getZones(lang);
 
   // Fix bouton back Android PWA
@@ -2638,6 +2728,7 @@ export default function VitaScann() {
         const sd={zone:zone?.label,score:parsed.score,urgence:parsed.urgence,carences:parsed.carences?.length||0};
         setHistory(h=>[{...sd,createdAt:{toDate:()=>new Date()}},...h]);
         await ScanService.saveScan(user.uid,sd);
+        NotifService.scheduleLocalReminder(user.uid);
       }
       if(user?.isDemo)setDemoUsed(true);
       setScreen("result");
@@ -2707,6 +2798,7 @@ export default function VitaScann() {
     <>
       <style>{G}</style>
       <div className="app" style={{overflowY:"auto"}}>
+        <NotifBanner lang={lang} onDismiss={()=>{}} />
         {screen==="splash"       && <Splash onDone={()=>{const seen=localStorage.getItem("vs_onboarding");setScreen(seen?"login":"onboarding");}} lang={lang} setLang={setLang}/>}
         {screen==="onboarding"   && <Onboarding onDemo={handleDemo} onRegister={()=>{localStorage.setItem("vs_onboarding","1");setScreen("register");}} onLogin={()=>{localStorage.setItem("vs_onboarding","1");setScreen("login");}} {...commonProps}/>}
         {screen==="register"     && <Register onSuccess={handleAuthSuccess} onLogin={()=>setScreen("login")} t={t}/>}
