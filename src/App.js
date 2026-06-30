@@ -4903,7 +4903,7 @@ function Paywall({user,onBack,onSuccess,t}) {
   const L = t("back")==="← Back";
 
   const handleCheckout=()=>{
-    const url=`https://buy.stripe.com/aFa9AT1vefW9cJr7H85Rm00?prefilled_email=${encodeURIComponent(user?.email||"")}&client_reference_id=${user?.uid||""}`;
+    const url=`https://buy.stripe.com/9B6bJ17TC4dr9xfgdE5Rm01?prefilled_email=${encodeURIComponent(user?.email||"")}&client_reference_id=${user?.uid||""}`;
     window.location.href=url;
   };
 
