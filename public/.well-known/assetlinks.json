@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.vercel.vitascann.twa",
+    "sha256_cert_fingerprints": [
+      "28:56:61:E0:30:1F:85:0D:0E:94:F5:5B:6F:E3:96:DB:0A:CC:DB:71:02:CE:4E:CC:CF:4D:4B:C1:CC:32:97:B0"
+    ]
+  }
+}]
