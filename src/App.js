@@ -3840,18 +3840,18 @@ Analyse ce repas et retourne UNIQUEMENT ce JSON valide (sans markdown) :
 
 function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
   const L = lang === "en";
-  const [mode, setMode] = useState(null); // null | "photo" | "manual" | "etiquette"
+  const [mode, setMode] = useState(null);
   const [imgData, setImgData] = useState(null);
   const [detecting, setDetecting] = useState(false);
-  const [aliments, setAliments] = useState([]); // [{nom, quantite_g, data}]
+  const [aliments, setAliments] = useState([]);
   const [searchQ, setSearchQ] = useState("");
   const [searchResults, setSearchResults] = useState([]);
-  const [step, setStep] = useState("capture"); // capture | edit | analyzing | result
+  const [step, setStep] = useState("capture");
   const [result, setResult] = useState(null);
   const [descRepas, setDescRepas] = useState("");
   const [showEtiquette, setShowEtiquette] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const fileRef = useRef();
-  const fileEtiqRef = useRef();
 
   if (user?.plan !== "premium" && !user?.isDemo) return (
     <div style={{minHeight:"100vh",padding:"52px 24px 40px",display:"flex",flexDirection:"column"}}>
@@ -3862,12 +3862,11 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
         <div style={{color:MUT,fontSize:14,marginBottom:24,maxWidth:280,lineHeight:1.6}}>
           {L?"Analyze your meals, track macros & micros precisely.":"Analysez vos repas, suivez macros & micros avec précision."}
         </div>
-        <button className="bgold" onClick={onPaywall}>✨ {L?"Unlock Premium — 9.99$/month":"Débloquer Premium — 4,99$/mois"}</button>
+        <button className="bgold" onClick={onPaywall}>✨ {L?"Unlock Premium — 9.99$/month":"Débloquer Premium — 9,99$/mois"}</button>
       </div>
     </div>
   );
 
-  // Calcul des totaux nutritionnels
   const calcTotaux = () => {
     const t0 = {cal:0,prot:0,gluc:0,lip:0,fer:0,vitD:0,potass:0,zinc:0,vitC:0,calcium:0,magnes:0,fibres:0};
     aliments.forEach(a => {
@@ -3877,14 +3876,11 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
     return Object.fromEntries(Object.entries(t0).map(([k,v]) => [k, Math.round(v * 10) / 10]));
   };
 
-  // Recherche dans la base alimentaire — insensible aux accents
   const handleSearch = (q) => {
     setSearchQ(q);
     if (q.length < 2) { setSearchResults([]); return; }
     const qNorm = normalizeStr(q);
-    const res = Object.keys(FOOD_DB).filter(name =>
-      normalizeStr(name).includes(qNorm)
-    ).slice(0, 8);
+    const res = Object.keys(FOOD_DB).filter(name => normalizeStr(name).includes(qNorm)).slice(0, 8);
     setSearchResults(res);
   };
 
@@ -3898,9 +3894,10 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
   const removeAliment = (id) => setAliments(prev => prev.filter(a => a.id !== id));
   const updateQte = (id, qte) => setAliments(prev => prev.map(a => a.id === id ? {...a, quantite_g: Math.max(1, qte)} : a));
 
-  // Détection IA depuis photo
+  // ── DÉTECTION IA DEPUIS PHOTO ──
   const detectFromPhoto = async (imageData) => {
     setDetecting(true);
+    setErrorMsg("");
     try {
       const mediaType = imageData.startsWith("data:image/png") ? "image/png"
         : imageData.startsWith("data:image/webp") ? "image/webp" : "image/jpeg";
@@ -3921,6 +3918,7 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
         })
       });
       const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
       const text = data.content?.[0]?.text || "";
       const clean = text.replace(/```json|```/g, "").trim();
       const parsed = JSON.parse(clean);
@@ -3941,13 +3939,19 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
       }).filter(a => a.nom);
       setAliments(detected);
       setStep("edit");
-    } catch(e) { console.error(e); setStep("edit"); }
+    } catch(e) {
+      console.error(e);
+      setErrorMsg(L ? "Detection failed. You can add ingredients manually." : "Détection échouée. Tu peux ajouter les ingrédients manuellement.");
+      setAliments([]);
+      setStep("edit");
+    }
     setDetecting(false);
   };
 
-  // Analyse finale IA
+  // ── ANALYSE FINALE IA ──
   const analyzeRepas = async () => {
     setStep("analyzing");
+    setErrorMsg("");
     const tot = calcTotaux();
     const alimentsText = aliments.map(a => `- ${a.nom}: ${a.quantite_g}g`).join("\n");
     const totauxText = `Calories: ${tot.cal} kcal, Protéines: ${tot.prot}g, Glucides: ${tot.gluc}g, Lipides: ${tot.lip}g, Fer: ${tot.fer}mg, Vit.D: ${tot.vitD}µg, Potassium: ${tot.potass}mg, Zinc: ${tot.zinc}mg`;
@@ -3967,6 +3971,7 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
         })
       });
       const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
       const text = data.content?.[0]?.text || "";
       const clean = text.replace(/```json|```/g,"").trim();
       const parsed = JSON.parse(clean);
@@ -3974,7 +3979,11 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
       setResult(finalResult);
       setStep("result");
       onResult?.(finalResult);
-    } catch(e) { console.error(e); setStep("edit"); }
+    } catch(e) {
+      console.error(e);
+      setErrorMsg(L ? "Analysis error. Please try again." : "Erreur d'analyse. Réessaye.");
+      setStep("edit");
+    }
   };
 
   // ── ÉTAPE 0 : CHOIX DU MODE ──
@@ -4038,7 +4047,12 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
             onChange={e => {
               const file = e.target.files?.[0]; if(!file) return;
               const reader = new FileReader();
-              reader.onload = ev => setImgData(ev.target.result);
+              reader.onload = ev => { if(ev.target?.result) setImgData(ev.target.result); };
+              reader.onerror = () => {
+                // Fallback: use object URL
+                const url = URL.createObjectURL(file);
+                setImgData(url);
+              };
               reader.readAsDataURL(file);
             }}/>
         </div>
@@ -4073,7 +4087,7 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
     return (
       <div style={{minHeight:"100vh",paddingBottom:120,overflowY:"auto",background:"#060d08"}}>
         <div style={{padding:"52px 20px 16px",background:`radial-gradient(ellipse at 50% 0%, ${GOLD}12 0%, #060d08 70%)`}}>
-          <button onClick={()=>{setStep("capture");setMode(null);setAliments([]);}} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:12}}>← {L?"Back":"Retour"}</button>
+          <button onClick={()=>{setStep("capture");setMode(null);setAliments([]);setErrorMsg("");}} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:12}}>← {L?"Back":"Retour"}</button>
           <div className="serif" style={{fontSize:22,fontWeight:700,color:GOLD,marginBottom:4}}>
             {descRepas || (L?"My meal":"Mon repas")}
           </div>
@@ -4081,6 +4095,13 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
         </div>
 
         <div style={{padding:"0 18px"}}>
+          {/* Message d'erreur */}
+          {errorMsg && (
+            <div style={{background:"#2a0505",border:"1.5px solid #ef444444",borderRadius:14,padding:"14px 16px",marginBottom:14,fontSize:13,color:"#f87171"}}>
+              ⚠️ {errorMsg}
+            </div>
+          )}
+
           {/* Totaux en temps réel */}
           <div style={{background:CARD,border:`1px solid ${GOLD}33`,borderRadius:16,padding:"14px 16px",marginBottom:16}}>
             <div style={{fontWeight:700,fontSize:12,color:GOLD,marginBottom:10}}>📊 {L?"REAL-TIME TOTALS":"TOTAUX EN TEMPS RÉEL"}</div>
@@ -4134,7 +4155,7 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
             )}
           </div>
 
-          {/* Liste aliments avec quantités */}
+          {/* Liste aliments */}
           {aliments.length === 0 ? (
             <div style={{textAlign:"center",padding:"32px 20px",color:MUT,fontSize:13}}>
               {L?"Add ingredients above to start":"Ajoute des ingrédients ci-dessus pour commencer"}
@@ -4172,7 +4193,6 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
           )}
         </div>
 
-        {/* Bouton analyser */}
         {aliments.length > 0 && (
           <div style={{position:"fixed",bottom:0,left:0,right:0,padding:"16px 20px 32px",background:"linear-gradient(to top, #060d08 70%, transparent)"}}>
             <button onClick={analyzeRepas}
@@ -4194,6 +4214,54 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
         <div style={{width:"85%",height:"100%",background:`linear-gradient(90deg,${EM},${GOLD})`,borderRadius:8,animation:"slideIn .4s ease"}}/>
       </div>
       <div style={{color:MUT,fontSize:12}}>{L?"Calculating macros, micros, Tibb advice...":"Calcul macros, micros, conseils Tibb..."}</div>
+    </div>
+  );
+
+  // ── ÉTAPE RESULT (fallback local si onResult ne switche pas) ──
+  if (step === "result" && result) return (
+    <div style={{minHeight:"100vh",overflowY:"auto",background:"#060d08",paddingBottom:40}}>
+      <div style={{padding:"52px 22px 20px",background:`radial-gradient(ellipse at 50% 0%, ${GOLD}12 0%, #060d08 70%)`}}>
+        <button onClick={()=>{setStep("capture");setMode(null);setAliments([]);setResult(null);setErrorMsg("");}} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:16}}>← {L?"New scan":"Nouveau scan"}</button>
+        <div className="serif" style={{fontSize:22,fontWeight:700,color:GOLD,marginBottom:4}}>{result.nom_repas || (L?"Meal analysis":"Analyse repas")}</div>
+        <div style={{fontSize:12,color:MUT}}>{result.score_nutrition ? `Score: ${result.score_nutrition}/100` : ""}</div>
+      </div>
+      <div style={{padding:"0 20px"}}>
+        {/* Calories */}
+        <div style={{background:CARD,border:`1px solid ${GOLD}33`,borderRadius:16,padding:"16px",marginBottom:14,textAlign:"center"}}>
+          <div style={{fontSize:42,fontWeight:700,color:GOLD}}>{result.totaux?.cal || result.calories_estimees || "—"}</div>
+          <div style={{fontSize:12,color:MUT}}>kcal</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:12}}>
+            {[
+              {label:L?"Proteins":"Protéines", val:result.totaux?.prot, unit:"g", color:"#38bdf8"},
+              {label:L?"Carbs":"Glucides", val:result.totaux?.gluc, unit:"g", color:"#f97316"},
+              {label:L?"Fat":"Lipides", val:result.totaux?.lip, unit:"g", color:"#c084fc"},
+            ].map(({label,val,unit,color},i)=>(
+              <div key={i} style={{background:"#0a140c",borderRadius:10,padding:"8px 6px"}}>
+                <div style={{fontWeight:700,fontSize:16,color}}>{val || "—"}{unit}</div>
+                <div style={{fontSize:9,color:MUT}}>{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Conseil IA */}
+        {result.conseil_ia && (
+          <div style={{background:`${EM}08`,border:`1px solid ${EM}22`,borderRadius:14,padding:14,marginBottom:14}}>
+            <div style={{fontSize:11,color:EM,fontWeight:700,marginBottom:6}}>💡 {L?"AI ADVICE":"CONSEIL IA"}</div>
+            <div style={{fontSize:13,color:"#a0c8a8",lineHeight:1.6}}>{result.conseil_ia}</div>
+          </div>
+        )}
+        {/* Halal */}
+        {result.statut_halal && (
+          <div style={{background:"#1a1005",border:`1px solid ${GOLD}22`,borderRadius:14,padding:14,marginBottom:14}}>
+            <div style={{fontSize:11,color:GOLD,fontWeight:700,marginBottom:6}}>🌙 HALAL</div>
+            <div style={{fontSize:13,color:"#a08040",lineHeight:1.6}}>{result.statut_halal}</div>
+          </div>
+        )}
+        <button onClick={()=>{setStep("capture");setMode(null);setAliments([]);setResult(null);setErrorMsg("");}}
+          style={{width:"100%",background:`linear-gradient(135deg,#0a3020,#0d5030)`,border:`1.5px solid ${EM}44`,borderRadius:18,padding:"16px",fontFamily:"'Outfit',sans-serif",fontSize:15,color:EM,fontWeight:700,cursor:"pointer"}}>
+          🍽️ {L?"Scan another meal":"Scanner un autre repas"}
+        </button>
+      </div>
     </div>
   );
 

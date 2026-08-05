@@ -1,0 +1,38 @@
+{
+  "appId": "com.vitascann.app",
+  "appName": "VitaScann",
+  "webDir": "build",
+  "bundledWebRuntime": false,
+  "backgroundColor": "#060d08",
+  "android": {
+    "buildOptions": {
+      "keystorePath": "vitascann.keystore",
+      "keystoreAlias": "vitascann"
+    },
+    "backgroundColor": "#060d08",
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "StatusBar": {
+      "style": "Dark",
+      "backgroundColor": "#060d08"
+    },
+    "Camera": {
+      "permissions": ["camera"]
+    },
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#060d08",
+      "showSpinner": false
+    }
+  },
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false
+  }
+}

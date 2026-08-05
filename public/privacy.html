@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Politique de confidentialité — VitaScann</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #00ff88;
+    --gold: #e2b84a;
+    --bg: #060d08;
+    --card: #0c1810;
+    --border: #192c1d;
+    --muted: #4a6e52;
+    --text: #edf5ef;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 0 0 80px;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #0a1a0a, #060d08);
+    border-bottom: 1px solid var(--border);
+    padding: 32px 24px 28px;
+    text-align: center;
+  }
+  .logo {
+    font-size: 36px;
+    margin-bottom: 8px;
+  }
+  .app-name {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--green);
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  .header-sub {
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  /* Container */
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Last updated */
+  .updated {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 18px;
+    margin: 28px 0 32px;
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Section */
+  .section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 24px;
+    margin-bottom: 16px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .section-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--green);
+  }
+  .section p {
+    font-size: 14px;
+    color: #b8d4bc;
+    margin-bottom: 12px;
+    line-height: 1.8;
+  }
+  .section p:last-child { margin-bottom: 0; }
+
+  /* List */
+  ul.privacy-list {
+    list-style: none;
+    margin: 12px 0;
+  }
+  ul.privacy-list li {
+    font-size: 14px;
+    color: #b8d4bc;
+    padding: 6px 0 6px 20px;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+  }
+  ul.privacy-list li:last-child { border-bottom: none; }
+  ul.privacy-list li::before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: var(--green);
+    font-weight: 700;
+  }
+
+  /* Highlight box */
+  .highlight {
+    background: rgba(0,255,136,0.06);
+    border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin: 14px 0;
+    font-size: 13px;
+    color: #b8d4bc;
+    line-height: 1.7;
+  }
+  .highlight strong { color: var(--green); }
+
+  /* Contact */
+  .contact-box {
+    background: linear-gradient(135deg, #0a1a0a, #0d2a10);
+    border: 1.5px solid rgba(0,255,136,0.3);
+    border-radius: 20px;
+    padding: 28px 24px;
+    margin-top: 24px;
+    text-align: center;
+  }
+  .contact-box h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--green);
+    margin-bottom: 8px;
+  }
+  .contact-box p {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .contact-email {
+    display: inline-block;
+    background: rgba(0,255,136,0.1);
+    border: 1px solid rgba(0,255,136,0.3);
+    border-radius: 10px;
+    padding: 10px 20px;
+    color: var(--green);
+    font-weight: 700;
+    font-size: 15px;
+    text-decoration: none;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .footer a {
+    color: var(--green);
+    text-decoration: none;
+  }
+
+  /* Tag */
+  .tag {
+    display: inline-block;
+    background: rgba(226,184,74,0.15);
+    color: var(--gold);
+    border: 1px solid rgba(226,184,74,0.3);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-left: 8px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">🌿</div>
+  <div class="app-name">VitaScann</div>
+  <div class="header-sub">Politique de confidentialité — Privacy Policy</div>
+</div>
+
+<div class="container">
+
+  <div class="updated">
+    📅 Dernière mise à jour : 1er juin 2026 &nbsp;·&nbsp; Last updated: June 1, 2026
+  </div>
+
+  <!-- Introduction -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-icon">📋</span>
+      <span class="section-title">Introduction</span>
+    </div>
+    <p>
+      VitaScann ("nous", "notre", "l'application") s'engage à protéger votre vie privée. Cette politique explique comment nous collectons, utilisons et protégeons vos données personnelles.
+    </p>
+    <p>
+      VitaScann ("we", "our", "the app") is committed to protecting your privacy. This policy explains how we collect, use and protect your personal data.
+    </p>
+    <div class="highlight">
+      <strong>Notre principe fondamental :</strong> Nous ne vendons jamais vos données personnelles à des tiers. <br>
+      <strong>Our core principle:</strong> We never sell your personal data to third parties.
+    </div>
+  </div>
+
+  <!-- Données collectées -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-icon">📊</span>
+      <span class="section-title">Données collectées / Data Collected</span>
+    </div>
+    <p>Nous collectons uniquement les données nécessaires au fonctionnement de l'application :</p>
+    <ul class="privacy-list">
+      <li><strong>Compte :</strong> Email, nom, photo de profil (via Google Sign-In ou inscription email)</li>
+      <li><strong>Profil santé :</strong> Âge, sexe, objectif santé (optionnel)</li>
+      <li><strong>Photos de scan :</strong> Images uploadées pour l'analyse IA — non stockées après analyse</li>
+      <li><strong>Activité physique :</strong> Nombre de pas (via accéléromètre), données d'entraînement</li>
+      <li><strong>Données de progression :</strong> Historique des scans, VitaCoins, streak</li>
+      <li><strong>Token de notifications :</strong> Pour l'envoi de rappels push (optionnel)</li>
+    </ul>
+    <div class="highlight">
+      <strong>Photos :</strong> Les photos de scan corporel et repas sont envoyées à l'API Anthropic Claude pour analyse et ne sont <strong>pas stockées</strong> sur nos serveurs après le traitement.
+    </div>
+  </div>
+
+  <!-- Utilisation des données -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-icon">🎯</span>
+      <span class="section-title">Utilisation des données / Use of Data</span>
+    </div>
+    <p>Vos données sont utilisées uniquement pour :</p>
+    <ul class="privacy-list">
+      <li>Fournir les fonctionnalités de l'application (scans, coaching, défi)</li>
+      <li>Personnaliser votre expérience santé</li>
+      <li>Envoyer des notifications de rappel (si autorisé)</li>
+      <li>Améliorer les performances de l'application</li>
+      <li>Traiter les paiements via Stripe (plan Premium)</li>
+    </ul>
+  </div>
+
+  <!-- Permissions -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-icon">📱</span>
+      <span class="section-title">Permissions de l'application / App Permissions</span>
+    </div>
+    <ul class="privacy-list">
+      <li><strong>Caméra :</strong> Pour les scans corporels, repas et le LiveCoach (comptage d'exercices)</li>
+      <li><strong>Activité physique :</strong> Pour le pédomètre et le comptage de pas quotidiens</li>
+      <li><strong>Notifications :</strong> Pour les rappels santé (peut être désactivé)</li>
+      <li><strong>Internet :</strong> Pour synchroniser vos données et accéder à l'IA</li>
+    </ul>
+    <div class="highlight">
+      Toutes les permissions sont <strong>optionnelles</strong> sauf Internet. Vous pouvez révoquer les permissions dans les paramètres de votre appareil à tout moment.
+    </div>
+  </div>
+
+  <!-- Services tiers -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-icon">🔗</span>
+      <span class="section-title">Services tiers / Third-Party Services</span>
+    </div>
+    <p>VitaScann utilise les services tiers suivants :</p>
+    <ul class="privacy-list">
+      <li><strong>Firebase (Google) :</strong> Authentification et base de données — <a href="https://policies.google.com/privacy" style="color:var(--green)">Privacy Policy</a></li>
+      <li><strong>Anthropic Claude API :</strong> Analyse IA des photos et contenus — <a href="https://www.anthropic.com/privacy" style="color:var(--green)">Privacy Policy</a></li>
+      <li><strong>Stripe :</strong> Traitement des paiements — <a href="https://stripe.com/privacy" style="color:var(--green)">Privacy Policy</a></li>
+      <li><strong>Cloudinary :</strong> Hébergement d'images statiques (personnages RPG)</li>
+      <li><strong>Vercel :</strong> Hébergement de l'application web</li>
+    </ul>
+  </div>
+
+  <!-- Sécurité -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-icon">🔒</span>
+      <span class="section-title">Sécurité / Security</span>
+    </div>
+    <p>
+      Vos données sont protégées par le chiffrement SSL/TLS en transit et les règles de sécurité Firebase Firestore. Nous n'avons pas accès à vos mots de passe (gérés par Firebase Authentication).
+    </p>
+    <div class="highlight">
+      <strong>Données santé :</strong> Vos données de santé sont stockées de façon sécurisée dans Firebase (région europe-west9 — Paris) et ne sont jamais partagées avec des assureurs ou employeurs.
+    </div>
+  </div>
+
+  <!-- Vos droits -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-icon">⚖️</span>
+      <span class="section-title">Vos droits / Your Rights</span>
+    </div>
+    <p>Conformément au RGPD et aux lois canadiennes (LPRPDE), vous avez le droit de :</p>
+    <ul class="privacy-list">
+      <li>Accéder à vos données personnelles</li>
+      <li>Corriger vos données</li>
+      <li>Supprimer votre compte et toutes vos données</li>
+      <li>Exporter vos données (portabilité)</li>
+      <li>Retirer votre consentement à tout moment</li>
+    </ul>
+    <p style="margin-top:12px">Pour exercer ces droits, contactez-nous à l'adresse ci-dessous.</p>
+  </div>
+
+  <!-- Enfants -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-icon">👶</span>
+      <span class="section-title">Protection des mineurs / Children's Privacy</span>
+    </div>
+    <p>
+      VitaScann n'est pas destiné aux enfants de moins de 13 ans. Nous ne collectons pas sciemment de données personnelles d'enfants. Si vous pensez qu'un enfant nous a fourni des données, contactez-nous immédiatement.
+    </p>
+  </div>
+
+  <!-- Modifications -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-icon">📝</span>
+      <span class="section-title">Modifications de cette politique</span>
+    </div>
+    <p>
+      Nous pouvons mettre à jour cette politique de confidentialité. Les modifications importantes seront notifiées via l'application. La date de dernière mise à jour est indiquée en haut de cette page.
+    </p>
+  </div>
+
+  <!-- Contact -->
+  <div class="contact-box">
+    <h3>📬 Nous contacter / Contact Us</h3>
+    <p>Pour toute question concernant cette politique de confidentialité :</p>
+    <a href="mailto:privacy@vitascann.app" class="contact-email">privacy@vitascann.app</a>
+    <p style="margin-top:16px;font-size:12px;color:var(--muted)">
+      VitaScann · Montréal, Québec, Canada<br>
+      <a href="https://vitascann.vercel.app" style="color:var(--green)">vitascann.vercel.app</a>
+    </p>
+  </div>
+
+  <div class="footer">
+    <p>© 2026 VitaScann. Tous droits réservés.</p>
+    <p style="margin-top:4px"><a href="https://vitascann.vercel.app">Retour à l'application</a></p>
+  </div>
+
+</div>
+</body>
+</html>
