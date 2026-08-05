@@ -5728,10 +5728,10 @@ const CALI_IMG_MAP = {
 function ExerciseVisual({svgId, size=80, type="gym"}) {
   const imgKey = CALI_IMG_MAP[svgId];
   const [imgError, setImgError] = useState(false);
-  if(imgKey && IMG[imgKey] && !imgError) {
+  if(imgKey && CALI_IMG_MAP[imgKey] && !imgError) {
     return (
       <img
-        src={IMG[imgKey]}
+        src={CALI_IMG_MAP[imgKey]}
         alt={svgId}
         style={{width:size, height:size, objectFit:"contain", borderRadius:8}}
         onError={()=>setImgError(true)}
