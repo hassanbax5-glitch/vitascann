@@ -12,9 +12,6 @@
 // ============================================================
 
 import { useState, useEffect, useCallback, useRef } from "react";
-
-const ANTHROPIC_KEY = process.env.REACT_APP_ANTHROPIC_KEY;
-
 const EM   = "#00ff88";
 const GOLD = "#e2b84a";
 const MUT  = "#4a6e52";
@@ -342,17 +339,18 @@ function buildMorningPrompt(lang, profil, data, profile) {
   const p = PROFILS[profil];
   const streak = data.streak || 0;
   const niveau = getNiveau(data.xp || 0);
-  const defi = getDefiDuJour(profil, lang);
+  const exemplesDefi = (L ? p.defis_en : p.defis_fr).slice(0, 4).join(" / ");
 
-  const systemFR = `Tu es le coach mindset de VitaScann. Tu génères un message d'activation du matin ultra-personnalisé pour un guerrier en mode "${p.labelFR}". 
+  const systemFR = `Tu es le coach mindset de VitaScann. Tu génères un message d'activation du matin ultra-personnalisé ET le défi du jour pour un guerrier en mode "${p.labelFR}". 
 Niveau actuel: ${niveau.label} (${streak} jours de streak, ${data.xp || 0} XP).
-Défi du jour: "${defi}"
 Profil utilisateur: ${profile?.objectif || "sante"}, ${profile?.sexe || "homme"}.
+Style d'exemples de défis pour ce profil (inspire-toi du ton, invente-en un NOUVEAU différent): ${exemplesDefi}
 
-Génère un message qui:
+Génère un défi du jour ORIGINAL (pas une copie des exemples), concret, faisable en une journée, dans le même esprit que les exemples.
+Puis génère un message qui:
 - Commence fort — comme si tu secouais le guerrier pour qu'il se lève
 - Mentionne son niveau et son streak si impressionnant
-- Intègre le défi du jour naturellement
+- Intègre CE défi du jour naturellement
 - Cite une vérité dure si besoin
 - Termine avec un appel à l'action immédiat
 
@@ -361,18 +359,20 @@ Retourne UNIQUEMENT un JSON valide sans markdown:
   "message": "Le message complet en 4-6 phrases percutantes",
   "cri_de_guerre": "1 phrase ultra-courte style battle cry — max 8 mots",
   "tibb": "Conseil Tibb an-Nabawi ou hadith lié au profil",
-  "focus_du_jour": "1 chose unique sur laquelle se concentrer aujourd'hui"
+  "focus_du_jour": "1 chose unique sur laquelle se concentrer aujourd'hui",
+  "defi_du_jour": "Le défi original et concret du jour, en 1 phrase actionnable"
 }`;
 
-  const systemEN = `You are VitaScann's mindset coach. Generate an ultra-personalized morning activation message for a warrior in "${p.labelEN}" mode.
+  const systemEN = `You are VitaScann's mindset coach. Generate an ultra-personalized morning activation message AND today's challenge for a warrior in "${p.labelEN}" mode.
 Current level: ${niveau.labelEn || niveau.label} (${streak}-day streak, ${data.xp || 0} XP).
-Today's challenge: "${defi}"
 User profile: ${profile?.objectif || "health"}, ${profile?.sexe || "homme"}.
+Example challenge style for this profile (match the tone, invent a NEW different one): ${exemplesDefi}
 
-Generate a message that:
+Generate an ORIGINAL today's challenge (not a copy of the examples), concrete, doable in one day, in the same spirit as the examples.
+Then generate a message that:
 - Starts strong — like shaking the warrior awake
 - Mentions their level and streak if impressive
-- Naturally integrates today's challenge
+- Naturally integrates THIS challenge
 - Cites a hard truth if needed
 - Ends with an immediate call to action
 
@@ -381,7 +381,8 @@ Return ONLY valid JSON without markdown:
   "message": "Full message in 4-6 punchy sentences",
   "cri_de_guerre": "1 ultra-short battle cry — max 8 words",
   "tibb": "Tibb an-Nabawi advice or hadith related to the profile",
-  "focus_du_jour": "1 unique thing to focus on today"
+  "focus_du_jour": "1 unique thing to focus on today",
+  "defi_du_jour": "The original, concrete challenge of the day, in 1 actionable sentence"
 }`;
 
   return {
@@ -393,7 +394,7 @@ Return ONLY valid JSON without markdown:
 // ═══════════════════════════════════════════════════════════
 // COMPOSANT PRINCIPAL
 // ═══════════════════════════════════════════════════════════
-export default function MindsetGuerrier({ user, onBack, onCoinsEarned, lang, profile }) {
+export default function MindsetGuerrier({ user, onBack, onCoinsEarned, lang, profile, onStreakUpdate, onStreakMilestone, onTasksUpdate }) {
   const L = lang === "en";
   const sexe = profile?.sexe || "homme";
   const avatarSet = AVATARS[sexe] || AVATARS["homme"];
@@ -406,6 +407,10 @@ export default function MindsetGuerrier({ user, onBack, onCoinsEarned, lang, pro
   const [imgErr, setImgErr] = useState(false);
   const [animIn, setAnimIn] = useState(false);
   const [showCitation, setShowCitation] = useState(false);
+  const [tasks, setTasks] = useState(() => { try { return JSON.parse(localStorage.getItem("vs_mindset_tasks_v1") || "[]"); } catch { return []; } });
+  const [newTaskText, setNewTaskText] = useState("");
+  const [addingTask, setAddingTask] = useState(false);
+  const [taskError, setTaskError] = useState("");
 
   const profil = data.profil;
   const p = PROFILS[profil] || null;
@@ -413,6 +418,18 @@ export default function MindsetGuerrier({ user, onBack, onCoinsEarned, lang, pro
   const nextNiv = getNextNiveau(data.xp || 0);
   const streak = data.streak || 0;
   const xp = data.xp || 0;
+
+  const getTomorrow = () => { const d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); };
+  const todaysTasks = tasks.filter(t => t.forDate === getToday());
+  const tomorrowsTasks = tasks.filter(t => t.forDate === getTomorrow());
+  const todayAllDone = todaysTasks.length > 0 && todaysTasks.every(t => t.done);
+  const canAddToday = todaysTasks.length < 3;
+  const canAddTomorrow = todaysTasks.length >= 3 && todayAllDone && tomorrowsTasks.length < 3;
+
+  // ─── Prévient App.js du nombre de tâches en attente — utilisé dans la notif du soir ───
+  useEffect(() => {
+    if (profil && onTasksUpdate) onTasksUpdate(profil, todaysTasks.filter(t => !t.done).length);
+  }, [profil, tasks]);
 
   // Check si défi déjà complété aujourd'hui
   useEffect(() => {
@@ -444,9 +461,9 @@ export default function MindsetGuerrier({ user, onBack, onCoinsEarned, lang, pro
     setLoadingMsg(true);
     try {
       const prompt = buildMorningPrompt(lang, pid, currentData || data, profile);
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/claude", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 600, system: prompt.system, messages: [{ role: "user", content: prompt.user }] }),
       });
       const d2 = await res.json();
@@ -456,7 +473,23 @@ export default function MindsetGuerrier({ user, onBack, onCoinsEarned, lang, pro
       const newData = { ...(currentData || data), morningMsg: parsed, lastMsgDate: getToday() };
       setData(newData);
       saveData(newData);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      // ─── Message de secours — jamais coincé sur "Chargement..." pour rien ───
+      const pp = PROFILS[pid];
+      if (pp) {
+        const citations = L ? pp.citations_en : pp.citations_fr;
+        const randomCitation = citations?.[Math.floor(Math.random()*citations.length)] || "";
+        const fallback = {
+          message: randomCitation || (L ? "Your challenge today is real, and your streak is waiting on you." : "Ton défi d'aujourd'hui est bien réel, et ton streak t'attend."),
+          cri_de_guerre: "",
+          tibb: "",
+          focus_du_jour: getDefiDuJour(pid, lang),
+          defi_du_jour: getDefiDuJour(pid, lang),
+        };
+        setMorningMsg(fallback);
+      }
+    }
     finally { setLoadingMsg(false); }
   }, [lang, profil, data, profile]);
 
@@ -464,7 +497,15 @@ export default function MindsetGuerrier({ user, onBack, onCoinsEarned, lang, pro
     if (profil && screen === "home") loadMorningMessage(profil, data);
   }, [profil]);
 
+  // ─── Tient la notif du soir à jour avec le vrai streak, dès l'ouverture du module ───
+  useEffect(() => {
+    if (profil && onStreakUpdate) onStreakUpdate(profil, streak);
+  }, [profil, streak]);
+
+  const STREAK_MILESTONES = [7, 30, 100];
+
   // ─── Compléter le défi ───
+  const [milestoneHit, setMilestoneHit] = useState(null);
   const completerDefi = () => {
     if (defiDone) return;
     const today = getToday();
@@ -473,15 +514,97 @@ export default function MindsetGuerrier({ user, onBack, onCoinsEarned, lang, pro
     const yKey = yesterday.toISOString().slice(0, 10);
     const newStreak = lastStreak === yKey ? (data.streak || 0) + 1 : 1;
     const xpGain = 15 + newStreak * 2;
-    const newData = { ...data, lastDefi: today, streak: newStreak, xp: (data.xp || 0) + xpGain, history: [{ date: today, profil, xp: xpGain }, ...(data.history || [])].slice(0, 60) };
+    const rewardsGranted = data.rewardsGranted || [];
+    const hitMilestone = STREAK_MILESTONES.includes(newStreak) && !rewardsGranted.includes(newStreak);
+    const newData = {
+      ...data, lastDefi: today, streak: newStreak, xp: (data.xp || 0) + xpGain,
+      history: [{ date: today, profil, xp: xpGain }, ...(data.history || [])].slice(0, 60),
+      rewardsGranted: hitMilestone ? [...rewardsGranted, newStreak] : rewardsGranted,
+    };
     setData(newData);
     saveData(newData);
     setDefiDone(true);
     if (onCoinsEarned) onCoinsEarned(xpGain);
+    if (onStreakUpdate) onStreakUpdate(profil, newStreak);
+    if (hitMilestone) {
+      if (onStreakMilestone) onStreakMilestone(newStreak);
+      setMilestoneHit(newStreak);
+    }
+  };
+
+  // ─── Ajouter une tâche — max 3/jour, l'IA valide + donne un conseil ───
+  const addTask = useCallback(async () => {
+    const text = newTaskText.trim();
+    if (!text || !profil) return;
+    setTaskError("");
+    if (!canAddToday && !canAddTomorrow) {
+      setTaskError(L ? "You already have 3 tasks today — finish them first!" : "T'as déjà 3 tâches aujourd'hui — termine-les d'abord !");
+      return;
+    }
+    setAddingTask(true);
+    const targetDate = canAddToday ? getToday() : getTomorrow();
+    let aiTip = "", valid = true;
+    try {
+      const p2 = PROFILS[profil];
+      const sys = L
+        ? `You're a coach for a "${p2.labelEN}" warrior. Task submitted: "${text}". First check: is this a real, specific, actionable task (not gibberish, not empty, not random characters)? Return ONLY valid JSON: {"valid":true/false,"tip":"1 short concrete tip max 20 words if valid, empty string if not"}`
+        : `Tu es le coach d'un guerrier en mode "${p2.labelFR}". Tâche soumise : "${text}". Vérifie d'abord : est-ce une vraie tâche concrète et actionnable (pas du charabia, pas vide, pas des caractères random) ? Retourne UNIQUEMENT un JSON valide : {"valid":true/false,"tip":"1 conseil court max 20 mots si valide, chaîne vide sinon"}`;
+      const res = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 150, system: sys, messages: [{ role: "user", content: L ? "Validate and give the tip." : "Valide et donne le conseil." }] }),
+      });
+      const d2 = await res.json();
+      const text2 = (d2.content?.map(b => b.text || "").join("") || "").trim();
+      const parsed = JSON.parse(text2.replace(/```json|```/g, "").trim());
+      valid = parsed.valid !== false;
+      aiTip = parsed.tip || "";
+    } catch (e) { console.error(e); /* si l'IA échoue, on laisse passer par défaut plutôt que de bloquer l'utilisateur */ }
+
+    if (!valid) {
+      setTaskError(L ? "That doesn't look like a real task — try again with something specific." : "Ça ressemble pas à une vraie tâche — réessaie avec quelque chose de précis.");
+      setAddingTask(false);
+      return;
+    }
+
+    const newTask = { id: Date.now().toString(), text, done: false, aiTip, forDate: targetDate, createdAtTs: Date.now() };
+    const nt = [newTask, ...tasks];
+    setTasks(nt);
+    localStorage.setItem("vs_mindset_tasks_v1", JSON.stringify(nt));
+    setNewTaskText("");
+    setAddingTask(false);
+  }, [newTaskText, profil, tasks, lang, canAddToday, canAddTomorrow]);
+
+  // ─── Compléter une tâche — coins gagnés, anti-spam 60s, fusion avec le streak si les 3 sont faites ───
+  const completeTask = (id) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task || task.done) return;
+    if (Date.now() - (task.createdAtTs || 0) < 60000) {
+      setTaskError(L ? "Wait a bit before checking this one off 😉" : "Attends un peu avant de cocher celle-ci 😉");
+      return;
+    }
+    setTaskError("");
+    const nt = tasks.map(t => t.id === id ? { ...t, done: true } : t);
+    setTasks(nt);
+    localStorage.setItem("vs_mindset_tasks_v1", JSON.stringify(nt));
+    if (onCoinsEarned) onCoinsEarned(10);
+
+    // Si c'était la 3e tâche du jour et le défi IA pas encore fait → compte aussi pour le streak
+    const updatedToday = nt.filter(t => t.forDate === getToday());
+    if (updatedToday.length === 3 && updatedToday.every(t => t.done) && !defiDone) {
+      completerDefi();
+    }
+  };
+
+  const deleteTask = (id) => {
+    const nt = tasks.filter(t => t.id !== id);
+    setTasks(nt);
+    localStorage.setItem("vs_mindset_tasks_v1", JSON.stringify(nt));
   };
 
   // ─── Progress barre XP ───
   const xpProgress = nextNiv ? Math.round(((xp - niveau.xpReq) / (nextNiv.xpReq - niveau.xpReq)) * 100) : 100;
+
 
   // ════════════════════════════════════════
   // SCREEN : CHOIX PROFIL
@@ -528,12 +651,37 @@ export default function MindsetGuerrier({ user, onBack, onCoinsEarned, lang, pro
   // SCREEN : HOME (profil choisi)
   // ════════════════════════════════════════
   if (screen === "home" && p) {
-    const defi = getDefiDuJour(profil, lang);
+    // Défi du jour : généré par l'IA (morningMsg.defi_du_jour) si dispo, sinon liste statique en secours
+    const defi = morningMsg?.defi_du_jour || getDefiDuJour(profil, lang);
     const citation = getCitationDuJour(profil, lang);
     const avatarImg = xp >= 210 ? avatarSet.high : avatarSet.low;
 
+    const REWARD_DAYS = {7:"7 jours",30:"1 mois",100:"3 mois"};
+    const REWARD_DAYS_EN = {7:"7 days",30:"1 month",100:"3 months"};
+
     return (
       <div style={{ minHeight: "100vh", paddingBottom: 100, overflowY: "auto", background: "#060d08" }}>
+
+        {/* Célébration palier de streak — vraie récompense Premium */}
+        {milestoneHit && (
+          <div style={{position:"fixed",inset:0,background:"#000c",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+            <div style={{background:"linear-gradient(135deg,#1a1508,#0d0a12)",border:`2px solid ${GOLD}66`,borderRadius:24,padding:28,textAlign:"center",maxWidth:320,boxShadow:`0 0 60px ${GOLD}44`}}>
+              <div style={{fontSize:56,marginBottom:12}}>🏆</div>
+              <div className="serif" style={{fontSize:20,fontWeight:700,color:GOLD,marginBottom:8}}>
+                {L?"Milestone reached!":"Palier atteint !"}
+              </div>
+              <div style={{fontSize:14,color:"#edf5ef",lineHeight:1.6,marginBottom:16}}>
+                {L
+                  ? `${milestoneHit}-day streak! You just earned ${REWARD_DAYS_EN[milestoneHit]} of Premium, free.`
+                  : `${milestoneHit} jours de streak ! Tu viens de gagner ${REWARD_DAYS[milestoneHit]} de Premium, offert.`}
+              </div>
+              <button onClick={()=>setMilestoneHit(null)}
+                style={{width:"100%",background:`linear-gradient(135deg,${GOLD},#f59e0b)`,border:"none",borderRadius:14,padding:"12px",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:700,color:"#0a0a0a",cursor:"pointer"}}>
+                {L?"Let's go! 🔥":"C'est parti ! 🔥"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Hero */}
         <div style={{ padding: "52px 22px 24px", background: `radial-gradient(ellipse at 50% 0%,${p.colorPrimary}18 0%,#060d08 65%)`, position: "relative", overflow: "hidden" }}>
@@ -642,6 +790,84 @@ export default function MindsetGuerrier({ user, onBack, onCoinsEarned, lang, pro
             ) : (
               <div style={{ textAlign: "center", color: EM, fontSize: 14, fontWeight: 700 }}>
                 🔥 {streak} {L ? "day streak! Keep going!" : "jours de streak ! Continue !"}
+              </div>
+            )}
+          </div>
+
+          {/* Tes tâches — top 3 du jour, gestionnaire actif avec conseils IA */}
+          <div style={{ background: CARD, border: `1px solid ${BDR}`, borderRadius: 18, padding: 18, marginBottom: 14 }}>
+            <div style={{ fontSize: 11, color: MUT, fontWeight: 700, letterSpacing: .8, marginBottom: 4 }}>
+              📋 {L ? "TODAY'S TOP 3" : "TES 3 TÂCHES DU JOUR"} ({todaysTasks.filter(t=>t.done).length}/3)
+            </div>
+            <div style={{ fontSize: 10, color: MUT, marginBottom: 14 }}>
+              {L ? "Max 3 per day — pick what really matters." : "Max 3 par jour — choisis ce qui compte vraiment."}
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <input
+                value={newTaskText}
+                onChange={e => setNewTaskText(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && !addingTask) addTask(); }}
+                placeholder={
+                  canAddToday ? (L ? "Add a task..." : "Ajoute une tâche...")
+                  : canAddTomorrow ? (L ? "Plan for tomorrow..." : "Planifie pour demain...")
+                  : (L ? "3/3 done — come back tomorrow!" : "3/3 faites — reviens demain !")
+                }
+                disabled={!canAddToday && !canAddTomorrow}
+                style={{ flex: 1, background: "#0a1510", border: `1px solid ${BDR}`, borderRadius: 10, padding: "10px 12px", fontFamily: "'Outfit',sans-serif", fontSize: 13, color: "#edf5ef", outline: "none" }}
+              />
+              <button onClick={addTask} disabled={!newTaskText.trim() || addingTask || (!canAddToday && !canAddTomorrow)}
+                style={{ background: newTaskText.trim() ? p.colorPrimary : "#1a2a1e", border: "none", borderRadius: 10, padding: "0 16px", color: newTaskText.trim() ? "#0a0a0a" : MUT, fontWeight: 700, cursor: newTaskText.trim() ? "pointer" : "not-allowed", fontFamily: "'Outfit',sans-serif" }}>
+                {addingTask ? "..." : "+"}
+              </button>
+            </div>
+
+            {taskError && (
+              <div style={{ fontSize: 11, color: "#ef4444", marginBottom: 12 }}>⚠️ {taskError}</div>
+            )}
+
+            {todaysTasks.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "12px 0", color: MUT, fontSize: 12 }}>
+                {L ? "No tasks yet — add your top priority above." : "Aucune tâche — ajoute ta priorité #1 ci-dessus."}
+              </div>
+            ) : (
+              todaysTasks.map(t => (
+                <div key={t.id} style={{ background: t.done ? `${EM}08` : "#0a1510", border: `1px solid ${t.done ? EM+"33" : BDR}`, borderRadius: 12, padding: 12, marginBottom: 8 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <button onClick={() => completeTask(t.id)} disabled={t.done}
+                      style={{ width: 22, height: 22, borderRadius: 6, border: `1.5px solid ${t.done ? EM : p.colorPrimary}`, background: t.done ? EM : "transparent", flexShrink: 0, cursor: t.done ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1 }}>
+                      {t.done && <span style={{ color: "#060d08", fontSize: 13, fontWeight: 900 }}>✓</span>}
+                    </button>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, color: t.done ? MUT : "#edf5ef", textDecoration: t.done ? "line-through" : "none" }}>{t.text}</div>
+                      {t.aiTip && !t.done && (
+                        <div style={{ fontSize: 11, color: p.colorPrimary, marginTop: 4, fontStyle: "italic" }}>💡 {t.aiTip}</div>
+                      )}
+                      {t.done && <div style={{ fontSize: 10, color: EM, marginTop: 4, fontWeight: 700 }}>✓ {L?"+10 coins earned":"+10 coins gagnés"}</div>}
+                    </div>
+                    <button onClick={() => deleteTask(t.id)} style={{ background: "none", border: "none", color: MUT, cursor: "pointer", fontSize: 14, padding: 2, flexShrink: 0 }}>✕</button>
+                  </div>
+                </div>
+              ))
+            )}
+
+            {todayAllDone && todaysTasks.length === 3 && (
+              <div style={{ textAlign: "center", padding: "8px 0 4px", color: EM, fontSize: 12, fontWeight: 700 }}>
+                🎉 {L ? "All 3 done! Great work today." : "Tes 3 tâches sont faites ! Bravo pour aujourd'hui."}
+              </div>
+            )}
+
+            {tomorrowsTasks.length > 0 && (
+              <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${BDR}` }}>
+                <div style={{ fontSize: 10, color: MUT, fontWeight: 700, marginBottom: 10 }}>
+                  🌙 {L ? "PLANNED FOR TOMORROW" : "PRÉVU POUR DEMAIN"} ({tomorrowsTasks.length}/3)
+                </div>
+                {tomorrowsTasks.map(t => (
+                  <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: "#a0c8a8", flex: 1 }}>{t.text}</span>
+                    <button onClick={() => deleteTask(t.id)} style={{ background: "none", border: "none", color: MUT, cursor: "pointer", fontSize: 13 }}>✕</button>
+                  </div>
+                ))}
               </div>
             )}
           </div>

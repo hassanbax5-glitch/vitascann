@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "863137345831",
+    "project_id": "vitascann",
+    "storage_bucket": "vitascann.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:863137345831:android:beb319e4c013a592947902",
+        "android_client_info": {
+          "package_name": "app.vercel.vitascann.twa"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "863137345831-8m7p4658kaj2nvhokk7lhoatkq7rubbt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAhqyBkzWzSvntdGHmwK2qUwDpMvTIrIcc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "863137345831-8m7p4658kaj2nvhokk7lhoatkq7rubbt.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

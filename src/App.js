@@ -18,6 +18,7 @@
 // ============================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { RECETTES, getRecetteParCategorie } from "./recettesData";
 import { initializeApp } from "firebase/app";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
@@ -35,14 +36,15 @@ import NutritionLabelScan from "./NutritionLabelScan";
 import ScoreEnergie from "./ScoreEnergie";
 import MindsetGuerrier from "./MindsetGuerrier";
 import RealiteBrutale from "./RealiteBrutale";
-import ScanEnvironnement from "./ScanEnvironnement";
-import MotivationModule from "./MotivationModule";
 import ScoreImmunite from "./ScoreImmunite";
 import ScannerFutur from "./ScannerFutur";
 import ScoreDopamine from "./ScoreDopamine";
 import SoloLevelingChallenge from "./SoloLevelingChallenge";
 import ModuleRichesse from "./ModuleRichesse";
+import RecettesSante from "./RecettesSante";
+import BilanComplet from "./BilanComplet";
 import { initCapacitor, isNative, NativeHaptics, NativePush, NativeStatusBar } from "./CapacitorService";
+import { LocalNotifications } from "@capacitor/local-notifications";
 
 // ─── useRangAura — aura selon rang Solo Leveling ───
 const AURA_DEFS = {
@@ -123,8 +125,6 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
-const ANTHROPIC_KEY = process.env.REACT_APP_ANTHROPIC_KEY;
-
 // ─── TRADUCTIONS ───
 const T = {
   fr: {
@@ -223,7 +223,7 @@ const T = {
     db_scans_left: "scan(s) restant(s)",
     db_logout: "Déco.",
     db_body_scan: "Scan corporel",
-    db_body_sub: "11 zones analysées",
+    db_body_sub: "11 zones dont %gras",
     db_meal_scan: "Scan repas",
     db_meal_sub: "Calories & carences",
     db_progress: "Progression",
@@ -607,7 +607,7 @@ const T = {
     db_scans_left: "scan(s) remaining",
     db_logout: "Logout",
     db_body_scan: "Body scan",
-    db_body_sub: "11 zones analyzed",
+    db_body_sub: "11 zones incl. %fat",
     db_meal_scan: "Meal scan",
     db_meal_sub: "Calories & deficiencies",
     db_progress: "Progress",
@@ -958,15 +958,16 @@ const CoinsService = {
     return true;
   },
   getReferralCount: async (userId) => {
-    const q = query(collection(db,"users"), where("referredBy","==",userId));
+    const q = query(collection(db,"users"), where("referredBy","==",userId), where("referralRewarded","==",true));
     const snap = await getDocs(q);
     return snap.size;
   },
-  processReferral: async (newUserId, referrerId) => {
+  // Payé au 1er scan complété du nouvel utilisateur — pas à l'inscription (anti-faux-comptes)
+  rewardReferralIfFirstScan: async (newUserId, referrerId) => {
     if(!referrerId || referrerId === newUserId) return;
-    await setDoc(doc(db,"users",newUserId),{referredBy:referrerId},{merge:true});
-    await CoinsService.add(referrerId, 200, "Parrainage ami");
+    await CoinsService.add(referrerId, 200, "Parrainage ami — 1er scan complété");
     await CoinsService.add(newUserId, 100, "Bonus inscription parrainage");
+    await setDoc(doc(db,"users",newUserId),{referralRewarded:true},{merge:true});
   },
 };
 
@@ -1052,9 +1053,9 @@ async function callGymAI(muscle, seanceData) {
   const contextMsg = seanceData ?
     `\n\nDonnées de la séance :\n${JSON.stringify(seanceData, null, 2)}\n\nBasé sur ces performances réelles, donne des conseils personnalisés.` : "";
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetch("/api/claude", {
       method:"POST",
-      headers:{"Content-Type":"application/json","x-api-key": process.env.REACT_APP_ANTHROPIC_KEY || "","anthropic-version":"2023-06-01"},
+      headers: { "Content-Type": "application/json" },
       body:JSON.stringify({model:"claude-opus-4-5",max_tokens:2000,messages:[{role:"user",content:prompt+contextMsg}]})
     });
     const data = await res.json();
@@ -1084,40 +1085,9 @@ function VitaCoinsWallet({user, vitaCoins, coinsHistory, onRedeem, t, lang, onCl
   const [msg, setMsg] = useState("");
 
   // ─── Récompenses réalistes ───
-  const REWARDS = [
-    {
-      coins:100, icon:"⭐", type:"week",
-      label:L?"7 days Premium free":"7 jours Premium offerts",
-      desc:L?"Unlocks all premium modules for 7 days":"Débloque tous les modules premium pendant 7 jours",
-      action:"premium_week", cta:L?"Activate":"Activer"
-    },
-    {
-      coins:300, icon:"👑", type:"month",
-      label:L?"1 month Premium free":"1 mois Premium offert",
-      desc:L?"Full access for 30 days":"Accès complet pendant 30 jours",
-      action:"premium_month", cta:L?"Activate":"Activer"
-    },
-    {
-      coins:500, icon:"🌿", type:"iherb",
-      label:L?"iHerb — 10% promo code":"iHerb — Code promo 10%",
-      desc:L?"Supplements · Nigella · Vitamin D · Zinc":"Suppléments · Nigelle · Vit D · Zinc",
-      action:"link", url:"https://www.iherb.com/?rcode=VITASCANN",
-      cta:L?"Get code":"Obtenir le code"
-    },
-    {
-      coins:500, icon:"💪", type:"myprotein",
-      label:L?"MyProtein — 15% off":"MyProtein — 15% de réduction",
-      desc:L?"Halal protein · Creatine · BCAA":"Protéine halal · Créatine · BCAA",
-      action:"link", url:"https://www.myprotein.com/referral.list?applyCode=VITASCANN",
-      cta:L?"Get code":"Obtenir le code"
-    },
-    {
-      coins:1000, icon:"🎁", type:"premium3",
-      label:L?"3 months Premium":"3 mois Premium",
-      desc:L?"Our biggest reward — you earned it!":"Notre plus grande récompense — tu l'as mérité !",
-      action:"premium_3months", cta:L?"Activate":"Activer"
-    },
-  ];
+  // Le Premium gratuit vient UNIQUEMENT du streak Mindset Guerrier (7/30/100j) —
+  // pas des VitaCoins, pour ne pas cannibaliser les abonnements payants.
+  const REWARDS = [];
 
   // ─── Boutique santé (liens affiliés) ───
   const BOUTIQUE = [
@@ -1127,7 +1097,7 @@ function VitaCoinsWallet({user, vitaCoins, coinsHistory, onRedeem, t, lang, onCl
       tag:L?"Tibb an-Nabawi":"Tibb an-Nabawi",
       tagColor:"#00ff88",
       url:"https://www.iherb.com/?rcode=VITASCANN",
-      promo:L?"-5% with code VITASCANN":"-5% avec le code VITASCANN"
+      promo:L?"Wide natural supplement selection":"Large sélection de suppléments naturels"
     },
     {
       emoji:"🍃", name:"Shop Santé",
@@ -1247,8 +1217,13 @@ function VitaCoinsWallet({user, vitaCoins, coinsHistory, onRedeem, t, lang, onCl
         {tab==="redeem"&&(
           <div style={{display:"flex",flexDirection:"column",gap:12}}>
             <div style={{fontSize:11,color:MUT,marginBottom:4,lineHeight:1.6}}>
-              {L?"Premium rewards are activated within 48h by email. Shop links are affiliate links — they help support VitaScann 🙏":"Les récompenses Premium sont activées dans 48h par email. Les liens boutique sont des liens affiliés — ils aident à soutenir VitaScann 🙏"}
+              {L?"Want free Premium? Build your Mindset Guerrier streak — 7/30/100 days unlock real rewards. 🗡️":"Tu veux du Premium gratuit ? Fais grandir ton streak Mindset Guerrier — 7/30/100 jours débloquent de vraies récompenses. 🗡️"}
             </div>
+            {REWARDS.length===0 && (
+              <div style={{textAlign:"center",padding:"30px 16px",color:MUT,fontSize:13,lineHeight:1.6}}>
+                🛍️ {L?"Discount codes coming soon — check the shop tab for real partner links.":"Codes promo bientôt disponibles — regarde l'onglet Boutique pour des vrais liens partenaires."}
+              </div>
+            )}
             {REWARDS.map(r=>{
               const canAfford = vitaCoins >= r.coins;
               return (
@@ -1685,59 +1660,226 @@ function CoinsToast({amount, onDone}) {
 }
 
 // ─── PUSH NOTIFICATIONS ───
-const NotifService = {
-  isSupported: () => "Notification" in window && "serviceWorker" in navigator,
+// ─── NOTIFICATIONS NATIVES — programmées au niveau OS, marchent app fermée ───
+// IDs fixes pour chaque type de notif → permet de les annuler/reprogrammer sans doublons
+const NOTIF_IDS = {
+  scanReminder: 1001,
+  waterReminder1: 2001, waterReminder2: 2002, waterReminder3: 2003,
+  entrepreneurCheckin: 3001,
+  sleepCheck: 3002,
+  musulmanCheckin: 3003,
+  etudiantCheckin: 3004,
+  sportifCheckin: 3005,
+  periodReminder: 4001,
+  moodDecline: 4002,
+};
+
+const LocalNotifService = {
+  isReady: () => isNative(),
+
   requestPermission: async () => {
-    if(!NotifService.isSupported()) return false;
-    const perm = await Notification.requestPermission();
-    return perm === "granted";
+    if(!isNative()) return false;
+    try {
+      const res = await LocalNotifications.requestPermissions();
+      return res.display === "granted";
+    } catch(e){ console.error(e); return false; }
   },
-  scheduleLocalReminder: (userId) => {
-    localStorage.setItem("vs_last_scan", Date.now().toString());
-    localStorage.setItem("vs_user_id", userId || "");
+
+  // ─── Rappel "3 jours sans scan" — vraie version qui marche app fermée ───
+  scheduleScanReminder: async () => {
+    if(!isNative()) return;
+    try {
+      await LocalNotifications.cancel({notifications:[{id:NOTIF_IDS.scanReminder}]});
+      const fireDate = new Date(Date.now() + 3*24*60*60*1000);
+      await LocalNotifications.schedule({notifications:[{
+        id: NOTIF_IDS.scanReminder,
+        title: "🌿 VitaScann t'attend !",
+        body: "Tu n'as pas scanné depuis 3 jours. Ton corps a peut-être quelque chose à te dire. 🔬",
+        schedule: { at: fireDate },
+      }]});
+    } catch(e){ console.error(e); }
   },
-  checkAndNotify: () => {
-    if(!("Notification" in window)) return;
-    if(Notification.permission !== "granted") return;
-    const last = parseInt(localStorage.getItem("vs_last_scan") || "0");
-    if(!last) return;
-    const daysSince = (Date.now() - last) / (1000 * 60 * 60 * 24);
-    const lang = localStorage.getItem("vs_lang") || "fr";
-    const alreadyKey = "vs_notif_" + Date.now().toString().slice(0,8);
-    if(daysSince >= 3 && !localStorage.getItem(alreadyKey)) {
-      const msgs = {
-        fr: { title: "🌿 VitaScann t'attend !", body: "Tu n'as pas scanné depuis 3 jours. Ton corps a peut-être quelque chose à te dire. 🔬" },
-        en: { title: "🌿 VitaScann misses you!", body: "You haven't scanned in 3 days. Your body might have something to tell you. 🔬" },
-      };
-      const m = msgs[lang] || msgs.fr;
-      try {
-        new Notification(m.title, { body: m.body, icon: "/logo.svg", tag: "vitascann-reminder", renotify: true });
-        localStorage.setItem(alreadyKey, "1");
-      } catch(e) {}
-    }
+
+  // ─── Rappels eau — 3x dans l'après-midi/soirée, uniquement si score bas ce jour-là ───
+  scheduleWaterReminders: async () => {
+    if(!isNative()) return;
+    try {
+      const now = new Date();
+      const times = [
+        {h:11,m:0, body:"💧 T'as bu de l'eau depuis ce matin ? Ton scan montrait une carence à surveiller."},
+        {h:14,m:30, body:"💧 Petit rappel : reste hydraté(e). Vise un grand verre d'eau maintenant."},
+        {h:17,m:30, body:"💧 Fin de journée — t'en es où côté hydratation aujourd'hui ?"},
+      ];
+      const notifs = times.map((t,i)=>{
+        const fire = new Date(now); fire.setHours(t.h,t.m,0,0);
+        if(fire <= now) fire.setDate(fire.getDate()+1); // si l'heure est déjà passée, demain
+        return { id: NOTIF_IDS["waterReminder"+(i+1)], title:"💧 VitaScann", body:t.body, schedule:{at:fire} };
+      });
+      await LocalNotifications.cancel({notifications:notifs.map(n=>({id:n.id}))});
+      await LocalNotifications.schedule({notifications:notifs});
+    } catch(e){ console.error(e); }
   },
-  init: () => {
-    if(!("Notification" in window)) return;
-    NotifService.checkAndNotify();
-    setInterval(NotifService.checkAndNotify, 1000 * 60 * 60);
+
+  // ─── Check-in quotidien entrepreneur — récurrent chaque soir ───
+  scheduleEntrepreneurCheckin: async () => {
+    if(!isNative()) return;
+    try {
+      await LocalNotifications.cancel({notifications:[{id:NOTIF_IDS.entrepreneurCheckin}]});
+      await LocalNotifications.schedule({notifications:[{
+        id: NOTIF_IDS.entrepreneurCheckin,
+        title: "🗡️ Mindset Guerrier",
+        body: "T'as fait ton défi guerrier aujourd'hui ? Qu'est-ce que t'as fait de proactif pour ton business ?",
+        schedule: { on:{hour:20,minute:0}, every:"day" },
+      }]});
+    } catch(e){ console.error(e); }
+  },
+
+  // ─── Check-in quotidien musulman — dhikr/prière, chaque soir ───
+  scheduleMusulmanCheckin: async () => {
+    if(!isNative()) return;
+    try {
+      await LocalNotifications.cancel({notifications:[{id:NOTIF_IDS.musulmanCheckin}]});
+      await LocalNotifications.schedule({notifications:[{
+        id: NOTIF_IDS.musulmanCheckin,
+        title: "🗡️ Mindset Guerrier",
+        body: "T'as fait ton défi guerrier aujourd'hui ? Même 5 minutes de dhikr comptent.",
+        schedule: { on:{hour:20,minute:30}, every:"day" },
+      }]});
+    } catch(e){ console.error(e); }
+  },
+
+  // ─── Check-in quotidien étudiant — révisions, chaque soir ───
+  scheduleEtudiantCheckin: async () => {
+    if(!isNative()) return;
+    try {
+      await LocalNotifications.cancel({notifications:[{id:NOTIF_IDS.etudiantCheckin}]});
+      await LocalNotifications.schedule({notifications:[{
+        id: NOTIF_IDS.etudiantCheckin,
+        title: "🗡️ Mindset Guerrier",
+        body: "T'as fait ton défi guerrier aujourd'hui ? Qu'est-ce que t'as appris, révisé ?",
+        schedule: { on:{hour:20,minute:0}, every:"day" },
+      }]});
+    } catch(e){ console.error(e); }
+  },
+
+  // ─── Check-in quotidien sportif — entraînement, chaque soir ───
+  scheduleSportifCheckin: async () => {
+    if(!isNative()) return;
+    try {
+      await LocalNotifications.cancel({notifications:[{id:NOTIF_IDS.sportifCheckin}]});
+      await LocalNotifications.schedule({notifications:[{
+        id: NOTIF_IDS.sportifCheckin,
+        title: "🗡️ Mindset Guerrier",
+        body: "T'as fait ton défi guerrier aujourd'hui ? Même 10 min compte pour ton streak.",
+        schedule: { on:{hour:19,minute:30}, every:"day" },
+      }]});
+    } catch(e){ console.error(e); }
+  },
+
+  // ─── Vérité choc sommeil — récurrent chaque matin ───
+  scheduleSleepCheck: async () => {
+    if(!isNative()) return;
+    try {
+      await LocalNotifications.cancel({notifications:[{id:NOTIF_IDS.sleepCheck}]});
+      await LocalNotifications.schedule({notifications:[{
+        id: NOTIF_IDS.sleepCheck,
+        title: "😴 Vérité choc",
+        body: "C'est combien d'heures cette nuit, vraiment ? Sois honnête avec toi-même.",
+        schedule: { on:{hour:9,minute:0}, every:"day" },
+      }]});
+    } catch(e){ console.error(e); }
+  },
+
+  // ─── Rappel règles à venir — 2 jours avant la date prédite ───
+  schedulePeriodReminder: async (nextPeriodDateStr) => {
+    if(!isNative() || !nextPeriodDateStr) return;
+    try {
+      await LocalNotifications.cancel({notifications:[{id:NOTIF_IDS.periodReminder}]});
+      const periodDate = new Date(nextPeriodDateStr+"T09:00:00");
+      const fireDate = new Date(periodDate.getTime() - 2*24*60*60*1000);
+      if(fireDate <= new Date()) return; // déjà trop proche/passé, on programme pas
+      await LocalNotifications.schedule({notifications:[{
+        id: NOTIF_IDS.periodReminder,
+        title: "🌸 VitaScann",
+        body: "Tes règles arrivent probablement dans 2 jours. Prépare ce qu'il te faut 💗",
+        schedule: { at: fireDate },
+      }]});
+    } catch(e){ console.error(e); }
+  },
+
+  // ─── Vibration émotionnelle en baisse 3 jours de suite — check-in doux le lendemain ───
+  scheduleMoodDeclineNotif: async (lang) => {
+    if(!isNative()) return;
+    const L = lang === "en";
+    try {
+      await LocalNotifications.cancel({notifications:[{id:NOTIF_IDS.moodDecline}]});
+      const fireDate = new Date(Date.now() + 20*60*60*1000); // ~demain, laisse le temps de souffler
+      await LocalNotifications.schedule({notifications:[{
+        id: NOTIF_IDS.moodDecline,
+        title: "🫂 VitaScann",
+        body: L ? "Your vibration has been dipping lately. A quick check-in could help — no pressure." : "Ta vibration baisse un peu ces derniers jours. Un petit check-in te ferait du bien, sans pression.",
+        schedule: { at: fireDate },
+      }]});
+    } catch(e){ console.error(e); }
+  },
+
+  cancelAll: async () => {
+    if(!isNative()) return;
+    try { await LocalNotifications.cancel({notifications: Object.values(NOTIF_IDS).map(id=>({id}))}); } catch(e){}
+  },
+
+  // ─── Notif Mindset Guerrier dynamique — reprogrammée à chaque màj de streak/tâches ───
+  scheduleMindsetStreakNotif: async (profilId, streak, lang, pendingTasks) => {
+    if(!isNative()) return;
+    const L = lang === "en";
+    const CONFIG = {
+      entrepreneur: {id: NOTIF_IDS.entrepreneurCheckin, h:20, m:0},
+      musulman:     {id: NOTIF_IDS.musulmanCheckin,     h:20, m:30},
+      etudiant:     {id: NOTIF_IDS.etudiantCheckin,     h:20, m:0},
+      sportif:      {id: NOTIF_IDS.sportifCheckin,      h:19, m:30},
+    };
+    const cfg = CONFIG[profilId];
+    if(!cfg) return;
+    try {
+      await LocalNotifications.cancel({notifications:[{id:cfg.id}]});
+      const now = new Date();
+      const fire = new Date(now); fire.setHours(cfg.h,cfg.m,0,0);
+      if(fire <= now) fire.setDate(fire.getDate()+1);
+      let body;
+      if(pendingTasks > 0){
+        body = L
+          ? `📋 You still have ${pendingTasks} task${pendingTasks>1?"s":""} to complete today${streak>0?` — plus your ${streak}-day streak is on the line!`:"."}`
+          : `📋 Il te reste ${pendingTasks} tâche${pendingTasks>1?"s":""} à faire aujourd'hui${streak>0?` — et ton streak de ${streak} jours est en jeu !`:"."}`;
+      } else if(streak > 0){
+        body = L ? `🔥 You're on a ${streak}-day streak! Do today's challenge before midnight or you lose it.` : `🔥 T'es à ${streak} jours de streak ! Fais ton défi avant minuit ou tu le perds.`;
+      } else {
+        body = L ? `Start your streak today — your first challenge is waiting.` : `Commence ton streak aujourd'hui — ton premier défi t'attend.`;
+      }
+      await LocalNotifications.schedule({notifications:[{
+        id: cfg.id, title: "🗡️ Mindset Guerrier", body, schedule: { at: fire },
+      }]});
+    } catch(e){ console.error(e); }
   },
 };
 
-function NotifBanner({lang, onDismiss}) {
+function NotifBanner({lang, onDismiss, onGranted}) {
   const [show, setShow] = useState(false);
   useEffect(()=>{
     const dismissed = localStorage.getItem("vs_notif_dismissed");
-    const granted = "Notification" in window && Notification.permission === "granted";
-    if("Notification" in window && !dismissed && !granted) {
-      setTimeout(()=>setShow(true), 4000);
-    }
+    if(!isNative() || dismissed) return;
+    (async()=>{
+      try {
+        const status = await LocalNotifications.checkPermissions();
+        if(status.display !== "granted") setTimeout(()=>setShow(true), 4000);
+      } catch(e){}
+    })();
   },[]);
   if(!show) return null;
   const handleAccept = async () => {
-    const ok = await NotifService.requestPermission();
-    if(ok) NotifService.init();
+    const ok = await LocalNotifService.requestPermission();
     setShow(false);
     localStorage.setItem("vs_notif_dismissed","1");
+    if(ok) onGranted?.();
     onDismiss?.();
   };
   const handleDismiss = () => {
@@ -1960,11 +2102,11 @@ const LEVELS = [
 const MILESTONES = [
   {scans:1,  reward:"badge",  label:"Premier Pas 🌱",         labelEn:"First Step 🌱"},
   {scans:5,  reward:"badge",  label:"5 Scans 🔍",             labelEn:"5 Scans 🔍"},
-  {scans:10, reward:"week",   label:"10 Scans — 1 semaine offerte 🎉", labelEn:"10 Scans — 1 free week 🎉"},
+  {scans:10, reward:"coins",  coinsAmount:100, label:"10 Scans — +100 VitaCoins 🪙", labelEn:"10 Scans — +100 VitaCoins 🪙"},
   {scans:20, reward:"badge",  label:"20 Scans — Expert 🏆",   labelEn:"20 Scans — Expert 🏆"},
-  {scans:30, reward:"month",  label:"30 Scans — 1 mois offert 👑",labelEn:"30 Scans — 1 free month 👑"},
+  {scans:30, reward:"coins",  coinsAmount:250, label:"30 Scans — +250 VitaCoins 🪙",labelEn:"30 Scans — +250 VitaCoins 🪙"},
   {scans:50, reward:"badge",  label:"50 Scans — Légende ⚡",   labelEn:"50 Scans — Legend ⚡"},
-  {scans:100,reward:"month",  label:"100 Scans — Elite 👑",    labelEn:"100 Scans — Elite 👑"},
+  {scans:100,reward:"coins",  coinsAmount:500, label:"100 Scans — +500 VitaCoins 🪙",    labelEn:"100 Scans — +500 VitaCoins 🪙"},
 ];
 
 function getLevel(xp) {
@@ -1995,16 +2137,18 @@ function calcStreak(history) {
 
 // ─── REWARD POPUP ───
 function RewardPopup({reward, onClose, t, lang}) {
+  const L = lang === "en";
   useEffect(()=>{ const tm=setTimeout(onClose,4000); return()=>clearTimeout(tm); },[onClose]);
+  const isCoins = reward && typeof reward === "object" && reward.type === "coins";
   return (
     <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",background:"#00000088"}}
       onClick={onClose}>
       <div style={{background:"linear-gradient(135deg,#0f1a0a,#1a1005)",border:`2px solid ${GOLD}`,borderRadius:24,padding:"32px 28px",textAlign:"center",maxWidth:300,animation:"pop .4s ease"}}
         onClick={e=>e.stopPropagation()}>
-        <div style={{fontSize:64,marginBottom:12,animation:"floatY 2s ease-in-out infinite"}}>🎁</div>
+        <div style={{fontSize:64,marginBottom:12,animation:"floatY 2s ease-in-out infinite"}}>🪙</div>
         <div className="serif" style={{fontSize:22,fontWeight:700,color:GOLD,marginBottom:8}}>{t("reward_title")}</div>
         <div style={{fontSize:16,color:"#edf5ef",lineHeight:1.6,marginBottom:20}}>
-          {reward==="week"?t("reward_week"):reward==="month"?t("reward_month"):t("reward_badge")}
+          {isCoins ? (L?`+${reward.amount} VitaCoins earned! 🎉`:`+${reward.amount} VitaCoins gagnés ! 🎉`) : t("reward_badge")}
         </div>
         <button className="bgold" onClick={onClose} style={{fontSize:14}}>Super, merci ! 🙏</button>
       </div>
@@ -2088,6 +2232,12 @@ Si zone = "Barbe" ou "Beard" → JSON :
 
 Sinon → JSON :
 {"score":0-100,"urgence":"normal|attention|urgent","carences":[{"nom":"Vitamine X","niveau":"critique|faible|limite|normal","pct":0-100,"emoji":"🟡","signes":"observation visuelle","aliments":["a1","a2","a3"],"complement":"Nom","dose":"500mg/j"}],"positifs":["p1","p2"],"conseil":"Conseil pratique en 2 phrases.","prochain":"zone suivante"}`;
+
+// Prompt spécial % Gras — 3 photos (face + profil + dos) pour une analyse corporelle complète
+const BODY_FAT_MULTI_PROMPT = `Tu es VitaScann, expert en composition corporelle et morphologie. Tu reçois 3 photos (face, profil, dos) — PISTES indicatives uniquement, pas un diagnostic médical.
+
+Retourne UNIQUEMENT ce JSON valide :
+{"score":0-100,"urgence":"normal|attention|urgent","type_analyse":"body_fat","pct_gras_estime":5-45,"categorie_gras":"essentiel|athlete|fitness|acceptable|obesite","abdos_visibles":"oui|partiellement|non","morphologie":"ectomorphe|mesomorphe|endomorphe","description_morpho":"1 phrase description du physique général","zones":[{"nom":"Ventre","niveau":"Faible|Modéré|Élevé","pourcent":0-40,"conseil":"1 phrase"},{"nom":"Poitrine","niveau":"Faible|Modéré|Élevé","pourcent":0-40,"conseil":"1 phrase"},{"nom":"Bras","niveau":"Faible|Modéré|Élevé","pourcent":0-40,"conseil":"1 phrase"},{"nom":"Jambes","niveau":"Faible|Modéré|Élevé","pourcent":0-40,"conseil":"1 phrase"},{"nom":"Dos","niveau":"Faible|Modéré|Élevé","pourcent":0-40,"conseil":"1 phrase"}],"carences":[{"nom":"Protéines","niveau":"faible","pct":40,"emoji":"💪","signes":"masse musculaire visible","aliments":["poulet","oeufs","légumineuses"],"complement":"Whey Protéine","dose":"25g après entraînement"}],"positifs":["p1"],"conseil":"2 phrases nutrition+sport.","prochain":"zone suivante"}`;
 
 const MEAL_PROMPT = `Tu es VitaScann nutritionniste. Analyse cette photo de repas. Retourne UNIQUEMENT ce JSON valide (sans markdown) :
 {"nom_repas":"Nom","calories_estimees":0-2000,"proteines_g":0-100,"glucides_g":0-200,"lipides_g":0-100,"score_nutrition":0-100,"carences_comblees":[{"nutriment":"Vitamine X","emoji":"🟢","niveau":"bien|moyen|faible"}],"manque":[{"nutriment":"Zinc","conseil":"Ajouter graines de courge"}],"conseil_global":"2 phrases.","note_halal":"halal|inconnu|attention"}`;
@@ -2915,7 +3065,7 @@ function ScreenTimeGuide({ onClose, lang }) {
   );
 }
 
-function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily,onChallenge,onProgress,onMealPlan,onPedometer,onReferral,onWallet,onGymCoach,onCaliCoach,onLongevite,onScanCorps,onSanteEmo,onNutritionScan,onScoreEnergie,onMindset,onRealite,onEnviron,onImmunite,onMaternite,onMotivation,onScannerFutur,onScoreDopamine,onSoloLeveling,history,profile,vitaCoins,lang,setLang,t}) {
+function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily,onChallenge,onProgress,onMealPlan,onPedometer,onReferral,onWallet,onGymCoach,onCaliCoach,onLongevite,onNutritionScan,onMaternite,onBilanComplet,onMindsetGuerrier,onSoloLeveling,onRecettesSante,history,profile,vitaCoins,lang,setLang,t}) {
   const [showScreenTime, setShowScreenTime] = useState(false);
   const scansLeft = user.plan==="free"?Math.max(0,3-(history?.length||0)):null;
   const challengeDay = Math.min(30, history?.length||0);
@@ -2979,31 +3129,38 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
           </button>
         </div>
 
+        {/* Recettes Santé */}
+        <button onClick={onRecettesSante} className="fu2" style={{width:"100%",background:"linear-gradient(135deg,#0d1810,#080f0a)",border:`1.5px solid ${EM}33`,borderRadius:18,padding:"16px 16px",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:14,marginBottom:10}}>
+          <div style={{fontSize:28,flexShrink:0}}>🌿</div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,fontSize:14,color:"#e8f5ea"}}>{lang==="en"?"Health Recipes":"Recettes Santé"}</div>
+            <div style={{color:MUT,fontSize:11,marginTop:2}}>{lang==="en"?`${RECETTES.length} recipes · Prophetic wisdom`:`${RECETTES.length} recettes · Sagesse prophétique`}</div>
+          </div>
+          {user.plan!=="premium"&&<div style={{fontSize:9,color:GOLD,fontWeight:700,flexShrink:0}}>✨ PREMIUM</div>}
+        </button>
 
         {/* ━━━ SECTION DIVIDER helper ━━━ */}
 
         {/* ━━━ 💪 ACTIVITÉ ━━━ */}
         <div style={{fontSize:10,color:MUT,fontWeight:700,letterSpacing:1.5,marginBottom:8,marginTop:4}}>💪 {lang==="en"?"ACTIVITY":"ACTIVITÉ"}</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
-          {/* Solo Leveling */}
-          <button onClick={onSoloLeveling}
-            style={{background:aura.rangId==="F"?"linear-gradient(135deg,#0a0010,#1a0025)":`linear-gradient(135deg,${aura.color}15,${aura.color}08)`,border:`1.5px solid ${aura.rangId==="F"?"#fbbf2444":aura.border}`,borderRadius:16,padding:"14px 12px",cursor:"pointer",textAlign:"left",display:"flex",flexDirection:"column",gap:6,fontFamily:"'Outfit',sans-serif",position:"relative",overflow:"hidden",minHeight:90}}>
-            {aura.particles&&<AuraParticles color={aura.color} count={3}/>}
-            <div style={{fontSize:28,position:"relative",zIndex:1}}>⚔️</div>
-            <div style={{position:"relative",zIndex:1}}>
-              <div style={{fontWeight:700,fontSize:13,color:aura.rangId==="F"?"#fbbf24":aura.color,lineHeight:1.2}}>Solo Leveling</div>
-              <div style={{fontSize:10,color:MUT,marginTop:2}}>{lang==="en"?"7 days · Rank F→S":"7 jours · Rang F→S"}</div>
+          {/* Mindset Guerrier — sorti du Bilan Complet, module à part entière */}
+          <button onClick={onMindsetGuerrier}
+            style={{background:"linear-gradient(135deg,#1a0f00,#2a1800)",border:`1.5px solid #f9731644`,borderRadius:16,padding:"14px 12px",cursor:"pointer",textAlign:"left",display:"flex",flexDirection:"column",gap:6,fontFamily:"'Outfit',sans-serif",minHeight:90}}>
+            <div style={{fontSize:28}}>🗡️</div>
+            <div>
+              <div style={{fontWeight:700,fontSize:13,color:"#f97316",lineHeight:1.2}}>{lang==="en"?"Warrior Mindset":"Mindset Guerrier"}</div>
+              <div style={{fontSize:10,color:MUT,marginTop:2}}>{lang==="en"?"Streak · Daily challenge":"Streak · Défi quotidien"}</div>
             </div>
-            {aura.rangId!=="F"&&<div style={{position:"absolute",top:6,right:6,fontSize:9,background:`${aura.color}20`,color:aura.color,borderRadius:10,padding:"2px 6px",fontWeight:700}}>{aura.badge}</div>}
           </button>
 
-          {/* Richesse spirituelle */}
+          {/* Richesse & Dhikr (fusion Clés Richesse + Dhikr & Motivation) */}
           <button onClick={onPedometer}
             style={{background:"linear-gradient(135deg,#1a0a25,#0d0518)",border:`1.5px solid #c084fc33`,borderRadius:16,padding:"14px 12px",cursor:"pointer",textAlign:"left",display:"flex",flexDirection:"column",gap:6,fontFamily:"'Outfit',sans-serif",minHeight:90}}>
             <div style={{fontSize:28}}>🌙</div>
             <div>
-              <div style={{fontWeight:700,fontSize:13,color:"#c084fc",lineHeight:1.2}}>{lang==="en"?"Wealth Keys":"Clés Richesse"}</div>
-              <div style={{fontSize:10,color:MUT,marginTop:2}}>{lang==="en"?"Istighfar · Gratitude":"Istighfar · Gratitude"}</div>
+              <div style={{fontWeight:700,fontSize:13,color:"#c084fc",lineHeight:1.2}}>{lang==="en"?"Wealth & Dhikr":"Richesse & Dhikr"}</div>
+              <div style={{fontSize:10,color:MUT,marginTop:2}}>{lang==="en"?"Istighfar · Dhikr · Duas":"Istighfar · Dhikr · Dou'as"}</div>
             </div>
           </button>
 
@@ -3023,58 +3180,29 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
           {/* Défi 30j */}
           <button onClick={onChallenge}
             style={{background:`linear-gradient(135deg,#1a1000,#2a1a00)`,border:`1.5px solid ${GOLD}33`,borderRadius:16,padding:"14px 12px",cursor:"pointer",textAlign:"left",display:"flex",flexDirection:"column",gap:6,fontFamily:"'Outfit',sans-serif",minHeight:90}}>
-            <div style={{fontSize:28}}>🏆</div>
+            <div style={{fontSize:28}}>{challengeDay<10?"🎁":challengeDay<30?"👑":"🏆"}</div>
             <div>
               <div style={{fontWeight:700,fontSize:13,color:GOLD,lineHeight:1.2}}>{lang==="en"?"30-Day Challenge":"Défi 30 Jours"}</div>
-              <div style={{fontSize:10,color:MUT,marginTop:2}}>{lang==="en"?`Day ${challengeDay}/30`:`Jour ${challengeDay}/30`}</div>
+              <div style={{fontSize:10,color:MUT,marginTop:2}}>
+                {challengeDay>=30
+                  ?(lang==="en"?"Completed! 👑":"Terminé ! 👑")
+                  :challengeDay<10
+                    ?(lang==="en"?`${10-challengeDay} → free week`:`${10-challengeDay} → 1 sem. offerte`)
+                    :(lang==="en"?`${30-challengeDay} → free month`:`${30-challengeDay} → 1 mois offert`)}
+              </div>
             </div>
           </button>
         </div>
 
-        {/* ━━━ 🔬 SANTÉ & SCORES ━━━ */}
-        <div style={{fontSize:10,color:MUT,fontWeight:700,letterSpacing:1.5,marginBottom:8}}>🔬 {lang==="en"?"HEALTH & SCORES":"SANTÉ & SCORES"}</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
-          {[
-            {emoji:"🔮",label:lang==="en"?"Future Scanner":"Scanner Futur",sub:lang==="en"?"6-month prediction":"Prédiction 6 mois",color:"#38bdf8",fn:onScannerFutur,free:true},
-            {emoji:"🧠",label:lang==="en"?"Dopamine Score":"Score Dopamine",sub:lang==="en"?"Digital addictions":"Addictions numériques",color:"#a855f7",fn:onScoreDopamine,free:true},
-            {emoji:"⚡",label:lang==="en"?"Energy Score":"Score Énergie",sub:lang==="en"?"Daily plan":"Plan quotidien",color:EM,fn:onScoreEnergie,free:true},
-            {emoji:"🛡️",label:lang==="en"?"Immunity Score":"Score Immunité",sub:"Tibb an-Nabawi 🌿",color:"#06b6d4",fn:onImmunite,free:true},
-            {emoji:"🌫️",label:lang==="en"?"Toxic Env.":"Environnement",sub:lang==="en"?"Toxic scan":"Scan toxique",color:"#a855f7",fn:onEnviron,free:true},
-            {emoji:"🔬",label:lang==="en"?"Body Scan":"Scan Corps",sub:lang==="en"?"Morphology · %fat":"Morphologie · %gras",color:"#a855f7",fn:onScanCorps,free:false},
-          ].map(({emoji,label,sub,color,fn,free})=>(
-            <button key={label} onClick={fn}
-              style={{background:CARD,border:`1.5px solid ${color}33`,borderRadius:16,padding:"14px 12px",cursor:"pointer",textAlign:"left",display:"flex",flexDirection:"column",gap:6,fontFamily:"'Outfit',sans-serif",minHeight:90,position:"relative"}}>
-              <div style={{fontSize:28}}>{emoji}</div>
-              <div>
-                <div style={{fontWeight:700,fontSize:13,color,lineHeight:1.2}}>{label}</div>
-                <div style={{fontSize:10,color:MUT,marginTop:2}}>{sub}</div>
-              </div>
-              {free
-                ?<div style={{position:"absolute",top:6,right:6,fontSize:9,background:"#00ff8820",color:"#00ff88",borderRadius:8,padding:"2px 5px",fontWeight:700}}>🆓</div>
-                :<div style={{position:"absolute",top:6,right:6,fontSize:9,background:`${GOLD}20`,color:GOLD,borderRadius:8,padding:"2px 5px",fontWeight:700}}>✨</div>}
-            </button>
-          ))}
-        </div>
-
-        {/* ━━━ 🧠 MENTAL & SPIRITUEL ━━━ */}
-        <div style={{fontSize:10,color:MUT,fontWeight:700,letterSpacing:1.5,marginBottom:8}}>🧠 {lang==="en"?"MENTAL & SPIRITUAL":"MENTAL & SPIRITUEL"}</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
-          {[
-            {emoji:"🗡️",label:lang==="en"?"Warrior Mindset":"Mindset Guerrier",sub:lang==="en"?"Muslim · Athlete · Entrepreneur":"Musulman · Sportif · Entrepreneur",color:"#f97316",fn:onMindset},
-            {emoji:"🌙",label:lang==="en"?"Dhikr & Motivation":"Dhikr & Motivation",sub:lang==="en"?"Dua · Tasbih · Affirmations":"Dua · Tasbih · Affirmations",color:"#c084fc",fn:onMotivation},
-            {emoji:"❤️",label:lang==="en"?"Emotional Health":"Santé Émotionnelle",sub:lang==="en"?"TCM · Breathwork · Support":"MTC · Respiration · Soutien",color:"#c084fc",fn:onSanteEmo},
-            {emoji:"⚡",label:lang==="en"?"Brutal Reality":"Réalité Brutale",sub:lang==="en"?"The truth about your life":"La vérité sur ta vie",color:"#ef4444",fn:onRealite},
-          ].map(({emoji,label,sub,color,fn})=>(
-            <button key={label} onClick={fn}
-              style={{background:CARD,border:`1.5px solid ${color}33`,borderRadius:16,padding:"14px 12px",cursor:"pointer",textAlign:"left",display:"flex",flexDirection:"column",gap:6,fontFamily:"'Outfit',sans-serif",minHeight:90}}>
-              <div style={{fontSize:28}}>{emoji}</div>
-              <div>
-                <div style={{fontWeight:700,fontSize:13,color,lineHeight:1.2}}>{label}</div>
-                <div style={{fontSize:10,color:MUT,marginTop:2}}>{sub}</div>
-              </div>
-            </button>
-          ))}
-        </div>
+        {/* ━━━ 🔬🧠 BILAN COMPLET (fusion Santé&Scores + Mental&Spirituel) ━━━ */}
+        <button onClick={onBilanComplet}
+          style={{width:"100%",background:"linear-gradient(135deg,#1a1508,#0d0a12)",border:`1.5px solid ${GOLD}44`,borderRadius:18,padding:"16px 18px",cursor:"pointer",textAlign:"left",marginBottom:16,display:"flex",alignItems:"center",gap:14,fontFamily:"'Outfit',sans-serif"}}>
+          <div style={{fontSize:32,flexShrink:0}}>🔬🧠</div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,fontSize:15,color:GOLD}}>{lang==="en"?"Complete Health & Mind Report":"Bilan Santé & Mental Complet"}</div>
+            <div style={{color:MUT,fontSize:11,marginTop:2}}>{lang==="en"?"6 assessments in one place":"6 bilans en un seul endroit"}</div>
+          </div>
+        </button>
 
         {/* ━━━ 🌸 MATERNITÉ — PREMIUM ━━━ */}
         <div style={{fontSize:10,color:GOLD,fontWeight:700,letterSpacing:1.5,marginBottom:8}}>🌸 {lang==="en"?"MATERNITY — PREMIUM":"MATERNITÉ — PREMIUM"}</div>
@@ -3109,7 +3237,6 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
             {ic:"🏆",lb:t("db_challenge"),fn:onChallenge,premium:false},
             {ic:"🧬",lb:t("db_my_profile"),fn:onProfile,premium:false},
             {ic:"🌙",lb:lang==="en"?"Wealth":"Richesse",fn:onPedometer,premium:false},
-            {ic:"👥",lb:lang==="en"?"Referral":"Parrainage",fn:onReferral,premium:false},
             {ic:"🪙",lb:"VitaCoins",fn:onWallet,premium:false},
           ].map(({ic,lb,fn,premium})=>(
             <button key={lb} onClick={premium&&user.plan!=="premium"?onPaywall:fn}
@@ -3121,6 +3248,17 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
           ))}
         </div>
 
+        {/* ━━━ 👥 PARRAINAGE — carte pleine largeur, bien visible ━━━ */}
+        <button onClick={onReferral}
+          style={{width:"100%",background:"linear-gradient(135deg,#0a1a25,#051018)",border:`1.5px solid #38bdf855`,borderRadius:18,padding:"16px 18px",cursor:"pointer",textAlign:"left",marginBottom:14,display:"flex",alignItems:"center",gap:14,fontFamily:"'Outfit',sans-serif"}}>
+          <div style={{fontSize:34,flexShrink:0}}>👥</div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,fontSize:15,color:"#38bdf8"}}>{lang==="en"?"Invite friends":"Invite tes amis"}</div>
+            <div style={{color:MUT,fontSize:11,marginTop:2}}>{lang==="en"?"+200 coins per friend · they get +100 too":"+200 coins par ami · +100 pour eux aussi"}</div>
+          </div>
+          <div style={{fontSize:11,background:"#38bdf820",color:"#38bdf8",borderRadius:20,padding:"5px 12px",fontWeight:700,flexShrink:0}}>{lang==="en"?"Share →":"Partager →"}</div>
+        </button>
+
         <div className="fu3 card" style={{marginBottom:14,border:`1px solid ${GOLD}28`}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
             <div style={{fontWeight:700,fontSize:13}}>{t("db_challenge_title")}</div>
@@ -3129,7 +3267,13 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
           <div style={{background:"#142018",borderRadius:6,height:8,overflow:"hidden",marginBottom:8}}>
             <div style={{width:`${(challengeDay/30)*100}%`,height:"100%",background:`linear-gradient(90deg,${GOLD},${EM})`,borderRadius:6,transition:"width 1s ease"}}/>
           </div>
-          <div style={{fontSize:11,color:MUT}}>{30-challengeDay} {t("db_challenge_left")}</div>
+          <div style={{fontSize:11,color:MUT}}>
+            {challengeDay>=30
+              ?(lang==="en"?"Challenge completed! 👑":"Défi terminé ! 👑")
+              :challengeDay<10
+                ?(lang==="en"?`${10-challengeDay} scans left → 1 week Premium FREE 🎁`:`${10-challengeDay} scans → 1 semaine Premium OFFERTE 🎁`)
+                :(lang==="en"?`${30-challengeDay} scans left → 1 month Premium FREE 👑`:`${30-challengeDay} scans → 1 mois Premium OFFERT 👑`)}
+          </div>
         </div>
 
         {/* XP / Niveau / Streak */}
@@ -3250,6 +3394,65 @@ function ZonePick({onSelect,onBack,user,onPaywall,lang,t,profile}) {
 
 // ─── CAPTURE ───
 function Capture({zone,onCapture,onBack,t}) {
+  // ── Cas spécial : % Gras corporel → 3 photos (face, profil, dos) ──
+  const [bfStep, setBfStep] = useState("face"); // face | profil | dos
+  const [bfPhotos, setBfPhotos] = useState({face:null, profil:null, dos:null});
+  const [bfPreviews, setBfPreviews] = useState({face:null, profil:null, dos:null});
+
+  if (zone.id === "body_fat") {
+    const STEPS = [
+      {id:"face",   labelFr:"Face",   labelEn:"Front", hintFr:"Debout, torse visible, face caméra", hintEn:"Standing, torso visible, facing camera"},
+      {id:"profil", labelFr:"Profil", labelEn:"Side",  hintFr:"Debout de côté, bras légèrement écartés", hintEn:"Standing sideways, arms slightly apart"},
+      {id:"dos",    labelFr:"Dos",    labelEn:"Back",  hintFr:"Debout, dos face caméra", hintEn:"Standing, back facing camera"},
+    ];
+    const curIdx = STEPS.findIndex(s=>s.id===bfStep);
+    const cur = STEPS[curIdx];
+
+    const handleBfCapture = (b64, preview) => {
+      const np = {...bfPhotos, [bfStep]: b64};
+      const npv = {...bfPreviews, [bfStep]: preview};
+      setBfPhotos(np);
+      setBfPreviews(npv);
+      if (curIdx < STEPS.length - 1) {
+        setBfStep(STEPS[curIdx+1].id);
+      } else {
+        // Les 3 photos sont prêtes → on remonte un objet au lieu d'une string
+        onCapture(np, npv);
+      }
+    };
+
+    return (
+      <div style={{minHeight:"100vh",padding:"52px 20px 40px",display:"flex",flexDirection:"column"}}>
+        <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:20,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
+        <div className="serif fu" style={{fontSize:22,fontWeight:700,marginBottom:3}}>{t("capture_title")}</div>
+        <div className="fu1" style={{color:zone.color,fontSize:17,fontWeight:600,marginBottom:8}}>{zone.icon} {zone.label}</div>
+
+        {/* Indicateur d'étape 1/2/3 */}
+        <div style={{display:"flex",gap:6,marginBottom:20}}>
+          {STEPS.map((s,i)=>(
+            <div key={s.id} style={{flex:1,height:4,borderRadius:4,background:i<curIdx?EM:i===curIdx?zone.color:BDR}}/>
+          ))}
+        </div>
+        <div style={{fontSize:11,color:MUT,marginBottom:16}}>
+          {t("lang_label")==="en"?`Photo ${curIdx+1}/3 — ${cur.labelEn}`:`Photo ${curIdx+1}/3 — ${cur.labelFr}`}
+        </div>
+
+        <div className="fu2" style={{flex:1,maxHeight:200,background:"#080f0a",borderRadius:24,border:`2px solid ${zone.color}38`,position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
+          <div style={{position:"absolute",left:16,right:16,height:2,background:`linear-gradient(90deg,transparent,${zone.color},transparent)`,animation:"scanPulse 2s ease-in-out infinite",top:"50%"}}/>
+          <div style={{textAlign:"center",zIndex:1}}>
+            <div style={{fontSize:48,marginBottom:8}}>💪</div>
+            <div style={{color:zone.color,fontWeight:600,fontSize:13}}>{t("lang_label")==="en"?cur.hintEn:cur.hintFr}</div>
+          </div>
+        </div>
+
+        <div className="fu4">
+          <PhotoPicker onCapture={handleBfCapture} color={zone.color} icon={zone.icon} hint={cur.hintFr} label={zone.label} t={t}/>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Flow normal — 1 seule photo (10 autres zones) ──
   return (
     <div style={{minHeight:"100vh",padding:"52px 20px 40px",display:"flex",flexDirection:"column"}}>
       <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:20,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
@@ -3298,13 +3501,24 @@ function Capture({zone,onCapture,onBack,t}) {
 
 // ─── COMPOSANTS SCAN CORPOREL ───
 function Preview({zone,preview,onAnalyze,onRetake,isMeal,t}) {
+  const isMulti = preview && typeof preview === "object";
   return (
     <div style={{minHeight:"100vh",padding:"52px 20px 40px",display:"flex",flexDirection:"column"}}>
       <div className="serif fu" style={{fontSize:22,fontWeight:700,marginBottom:3}}>{isMeal?"🍽️":zone?.icon} {isMeal?t("meal_capture_title"):zone?.label}</div>
-      <div style={{color:MUT,fontSize:13,marginBottom:16}}>{isMeal?t("meal_photo_sub"):zone?.hint}</div>
-      <div style={{borderRadius:20,overflow:"hidden",marginBottom:20,border:`2px solid ${isMeal?GOLD:zone?.color||EM}44`,maxHeight:320}}>
-        <img src={preview} alt="preview" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
-      </div>
+      <div style={{color:MUT,fontSize:13,marginBottom:16}}>{isMeal?t("meal_photo_sub"):isMulti?(t("lang_label")==="en"?"3 photos ready":"3 photos prêtes"):zone?.hint}</div>
+      {isMulti ? (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:20}}>
+          {["face","profil","dos"].map(k=>(
+            <div key={k} style={{borderRadius:14,overflow:"hidden",border:`2px solid ${zone?.color||EM}44`,aspectRatio:"3/4"}}>
+              <img src={preview[k]} alt={k} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{borderRadius:20,overflow:"hidden",marginBottom:20,border:`2px solid ${isMeal?GOLD:zone?.color||EM}44`,maxHeight:320}}>
+          <img src={preview} alt="preview" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+        </div>
+      )}
       <button className="bem" onClick={onAnalyze} style={{marginBottom:10}}>
         ✨ {isMeal?(t("lang_label")==="en"?"Analyze this meal":"Analyser ce repas"):(t("lang_label")==="en"?"Analyze this photo":"Analyser cette photo")}
       </button>
@@ -3347,9 +3561,9 @@ function ChatIA({result,zone,profile,onClose,t}) {
     setLoad(true);
     try {
       const ctx = `Zone: ${zone?.label}. Score: ${result?.score}/100. Carences: ${result?.carences?.map(c=>c.nom).join(", ")||"aucune"}. Conseil: ${result?.conseil||""}. Profil: ${profile?JSON.stringify(profile):"non renseigné"}.`;
-      const res = await fetch("https://api.anthropic.com/v1/messages",{
+      const res = await fetch("/api/claude",{
         method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        headers: { "Content-Type": "application/json" },
         body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:300,system:CHAT_SYSTEM,messages:[{role:"user",content:`${ctx}\n\nQuestion: ${userMsg.text}`}]})
       });
       const data = await res.json();
@@ -3445,7 +3659,7 @@ async function generatePDF(result,zone,user) {
   doc.save(`VitaScann_${zone?.label||"report"}_${now.toISOString().slice(0,10)}.pdf`);
 }
 
-function Result({result,zone,user,profile,onNewScan,onHome,onExercises,history,t,lang}) {
+function Result({result,zone,user,profile,onNewScan,onHome,onExercises,history,t,lang,onCoinsEarned}) {
   const [exp,setExp]=useState(null);
   const [sharing,setSharing]=useState(false);
   const [showChat,setShowChat]=useState(false);
@@ -3462,8 +3676,11 @@ function Result({result,zone,user,profile,onNewScan,onHome,onExercises,history,t
   const milestone = MILESTONES.find(m => m.scans === totalScans);
 
   useEffect(()=>{
-    if(milestone && (milestone.reward==="week"||milestone.reward==="month")){
-      const timer = setTimeout(()=>setShowReward(milestone.reward), 1200);
+    if(milestone && milestone.reward==="coins" && onCoinsEarned){
+      const timer = setTimeout(()=>{
+        onCoinsEarned(milestone.coinsAmount);
+        setShowReward({type:"coins", amount:milestone.coinsAmount});
+      }, 1200);
       return ()=>clearTimeout(timer);
     }
   },[milestone]);
@@ -3526,6 +3743,26 @@ function Result({result,zone,user,profile,onNewScan,onHome,onExercises,history,t
               <div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0a140c",borderRadius:12,padding:"10px 14px",marginBottom:8}}>
                 <span style={{fontSize:12,color:MUT}}>{l}</span>
                 <span style={{fontWeight:700,fontSize:13,color:c,textTransform:"capitalize"}}>{v}</span>
+              </div>
+            ))}
+            {result.description_morpho&&(
+              <div style={{fontSize:12,color:"#a0c8a8",lineHeight:1.6,fontStyle:"italic",marginTop:4}}>{result.description_morpho}</div>
+            )}
+          </div>
+        )}
+
+        {isBodyFat&&result.zones?.length>0&&(
+          <div className="fu2 card" style={{marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:14}}>
+              {t("lang_label")==="en"?"Breakdown by zone (3-photo scan)":"Détail par zone (scan 3 photos)"}
+            </div>
+            {result.zones.map((z,i)=>(
+              <div key={i} style={{marginBottom:i<result.zones.length-1?12:0,paddingBottom:i<result.zones.length-1?12:0,borderBottom:i<result.zones.length-1?`1px solid ${BDR}`:"none"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                  <span style={{fontSize:13,fontWeight:600}}>{z.nom}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:z.niveau==="Élevé"?DANGER:z.niveau==="Modéré"?WARN:EM}}>{z.niveau} · {z.pourcent}%</span>
+                </div>
+                {z.conseil&&<div style={{fontSize:11,color:MUT,lineHeight:1.5}}>{z.conseil}</div>}
               </div>
             ))}
           </div>
@@ -3901,14 +4138,9 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
     try {
       const mediaType = imageData.startsWith("data:image/png") ? "image/png"
         : imageData.startsWith("data:image/webp") ? "image/webp" : "image/jpeg";
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/claude", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": ANTHROPIC_KEY,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-6", max_tokens: 2000,
           messages: [{role:"user", content:[
@@ -3957,14 +4189,9 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
     const totauxText = `Calories: ${tot.cal} kcal, Protéines: ${tot.prot}g, Glucides: ${tot.gluc}g, Lipides: ${tot.lip}g, Fer: ${tot.fer}mg, Vit.D: ${tot.vitD}µg, Potassium: ${tot.potass}mg, Zinc: ${tot.zinc}mg`;
     const prompt = MEAL_ANALYSE_PROMPT.replace("{ALIMENTS}", alimentsText).replace("{TOTAUX}", totauxText);
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/claude", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": ANTHROPIC_KEY,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-6", max_tokens: 2000,
           messages: [{role:"user", content: prompt}]
@@ -4681,9 +4908,9 @@ function MealPlan({profile,onBack,user,t}) {
     setLoad(true);
     try {
       const pc = profile?`Age: ${profile.age||"?"}ans, sexe: ${profile.sexe||"?"}, objectif: ${profile.objectif||"?"}, activite: ${profile.activite||"?"}, halal: ${profile.halal?"oui":"non"}.`:"Pas de profil.";
-      const res = await fetch("https://api.anthropic.com/v1/messages",{
+      const res = await fetch("/api/claude",{
         method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        headers: { "Content-Type": "application/json" },
         body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:2000,system:MEAL_PLAN_PROMPT,messages:[{role:"user",content:`Profil: ${pc} Génère un plan repas 7 jours adapté.`}]})
       });
       const data = await res.json();
@@ -4839,10 +5066,10 @@ function Challenge({history,onBack,t,lang}) {
   const badges = [
     {day:1,  icon:"🌱", label:t("badge_first"), color:"#22c55e"},
     {day:5,  icon:"⚡", label:t("badge_5"),     color:"#fbbf24"},
-    {day:10, icon:"🔥", label:t("badge_10"),    color:"#f97316"},
-    {day:15, icon:"💎", label:L?"Half way!":"Mi-chemin !", color:"#38bdf8"},
+    {day:10, icon:"🎁", label:L?"1 week Premium FREE":"1 semaine Premium OFFERTE", color:"#38bdf8"},
+    {day:15, icon:"💎", label:L?"Half way!":"Mi-chemin !", color:"#818cf8"},
     {day:20, icon:"🏆", label:t("badge_20"),    color:"#a855f7"},
-    {day:30, icon:"👑", label:t("badge_30"),    color:GOLD},
+    {day:30, icon:"👑", label:L?"1 month Premium FREE":"1 mois Premium OFFERT", color:GOLD},
   ];
 
   // Grille 30 jours
@@ -4886,6 +5113,28 @@ function Challenge({history,onBack,t,lang}) {
           </div>
           <div style={{fontSize:11,color:MUT}}>{pct}% {L?"completed":"complété"}</div>
         </div>
+
+        {/* Prochaine récompense réelle — bien visible */}
+        {done < 30 && (
+          <div style={{
+            background: done < 10 ? "linear-gradient(135deg,#0a1a2a,#05101a)" : "linear-gradient(135deg,#1a1508,#0d0a12)",
+            border: `1.5px solid ${done < 10 ? "#38bdf8" : GOLD}55`,
+            borderRadius:18, padding:16, marginBottom:16,
+            display:"flex", alignItems:"center", gap:14
+          }}>
+            <div style={{fontSize:32,flexShrink:0}}>{done < 10 ? "🎁" : "👑"}</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:11,color:done<10?"#38bdf8":GOLD,fontWeight:700,letterSpacing:.5,marginBottom:2}}>
+                {L?"NEXT REWARD":"PROCHAINE RÉCOMPENSE"}
+              </div>
+              <div style={{fontSize:14,fontWeight:700,color:"#edf5ef"}}>
+                {done < 10
+                  ? (L?`${10-done} scans → 1 week Premium FREE`:`Plus que ${10-done} scans → 1 semaine Premium OFFERTE`)
+                  : (L?`${30-done} scans → 1 month Premium FREE`:`Plus que ${30-done} scans → 1 mois Premium OFFERT`)}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tâche du jour */}
         {done < 30 && (
@@ -5728,10 +5977,10 @@ const CALI_IMG_MAP = {
 function ExerciseVisual({svgId, size=80, type="gym"}) {
   const imgKey = CALI_IMG_MAP[svgId];
   const [imgError, setImgError] = useState(false);
-  if(imgKey && CALI_IMG_MAP[imgKey] && !imgError) {
+  if(imgKey && IMG[imgKey] && !imgError) {
     return (
       <img
-        src={CALI_IMG_MAP[imgKey]}
+        src={IMG[imgKey]}
         alt={svgId}
         style={{width:size, height:size, objectFit:"contain", borderRadius:8}}
         onError={()=>setImgError(true)}
@@ -6397,6 +6646,93 @@ const PHASES_MATERNITE = [
   { id:"postnatal",label:"Postnatal",      labelEn:"Postnatal",      emoji:"👶", color:"#fcd34d", weeks:"Après l'accouchement", weeksEn:"After birth", desc:"Rééducation progressive, core doux",    descEn:"Progressive recovery, gentle core" },
 ];
 
+// ─── Journal personnel de symptômes — réutilisé pour cycle + grossesse ───
+function SymptomLogger({storageKey, pink, lang, options, optionsEn, onCoinsEarned, withIntensity}) {
+  const L = lang === "en";
+  const labels = L ? optionsEn : options;
+  const [entries, setEntries] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || "[]"); } catch { return []; }
+  });
+  const [selected, setSelected] = useState([]);
+  const [intensity, setIntensity] = useState(2);
+  const [saved, setSaved] = useState(false);
+  const todayKey = new Date().toISOString().slice(0,10);
+  const alreadyToday = entries.some(e=>e.date===todayKey);
+
+  const toggle = (s) => setSelected(prev=>prev.includes(s)?prev.filter(x=>x!==s):[...prev,s]);
+
+  const save = () => {
+    if(selected.length===0) return;
+    const entry = {date:todayKey, symptoms:selected, intensity:withIntensity?intensity:null};
+    const ne = [entry, ...entries.filter(e=>e.date!==todayKey)].slice(0,30);
+    setEntries(ne);
+    localStorage.setItem(storageKey, JSON.stringify(ne));
+    setSaved(true); setTimeout(()=>setSaved(false),2000);
+    setSelected([]);
+    if(onCoinsEarned) onCoinsEarned(5);
+  };
+
+  return (
+    <div style={{background:"#1a0510",border:`1.5px solid ${pink}33`,borderRadius:16,padding:16,marginBottom:12}}>
+      <div style={{fontSize:11,color:pink,fontWeight:700,letterSpacing:.8,marginBottom:4}}>
+        📝 {L?"HOW ARE YOU FEELING TODAY?":"COMMENT TU TE SENS AUJOURD'HUI ?"}
+      </div>
+      <div style={{fontSize:11,color:MUT,marginBottom:12}}>
+        {L?"Log your real symptoms — this stays private, just for you.":"Note tes vrais symptômes — c'est privé, juste pour toi."}
+      </div>
+
+      {alreadyToday ? (
+        <div style={{textAlign:"center",padding:"10px 0"}}>
+          <div style={{fontSize:24,marginBottom:4}}>✅</div>
+          <div style={{fontSize:12,color:"#a0c8a8"}}>{L?"Logged for today":"Noté pour aujourd'hui"}</div>
+        </div>
+      ) : (
+        <>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+            {labels.map((s,i)=>(
+              <button key={s} onClick={()=>toggle(s)}
+                style={{background:selected.includes(s)?`${pink}25`:"#0a0a10",border:`1.5px solid ${selected.includes(s)?pink:BDR}`,borderRadius:14,padding:"6px 12px",fontSize:12,color:selected.includes(s)?pink:MUT,fontWeight:selected.includes(s)?700:400,cursor:"pointer",fontFamily:"'Outfit',sans-serif"}}>
+                {s}
+              </button>
+            ))}
+          </div>
+
+          {withIntensity && selected.length>0 && (
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:11,color:MUT,marginBottom:6}}>{L?"Intensity":"Intensité"}</div>
+              <div style={{display:"flex",gap:6}}>
+                {[1,2,3].map(n=>(
+                  <button key={n} onClick={()=>setIntensity(n)}
+                    style={{flex:1,background:intensity===n?`${pink}25`:"#0a0a10",border:`1.5px solid ${intensity===n?pink:BDR}`,borderRadius:10,padding:"8px",fontSize:12,color:intensity===n?pink:MUT,fontWeight:700,cursor:"pointer"}}>
+                    {n===1?(L?"Mild":"Léger"):n===2?(L?"Moderate":"Modéré"):(L?"Strong":"Fort")}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button onClick={save} disabled={selected.length===0}
+            style={{width:"100%",background:selected.length?`linear-gradient(135deg,${pink},#e879f9)`:"#1a1520",border:"none",borderRadius:12,padding:"12px",fontFamily:"'Outfit',sans-serif",fontSize:13,fontWeight:700,color:selected.length?"#1a0510":MUT,cursor:selected.length?"pointer":"not-allowed"}}>
+            {saved?"✅ "+(L?"Saved":"Sauvegardé"):"💾 "+(L?"Save (+5 coins)":"Sauvegarder (+5 coins)")}
+          </button>
+        </>
+      )}
+
+      {entries.length>0 && (
+        <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${pink}22`}}>
+          <div style={{fontSize:10,color:MUT,fontWeight:700,marginBottom:8}}>{L?"RECENT HISTORY":"HISTORIQUE RÉCENT"}</div>
+          {entries.slice(0,5).map((e,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:i<4?6:0,fontSize:11}}>
+              <span style={{color:"#a0c8a8"}}>{e.symptoms.join(", ")}</span>
+              <span style={{color:MUT,flexShrink:0,marginLeft:8}}>{new Date(e.date+"T12:00:00").toLocaleDateString(L?"en-US":"fr-FR",{day:"numeric",month:"short"})}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GrossesseModule({ user, onHome, onCoinsEarned, lang }) {
   const L = lang === "en";
   const PINK = "#f9a8d4";
@@ -6454,6 +6790,14 @@ function GrossesseModule({ user, onHome, onCoinsEarned, lang }) {
   };
 
   const cycleData = getCycleData(dernieresRegles, dureeRegles, dureeCycle);
+
+  // ─── Programme le rappel de règles à venir (2 jours avant) — une fois, pas à chaque render ───
+  useEffect(() => {
+    if (!dernieresRegles) return;
+    const today = new Date().toISOString().slice(0,10);
+    const nextR = Object.entries(cycleData).find(([d,t]) => t==="regles" && d>=today);
+    if (nextR) LocalNotifService.schedulePeriodReminder(nextR[0]);
+  }, [dernieresRegles, dureeRegles, dureeCycle]);
 
   const markDone = (id) => {
     const nd = {...done, [id]: true};
@@ -6585,6 +6929,12 @@ function GrossesseModule({ user, onHome, onCoinsEarned, lang }) {
                     </div>
                   ))}
                 </div>
+
+                {/* Journal personnel — CE QU'ELLE ressent vraiment aujourd'hui */}
+                <SymptomLogger storageKey="vs_grossesse_symptoms" pink={PINK} lang={lang}
+                  options={["Nausées","Fatigue","Maux de tête","Douleurs dos","Ballonnements","Brûlures d'estomac","Insomnie","Anxiété","Contractions légères","Oedème (jambes/pieds)"]}
+                  optionsEn={["Nausea","Fatigue","Headache","Back pain","Bloating","Heartburn","Insomnia","Anxiety","Mild contractions","Swelling (legs/feet)"]}
+                  onCoinsEarned={onCoinsEarned}/>
 
                 {/* Trimestre actuel */}
                 <div style={{background:"#1a1005",border:`1px solid ${GOLD}22`,borderRadius:12,padding:12}}>
@@ -6819,6 +7169,15 @@ function GrossesseModule({ user, onHome, onCoinsEarned, lang }) {
                 </div>
               );
             })()}
+
+            {/* Journal personnel — douleurs & symptômes de règles */}
+            {dernieresRegles && (
+              <SymptomLogger storageKey="vs_cycle_symptoms" pink={PINK} lang={lang}
+                options={["Crampes","Maux de tête","Fatigue","Ballonnements","Douleur dos","Sautes d'humeur","Seins sensibles","Acné","Nausées légères"]}
+                optionsEn={["Cramps","Headache","Fatigue","Bloating","Back pain","Mood swings","Breast tenderness","Acne","Mild nausea"]}
+                onCoinsEarned={onCoinsEarned}
+                withIntensity/>
+            )}
           </div>
         )}
 
@@ -7253,12 +7612,13 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure:
   "objectif_recommande": "Perte de gras localisée + maintien musculaire",
   "plan_action": ["Cardio HIIT 3x/semaine", "Alimentation déficit calorique modéré", "Musculation pour maintenir la masse"],
   "point_fort": "Bonne structure osseuse et musculaire de base",
-  "point_ameliorer": "Réduire le gras abdominal en priorité"
+  "point_ameliorer": "Réduire le gras abdominal en priorité",
+  "categorie_recette": "UNE seule valeur parmi: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux, fertilite — celle qui correspond le mieux au point à améliorer identifié"
 }`;
 
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const resp = await fetch("/api/claude", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
           max_tokens: 1200,
@@ -7543,6 +7903,37 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure:
         ))}
       </div>
 
+      {/* Recette santé recommandée */}
+      {(() => {
+        const recette = result.categorie_recette
+          ? getRecetteParCategorie(result.categorie_recette)
+          : null;
+        if (!recette) return null;
+        return (
+          <div style={{background:`${recette.couleur}10`,border:`1.5px solid ${recette.couleur}33`,borderRadius:16,padding:18,marginBottom:24}}>
+            <div style={{fontSize:11,color:recette.couleur,fontWeight:700,letterSpacing:.8,marginBottom:10}}>🌿 {lang==="en"?"RECOMMENDED RECIPE":"RECETTE RECOMMANDÉE"}</div>
+            <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12}}>
+              <div style={{fontSize:36,lineHeight:1,flexShrink:0}}>{recette.emoji}</div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:14,color:"#e2b84a",marginBottom:4}}>{lang==="en"?recette.titre_en:recette.titre_fr}</div>
+                <div style={{fontSize:12,color:"#a0c8a8",lineHeight:1.5}}>{lang==="en"?recette.bienfait_en:recette.bienfait_fr}</div>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+              {recette.ingredients.map((ing,i)=>(
+                <span key={i} style={{background:`${recette.couleur}18`,border:`1px solid ${recette.couleur}44`,borderRadius:20,padding:"4px 12px",fontSize:12,color:recette.couleur,fontWeight:600}}>
+                  {ing}
+                </span>
+              ))}
+            </div>
+            <div style={{background:"#0a1a0e",border:"1px solid #e2b84a33",borderRadius:12,padding:12}}>
+              <div style={{fontSize:10,color:"#e2b84a",fontWeight:700,letterSpacing:.6,marginBottom:6}}>👩‍🍳 {lang==="en"?"HOW TO PREPARE":"PRÉPARATION"}</div>
+              <div style={{fontSize:12,color:"#c8a84a",lineHeight:1.7}}>{lang==="en"?recette.preparation_en:recette.preparation_fr}</div>
+            </div>
+          </div>
+        );
+      })()}
+
       <button onClick={()=>setStep("intro")} style={{width:"100%",background:"#1a3a2a",color:"#22c55e",border:"1px solid #22c55e",borderRadius:"14px",padding:"14px",fontSize:"1rem",fontWeight:600,cursor:"pointer",marginBottom:"12px"}}>
         🔄 Nouveau scan
       </button>
@@ -7781,6 +8172,51 @@ export default function VitaScann() {
   const [coinsToast,setCoinsToast]=useState(null);
   const [showWallet,setShowWallet]=useState(false);
 
+  // ─── Active vraiment le Premium temporaire quand un utilisateur dépense ses VitaCoins ───
+  // ─── Prolonge/active le Premium temporaire — réutilisé par les VitaCoins ET les paliers de streak ───
+  const grantTemporaryPremium = useCallback(async(days)=>{
+    if(!user?.uid || user?.isDemo || !days) return;
+    try {
+      const userDoc = await getDoc(doc(db,"users",user.uid));
+      const userData = userDoc.exists()?userDoc.data():{};
+      const now = new Date();
+      let base = now;
+      if(userData.plan==="premium" && userData.premiumExpiresAt){
+        const curExpiry = userData.premiumExpiresAt.toDate ? userData.premiumExpiresAt.toDate() : new Date(userData.premiumExpiresAt);
+        if(curExpiry > now) base = curExpiry;
+      }
+      const newExpiry = new Date(base.getTime() + days*24*60*60*1000);
+      await setDoc(doc(db,"users",user.uid),{plan:"premium",premiumExpiresAt:newExpiry},{merge:true});
+      setUser(u=>u?{...u,plan:"premium"}:u);
+    } catch(e){ console.error("Erreur activation Premium:",e); }
+  },[user]);
+
+  const handleRedeemReward = useCallback(async(reward)=>{
+    const daysMap = {premium_week:7, premium_month:30, premium_3months:90};
+    const days = daysMap[reward.action];
+    if(!days) return; // type "link" (codes promo) → géré directement dans VitaCoinsWallet, rien à faire ici
+    await grantTemporaryPremium(days);
+  },[grantTemporaryPremium]);
+
+  // ─── Récompense réelle aux paliers de streak Mindset Guerrier (7/30/100 jours) ───
+  const handleStreakMilestone = useCallback(async(streakDays)=>{
+    const daysMap = {7:7, 30:30, 100:90};
+    const days = daysMap[streakDays];
+    if(!days) return;
+    await grantTemporaryPremium(days);
+  },[grantTemporaryPremium]);
+
+  // ─── Combine streak + tâches en attente pour une notif toujours cohérente ───
+  const [mindsetNotifState, setMindsetNotifState] = useState({streak:0, pendingTasks:0, profil:null});
+  const updateMindsetNotif = useCallback((patch) => {
+    setMindsetNotifState(prev => {
+      const next = {...prev, ...patch};
+      if(next.profil) LocalNotifService.scheduleMindsetStreakNotif(next.profil, next.streak, lang, next.pendingTasks);
+      return next;
+    });
+  },[lang]);
+
+
   const addCoins = useCallback(async (amount, reason) => {
     if(!user?.uid||user?.isDemo) return;
     const newBal = await CoinsService.add(user.uid, amount, reason);
@@ -7789,9 +8225,8 @@ export default function VitaScann() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[user?.uid, user?.isDemo]);
 
-  // Init notifications au démarrage + check referral
+  // Init Capacitor + push natif au démarrage
   useEffect(()=>{
-    NotifService.init();
     initCapacitor(); // Init Capacitor si natif
     if (isNative()) NativePush.init((notif) => console.log("Push reçue:", notif));
     const params = new URLSearchParams(window.location.search);
@@ -7835,7 +8270,16 @@ export default function VitaScann() {
       if(firebaseUser){
         const userDoc=await getDoc(doc(db,"users",firebaseUser.uid));
         const userData=userDoc.exists()?userDoc.data():{};
-        const u={uid:firebaseUser.uid,name:firebaseUser.displayName||userData.name||"Utilisateur",email:firebaseUser.email,plan:userData.plan||"free"};
+        // ─── Vérifie l'expiration d'un Premium temporaire (gagné via VitaCoins) ───
+        let plan = userData.plan||"free";
+        if(plan==="premium" && userData.premiumExpiresAt){
+          const expiry = userData.premiumExpiresAt.toDate ? userData.premiumExpiresAt.toDate() : new Date(userData.premiumExpiresAt);
+          if(expiry < new Date()){
+            plan="free";
+            setDoc(doc(db,"users",firebaseUser.uid),{plan:"free",premiumExpiresAt:null},{merge:true}).catch(()=>{});
+          }
+        }
+        const u={uid:firebaseUser.uid,name:firebaseUser.displayName||userData.name||"Utilisateur",email:firebaseUser.email,plan};
         setUser(u);
         if(userData.profile)setProfile(userData.profile);
         if(userData.family)setFamily(userData.family);
@@ -7843,13 +8287,12 @@ export default function VitaScann() {
         setCoinsHistory(userData.coinsHistory||[]);
         const h=await ScanService.getHistory(firebaseUser.uid);
         setHistory(h);
-        // Process pending referral
+        // ─── Parrainage : on enregistre le lien mais on NE paie PAS encore ───
+        // Les coins seront donnés au 1er scan complété (anti-faux-comptes)
         const pendingRef = localStorage.getItem("vs_pending_ref");
         if(pendingRef && !userData.referredBy){
-          await CoinsService.processReferral(firebaseUser.uid, pendingRef);
+          await setDoc(doc(db,"users",firebaseUser.uid),{referredBy:pendingRef,referralRewarded:false},{merge:true});
           localStorage.removeItem("vs_pending_ref");
-          const updated = await getDoc(doc(db,"users",firebaseUser.uid));
-          setVitaCoins(updated.data()?.vitaCoins||0);
         }
         setScreen(userData.profile?"dashboard":"profile");
       } else {
@@ -7864,13 +8307,23 @@ export default function VitaScann() {
     setScreen("analyzing");
     try {
       const pc=profile?`Profil : ${profile.age||"?"}ans, ${profile.sexe||"?"}, objectif: ${profile.objectif||"?"}, activité: ${profile.activite||"?"}, halal: ${profile.halal?"oui":"non"}.`:"";
-      const res=await fetch("https://api.anthropic.com/v1/messages",{
+      const isMultiBodyFat = zone?.id==="body_fat" && b64 && typeof b64==="object";
+      const res=await fetch("/api/claude",{
         method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:2000,system:BODY_PROMPT,messages:[{role:"user",content:[
-          {type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},
-          {type:"text",text:`Zone : ${zone?.label}. ${pc} Analyse complète.`}
-        ]}]})
+        headers: { "Content-Type": "application/json" },
+        body:JSON.stringify(isMultiBodyFat ? {
+          model:"claude-sonnet-4-6",max_tokens:2000,system:BODY_FAT_MULTI_PROMPT,messages:[{role:"user",content:[
+            {type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64.face}},
+            {type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64.profil}},
+            {type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64.dos}},
+            {type:"text",text:`3 photos (face, profil, dos). ${pc} Analyse complète de composition corporelle.`}
+          ]}]
+        } : {
+          model:"claude-sonnet-4-6",max_tokens:2000,system:BODY_PROMPT,messages:[{role:"user",content:[
+            {type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},
+            {type:"text",text:`Zone : ${zone?.label}. ${pc} Analyse complète.`}
+          ]}]
+        })
       });
       const data=await res.json();
       const text=data.content?.map(b=>b.text||"").join("")||"";
@@ -7880,15 +8333,25 @@ export default function VitaScann() {
         const sd={zone:zone?.label,score:parsed.score,urgence:parsed.urgence,carences:parsed.carences?.length||0};
         setHistory(h=>[{...sd,createdAt:{toDate:()=>new Date()}},...h]);
         await ScanService.saveScan(user.uid,sd);
-        NotifService.scheduleLocalReminder(user.uid);
-        await addCoins(10, `Scan ${zone?.label}`);
+        LocalNotifService.scheduleScanReminder(); // repousse le rappel "3j sans scan"
+        if(parsed.score!==undefined && parsed.score<=50) LocalNotifService.scheduleWaterReminders();
+        await addCoins(isMultiBodyFat?25:10, `Scan ${zone?.label}`);
+        // ─── Parrainage : paie le référent au 1er scan complété du filleul ───
+        if(history.length===0){
+          const myDoc = await getDoc(doc(db,"users",user.uid));
+          const myData = myDoc.exists()?myDoc.data():{};
+          if(myData.referredBy && !myData.referralRewarded){
+            await CoinsService.rewardReferralIfFirstScan(user.uid, myData.referredBy);
+            setVitaCoins(v=>v+100);
+          }
+        }
       }
       if(user?.isDemo)setDemoUsed(true);
       // ─── FCM — Marquer user actif après scan ───
       if(user?.uid&&!user?.isDemo){updateLastActive(db,user.uid).catch(()=>{});}
       setScreen("result");
     } catch(e){console.error(e);setScreen("capture");}
-  },[b64,zone,user,profile,addCoins]);
+  },[b64,zone,user,profile,addCoins,history]);
 
   const analyzeMeal=useCallback(async()=>{
     const isPrem = user?.plan==="premium"||user?.isDemo;
@@ -7897,9 +8360,9 @@ export default function VitaScann() {
     setIsMeal(true);
     try {
       const pc=profile?`Profil : ${profile.age||"?"}ans, ${profile.sexe||"?"}, objectif: ${profile.objectif||"?"}, halal: ${profile.halal?"oui":"non"}.`:"";
-      const res=await fetch("https://api.anthropic.com/v1/messages",{
+      const res=await fetch("/api/claude",{
         method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        headers: { "Content-Type": "application/json" },
         body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:2000,system:MEAL_PROMPT,messages:[{role:"user",content:[
           {type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},
           {type:"text",text:`Analyse ce repas. ${pc}`}
@@ -7963,52 +8426,72 @@ export default function VitaScann() {
 
   const commonProps = {lang, setLang, t};
 
+  // ─── Programme tous les rappels quotidiens récurrents selon le profil ───
+  const scheduleDailyReminders = useCallback(async () => {
+    if(!isNative()) return;
+    await LocalNotifService.scheduleScanReminder();
+    await LocalNotifService.scheduleSleepCheck();
+    if(profile?.objectif==="entrepreneur") await LocalNotifService.scheduleEntrepreneurCheckin();
+    if(profile?.objectif==="musulman")     await LocalNotifService.scheduleMusulmanCheckin();
+    if(profile?.objectif==="etudiant")     await LocalNotifService.scheduleEtudiantCheckin();
+    if(profile?.objectif==="sportif")      await LocalNotifService.scheduleSportifCheckin();
+  },[profile]);
+
+  // Si la permission a déjà été accordée une session précédente, reprogramme dès que le profil est prêt
+  useEffect(()=>{
+    if(!isNative() || !profile) return;
+    (async()=>{
+      try {
+        const status = await LocalNotifications.checkPermissions();
+        if(status.display === "granted") scheduleDailyReminders();
+      } catch(e){}
+    })();
+  },[profile, scheduleDailyReminders]);
+
   return (
     <>
       <style>{G}</style>
       <div className="app" style={{overflowY:"auto"}}>
-        <NotifBanner lang={lang} onDismiss={()=>{}} />
+        <NotifBanner lang={lang} onDismiss={()=>{}} onGranted={scheduleDailyReminders} />
         {coinsToast&&<CoinsToast amount={coinsToast} onDone={()=>setCoinsToast(null)}/>}
-        {showWallet&&user&&<VitaCoinsWallet user={user} vitaCoins={vitaCoins} coinsHistory={coinsHistory} onRedeem={()=>{}} t={t} lang={lang} onClose={()=>setShowWallet(false)}/>}
+        {showWallet&&user&&<VitaCoinsWallet user={user} vitaCoins={vitaCoins} coinsHistory={coinsHistory} onRedeem={handleRedeemReward} t={t} lang={lang} onClose={()=>setShowWallet(false)}/>}
         {screen==="splash"       && <Splash onDone={()=>{const seen=localStorage.getItem("vs_onboarding");setScreen(seen?"login":"onboarding");}} lang={lang} setLang={setLang}/>}
         {screen==="onboarding"   && <Onboarding onDemo={handleDemo} onRegister={()=>{localStorage.setItem("vs_onboarding","1");setScreen("register");}} onLogin={()=>{localStorage.setItem("vs_onboarding","1");setScreen("login");}} {...commonProps}/>}
         {screen==="register"     && <Register onSuccess={handleAuthSuccess} onLogin={()=>setScreen("login")} t={t}/>}
         {screen==="login"        && <Login onSuccess={handleAuthSuccess} onRegister={()=>setScreen("register")} onForgot={()=>setScreen("forgot")} t={t}/>}
         {screen==="forgot"       && <ForgotPassword onBack={()=>setScreen("login")} t={t}/>}
         {screen==="profile"      && <ProfileSetup user={user} onSave={p=>{setProfile(p);setScreen("dashboard");}} onSkip={()=>setScreen("dashboard")} t={t}/>}
-        {screen==="dashboard"    && user && <Dashboard user={user} onScan={handleScan} onMealScan={handleMealScan} onPaywall={()=>setScreen("paywall")} onLogout={handleLogout} onProfile={()=>setScreen("profile")} onFamily={()=>setScreen("family")} onChallenge={()=>setScreen("challenge")} onProgress={()=>user.plan==="premium"?setScreen("progress"):setScreen("paywall")} onMealPlan={()=>user.plan==="premium"?setScreen("mealplan"):setScreen("paywall")} onPedometer={()=>setScreen("pedometer")} onReferral={()=>setScreen("referral")} onWallet={()=>setShowWallet(true)} onGymCoach={()=>setScreen("gym_coach")} onCaliCoach={()=>setScreen("cali_coach")} onLongevite={()=>setScreen("longevite")} onScanCorps={()=>setScreen("scan_corps")} onSanteEmo={()=>setScreen("sante_emo")} onNutritionScan={()=>setScreen("nutrition_scan")} onScoreEnergie={()=>setScreen("score_energie")} onMindset={()=>setScreen("mindset_guerrier")} onRealite={()=>setScreen("realite_brutale")} onEnviron={()=>setScreen("scan_environnement")} onImmunite={()=>setScreen("score_immunite")} onMaternite={()=>setScreen("maternite")} onMotivation={()=>setScreen("motivation")} onScannerFutur={()=>setScreen("scanner_futur")} onScoreDopamine={()=>setScreen("score_dopamine")} onSoloLeveling={()=>setScreen("solo_leveling")} history={history} profile={profile} vitaCoins={vitaCoins} {...commonProps}/> }
+        {screen==="dashboard"    && user && <Dashboard user={user} onScan={handleScan} onMealScan={handleMealScan} onPaywall={()=>setScreen("paywall")} onLogout={handleLogout} onProfile={()=>setScreen("profile")} onFamily={()=>setScreen("family")} onChallenge={()=>setScreen("challenge")} onProgress={()=>user.plan==="premium"?setScreen("progress"):setScreen("paywall")} onMealPlan={()=>user.plan==="premium"?setScreen("mealplan"):setScreen("paywall")} onPedometer={()=>setScreen("pedometer")} onReferral={()=>setScreen("referral")} onWallet={()=>setShowWallet(true)} onGymCoach={()=>setScreen("gym_coach")} onCaliCoach={()=>setScreen("cali_coach")} onLongevite={()=>setScreen("longevite")} onNutritionScan={()=>setScreen("nutrition_scan")} onMaternite={()=>setScreen("maternite")} onBilanComplet={()=>setScreen("bilan_complet")} onMindsetGuerrier={()=>setScreen("mindset_guerrier")} onSoloLeveling={()=>setScreen("solo_leveling")} onRecettesSante={()=>setScreen("recettes_sante")} history={history} profile={profile} vitaCoins={vitaCoins} {...commonProps}/> }
         {screen==="zones"        && <ZonePick onSelect={z=>{setZone(z);setScreen("capture");}} onBack={()=>setScreen("dashboard")} user={user} onPaywall={()=>setScreen("paywall")} lang={lang} t={t} profile={profile}/>}
         {screen==="capture"      && zone && <Capture zone={zone} onCapture={(b,p)=>{setB64(b);setPrev(p);setScreen("preview");}} onBack={()=>setScreen("zones")} t={t}/>}
         {screen==="meal_capture" && <MealCapture onCapture={(b,p)=>{setB64(b);setPrev(p);setScreen("meal_preview");}} onResult={(r)=>{setMealResult(r);setScreen("meal_result");}} onBack={()=>setScreen("dashboard")} user={user} onPaywall={()=>setScreen("paywall")} t={t} lang={lang}/>}
         {screen==="preview"      && zone && <Preview zone={zone} preview={prev} onAnalyze={analyze} onRetake={()=>setScreen("capture")} isMeal={false} t={t}/>}
         {screen==="meal_preview" && <Preview zone={null} preview={prev} onAnalyze={analyzeMeal} onRetake={()=>setScreen("meal_capture")} isMeal={true} t={t}/>}
         {screen==="analyzing"    && <Analyzing zone={zone} isMeal={isMeal} t={t}/>}
-        {screen==="result"       && result&&zone && <Result result={result} zone={zone} user={user} profile={profile} history={history} onNewScan={()=>setScreen("zones")} onHome={()=>setScreen("dashboard")} onExercises={()=>setScreen("exercises")} onGymCoach={()=>setScreen("gym_coach")} onCaliCoach={()=>setScreen("cali_coach")} lang={lang} t={t}/>}
+        {screen==="result"       && result&&zone && <Result result={result} zone={zone} user={user} profile={profile} history={history} onNewScan={()=>setScreen("zones")} onHome={()=>setScreen("dashboard")} onExercises={()=>setScreen("exercises")} onGymCoach={()=>setScreen("gym_coach")} onCaliCoach={()=>setScreen("cali_coach")} lang={lang} t={t} onCoinsEarned={amt=>addCoins(amt,"Palier scan")}/>}
         {screen==="meal_result"  && mealResult && <MealResult result={mealResult} onNewScan={()=>setScreen("meal_capture")} onHome={()=>setScreen("dashboard")} t={t} lang={lang}/>}
         {screen==="paywall"      && <Paywall user={user} onBack={()=>setScreen(user&&!user.isDemo?"dashboard":"onboarding")} onSuccess={()=>{setUser(u=>({...u,plan:"premium"}));setScreen("dashboard");}} t={t}/>}
         {screen==="progress"     && <Progress history={history} onBack={()=>setScreen("dashboard")} t={t} profile={profile} lang={lang}/>}
         {screen==="mealplan"     && <MealPlan profile={profile} onBack={()=>setScreen("dashboard")} user={user} t={t}/>}
         {screen==="family"       && <Family user={user} family={family} onSave={setFamily} onBack={()=>setScreen("dashboard")} onSwitchProfile={m=>{setUser(u=>({...u,name:m.name,isFamily:true}));setScreen("zones");}} t={t}/>}
         {screen==="challenge"    && <Challenge history={history} onBack={()=>setScreen("dashboard")} t={t}/>}
-        {screen==="pedometer"    && <ModuleRichesse onBack={()=>setScreen("dashboard")} lang={lang} onCoinsEarned={amt=>addCoins(amt,"Richesse spirituelle")} user={user}/>}
+        {screen==="pedometer"    && <ModuleRichesse onBack={()=>setScreen("dashboard")} lang={lang} onCoinsEarned={amt=>addCoins(amt,"Richesse spirituelle")} user={user} profile={profile}/>}
+        {screen==="bilan_complet" && <BilanComplet user={user} profile={profile} onBack={()=>setScreen("dashboard")} onCoinsEarned={amt=>addCoins(amt,"Bilan")} lang={lang} t={t} onMoodDecline={()=>LocalNotifService.scheduleMoodDeclineNotif(lang)}/>}
+        {screen==="mindset_guerrier" && <MindsetGuerrier user={user} profile={profile} onBack={()=>setScreen("dashboard")} onCoinsEarned={amt=>addCoins(amt,"Mindset Guerrier")} lang={lang} onStreakUpdate={(pid,streak)=>updateMindsetNotif({profil:pid,streak})} onStreakMilestone={handleStreakMilestone} onTasksUpdate={(pid,pending)=>updateMindsetNotif({profil:pid,pendingTasks:pending})}/>}
         {screen==="exercises"    && <Exercises zone={zone} totalScans={history.length} user={user} onCoinsEarned={amt=>addCoins(amt,"Exercice complété")} t={t} lang={lang} onBack={()=>setScreen("result")}/>}
         {screen==="referral"     && <Referral user={user} vitaCoins={vitaCoins} t={t} lang={lang} onBack={()=>setScreen("dashboard")}/>}
         {screen==="gym_coach"    && user && <CoachCorpsComplet user={user} profile={profile} onPaywall={()=>setScreen("paywall")} onHome={()=>setScreen("dashboard")} onCoinsEarned={amt=>addCoins(amt,"Coach Corps Complet")} lang={lang} t={t}/>}
         {screen==="cali_coach"   && user && <CoachCorpsComplet user={user} profile={profile} onPaywall={()=>setScreen("paywall")} onHome={()=>setScreen("dashboard")} onCoinsEarned={amt=>addCoins(amt,"Coach Corps Complet")} lang={lang} t={t}/>}
         {screen==="longevite"    && <CoachCorpsComplet user={user} profile={profile} onPaywall={()=>setScreen("paywall")} onHome={()=>setScreen("dashboard")} onCoinsEarned={amt=>addCoins(amt,"Coach Corps Complet")} lang={lang} t={t}/>}
-        {screen==="scan_corps"   && <ScanCorpsComplet user={user} profile={profile} onBack={()=>setScreen("dashboard")} onPaywall={()=>setScreen("paywall")} t={t} lang={lang}/>}
-        {screen==="sante_emo"    && <SanteEmotionnelle user={user} onBack={()=>setScreen("dashboard")} onCoinsEarned={amt=>addCoins(amt,"Check-in émotionnel")} lang={lang} t={t} profile={profile}/>}
+
+
         {screen==="nutrition_scan" && <NutritionLabelScan onBack={()=>setScreen("dashboard")} lang={lang}/>}
-        {screen==="score_energie" && <ScoreEnergie user={user} onBack={()=>setScreen("dashboard")} onCoinsEarned={amt=>addCoins(amt,"Score Énergie")} lang={lang} profile={profile}/>}
-        {screen==="mindset_guerrier" && <MindsetGuerrier user={user} onBack={()=>setScreen("dashboard")} onCoinsEarned={amt=>addCoins(amt,"Mindset Guerrier")} lang={lang} profile={profile}/>}
-        {screen==="realite_brutale" && <RealiteBrutale onBack={()=>setScreen("dashboard")} lang={lang} user={user}/>}
-        {screen==="scan_environnement" && <ScanEnvironnement onBack={()=>setScreen("dashboard")} lang={lang} user={user}/>}
-        {screen==="score_immunite"    && <ScoreImmunite user={user} onBack={()=>setScreen("dashboard")} onCoinsEarned={amt=>addCoins(amt,"Score Immunité")} lang={lang}/>}
+
         {screen==="maternite"         && (user?.plan==="premium"||user?.isDemo?<GrossesseModule user={user} onHome={()=>setScreen("dashboard")} onCoinsEarned={amt=>addCoins(amt,"Maternité")} lang={lang}/>:<>{setScreen("paywall")}</>)}
-        {screen==="motivation"        && <MotivationModule user={user} profile={profile} onBack={()=>setScreen("dashboard")} onCoinsEarned={amt=>addCoins(amt,"Motivation")} lang={lang}/>}
+
+        {screen==="recettes_sante"    && <RecettesSante user={user} onBack={()=>setScreen("dashboard")} onPaywall={()=>setScreen("paywall")} lang={lang}/>}
         {screen==="solo_leveling"      && <SoloLevelingChallenge user={user} profile={profile} onBack={()=>setScreen("dashboard")} onCoinsEarned={amt=>addCoins(amt,"Solo Leveling")} lang={lang}/>}
-        {screen==="scanner_futur"      && <ScannerFutur user={user} profile={profile} onBack={()=>setScreen("dashboard")} onCoinsEarned={amt=>addCoins(amt,"Scanner Futur")} lang={lang}/>}
-        {screen==="score_dopamine"     && <ScoreDopamine user={user} profile={profile} onBack={()=>setScreen("dashboard")} onCoinsEarned={amt=>addCoins(amt,"Score Dopamine")} lang={lang}/>}
+
       </div>
     </>
   );

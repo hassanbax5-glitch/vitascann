@@ -16,7 +16,7 @@ const DANGER = "#ef4444";
 const SJW_IMAGES = {
   F:   "https://res.cloudinary.com/dpkpzqdni/image/upload/Capture_d_%C3%A9cran_2026-05-27_140750_xjojg6",
   E:   "https://res.cloudinary.com/dpkpzqdni/image/upload/Capture_d_%C3%A9cran_2026-05-27_140758_gqamvs",
-  D:   "https://res.cloudinary.com/dpkpzqdni/image/upload/Capture_d_%C3%A9cran_2026-05-27_140813_ldgtxl",
+  D:   "https://res.cloudinary.com/dpkpzqdni/image/upload/Capture_d_%C3%A9cran_2026-05-27_140813_mgur5z",
   C:   "https://res.cloudinary.com/dpkpzqdni/image/upload/Capture_d_%C3%A9cran_2026-05-27_140822_qzmd83",
   B:   "https://res.cloudinary.com/dpkpzqdni/image/upload/Capture_d_%C3%A9cran_2026-05-27_140833_e03htd",
   A:   "https://res.cloudinary.com/dpkpzqdni/image/upload/Capture_d_%C3%A9cran_2026-05-27_140844_syfvio",

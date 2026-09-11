@@ -10,8 +10,6 @@
 // ============================================================
 
 import { useState, useCallback } from "react";
-
-const ANTHROPIC_KEY = process.env.REACT_APP_ANTHROPIC_KEY;
 const EM   = "#00ff88";
 const GOLD = "#e2b84a";
 const MUT  = "#4a6e52";
@@ -114,14 +112,17 @@ export default function RealiteBrutale({ onBack, lang, user }) {
     setError(false);
     try {
       const prompt = buildPrompt(lang, finalVals);
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/claude", {
         method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        headers: { "Content-Type": "application/json" },
         body:JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:2500, system:prompt.system, messages:[{role:"user",content:prompt.user}] }),
       });
       const data = await res.json();
       const text = data.content?.map(b=>b.text||"").join("")||"";
       let clean = text.replace(/```json|```/g,"").trim();
+      // Protection anti-préambule : si l'IA ajoute du texte avant le JSON
+      const firstBrace = clean.indexOf("{");
+      if (firstBrace > 0) clean = clean.substring(firstBrace);
       // Protection anti-troncature : si le JSON est coupé (pas de } final), on tente de le réparer
       if (!clean.endsWith("}")) {
         const lastBrace = clean.lastIndexOf("}");

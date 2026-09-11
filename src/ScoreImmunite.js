@@ -13,9 +13,7 @@
 // ============================================================
 
 import { useState, useCallback } from "react";
-
-const ANTHROPIC_KEY = process.env.REACT_APP_ANTHROPIC_KEY;
-
+import { getRecetteParCategorie } from "./recettesData";
 const EM     = "#00ff88";
 const GOLD   = "#e2b84a";
 const MUT    = "#4a6e52";
@@ -248,7 +246,8 @@ Retourne UNIQUEMENT un JSON valide sans markdown:
     "conseil": "Comment utiliser cette plante concrètement"
   },
   "message_motivation": "1 phrase de motivation courte et puissante",
-  "projection_30j": "Ce qui change si tu appliques le plan pendant 30 jours"
+  "projection_30j": "Ce qui change si tu appliques le plan pendant 30 jours",
+  "categorie_recette": "UNE seule valeur parmi: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux — celle qui correspond le mieux au facteur principal identifié (souvent immunite, mais pas toujours)"
 }`;
 
   const systemEN = `You are VitaScann's immunity expert. Calculated score: ${score}/100. Analyze habits and generate a complete, impactful immunity diagnosis.
@@ -273,7 +272,8 @@ Return ONLY valid JSON without markdown:
     "conseil": "How to use this plant concretely"
   },
   "message_motivation": "1 short powerful motivation sentence",
-  "projection_30j": "What changes if you follow the plan for 30 days"
+  "projection_30j": "What changes if you follow the plan for 30 days",
+  "categorie_recette": "ONE value among: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux — whichever best matches the main factor identified (often immunite, but not always)"
 }`;
 
   return {
@@ -328,14 +328,17 @@ export default function ScoreImmunite({ user, onBack, onCoinsEarned, lang }) {
     const score = calcScore(finalVals, INDICATEURS);
     try {
       const prompt = buildPrompt(lang, finalVals, score, INDICATEURS);
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/claude", {
         method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1200,system:prompt.system,messages:[{role:"user",content:prompt.user}]}),
+        headers: { "Content-Type": "application/json" },
+        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1800,system:prompt.system,messages:[{role:"user",content:prompt.user}]}),
       });
       const data = await res.json();
       const text = data.content?.map(b=>b.text||"").join("")||"";
-      const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
+      let cleaned = text.replace(/```json|```/g,"").trim();
+      const fb = cleaned.indexOf("{"), lb = cleaned.lastIndexOf("}");
+      if (fb !== -1 && lb !== -1) cleaned = cleaned.slice(fb, lb + 1);
+      const parsed = JSON.parse(cleaned);
       const full = {...parsed, score, vals: finalVals};
       setResult(full);
 
@@ -696,6 +699,37 @@ export default function ScoreImmunite({ user, onBack, onCoinsEarned, lang }) {
             <div style={{fontSize:13,color:"#a0c8a8",lineHeight:1.7}}>{result.projection_30j}</div>
           </div>
         )}
+
+        {/* Recette santé recommandée */}
+        {(() => {
+          const recette = result.categorie_recette
+            ? getRecetteParCategorie(result.categorie_recette)
+            : null;
+          if (!recette) return null;
+          return (
+            <div style={{background:`${recette.couleur}10`,border:`1.5px solid ${recette.couleur}33`,borderRadius:18,padding:18,marginBottom:14}}>
+              <div style={{fontSize:11,color:recette.couleur,fontWeight:700,letterSpacing:.8,marginBottom:10}}>🌿 {L?"RECOMMENDED RECIPE":"RECETTE RECOMMANDÉE"}</div>
+              <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12}}>
+                <div style={{fontSize:36,lineHeight:1,flexShrink:0}}>{recette.emoji}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:14,color:GOLD,marginBottom:4}}>{L?recette.titre_en:recette.titre_fr}</div>
+                  <div style={{fontSize:12,color:"#a0c8a8",lineHeight:1.5}}>{L?recette.bienfait_en:recette.bienfait_fr}</div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+                {recette.ingredients.map((ing,i)=>(
+                  <span key={i} style={{background:`${recette.couleur}18`,border:`1px solid ${recette.couleur}44`,borderRadius:20,padding:"4px 12px",fontSize:12,color:recette.couleur,fontWeight:600}}>
+                    {ing}
+                  </span>
+                ))}
+              </div>
+              <div style={{background:"#0a1a0e",border:`1px solid ${GOLD}33`,borderRadius:12,padding:12}}>
+                <div style={{fontSize:10,color:GOLD,fontWeight:700,letterSpacing:.6,marginBottom:6}}>👩‍🍳 {L?"HOW TO PREPARE":"PRÉPARATION"}</div>
+                <div style={{fontSize:12,color:"#c8a84a",lineHeight:1.7}}>{L?recette.preparation_en:recette.preparation_fr}</div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Message motivation */}
         {result.message_motivation&&(

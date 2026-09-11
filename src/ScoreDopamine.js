@@ -5,14 +5,12 @@
 // ============================================
 
 import { useState } from "react";
+import { getRecetteParCategorie } from "./recettesData";
 
 const EM = "#00ff88", GOLD = "#e2b84a", MUT = "#4a6e52";
 const CARD = "#0c1810", BDR = "#192c1d";
 const DANGER = "#ef4444", WARN = "#f97316";
 const DOPAMINE_COLOR = "#a855f7";
-
-const ANTHROPIC_KEY = process.env.REACT_APP_ANTHROPIC_KEY;
-
 // ─── Questions dopamine (FR + EN) ───
 // Tirage aléatoire de 10 questions parmi la bank (seed = date du jour)
 function pickRandomQsDopamine(bank, n=10) {
@@ -269,18 +267,14 @@ Réponds UNIQUEMENT en JSON valide sans aucun texte avant ou après. Format exac
   ],
   "quick_wins": ["<action immédiate dès aujourd'hui #1>", "<action #2>", "<action #3>"],
   "message_islam": "<conseil islamique lié à la maîtrise des désirs (nafs), avec référence Coran/hadith si possible>",
-  "score_partage": "<phrase courte et percutante pour partager sur TikTok/Insta, max 15 mots, en ${L ? "English" : "français"}>"
+  "score_partage": "<phrase courte et percutante pour partager sur TikTok/Insta, max 15 mots, en ${L ? "English" : "français"}>",
+  "categorie_recette": "UNE seule valeur parmi: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux — celle qui correspond le mieux (souvent cerveau ou energie, mais pas toujours)"
 }`;
 
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/claude", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": ANTHROPIC_KEY,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
           max_tokens: 2000,
@@ -613,6 +607,37 @@ Réponds UNIQUEMENT en JSON valide sans aucun texte avant ou après. Format exac
               ))}
             </div>
           )}
+
+          {/* Recette santé recommandée */}
+          {(() => {
+            const recette = result.categorie_recette
+              ? getRecetteParCategorie(result.categorie_recette)
+              : null;
+            if (!recette) return null;
+            return (
+              <div style={{ background: `${recette.couleur}10`, border: `1.5px solid ${recette.couleur}33`, borderRadius: 18, padding: 18, marginBottom: 16 }}>
+                <div style={{ fontSize: 11, color: recette.couleur, fontWeight: 700, letterSpacing: .8, marginBottom: 10 }}>🌿 {L ? "RECOMMENDED RECIPE" : "RECETTE RECOMMANDÉE"}</div>
+                <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+                  <div style={{ fontSize: 36, lineHeight: 1, flexShrink: 0 }}>{recette.emoji}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: GOLD, marginBottom: 4 }}>{L ? recette.titre_en : recette.titre_fr}</div>
+                    <div style={{ fontSize: 12, color: "#a0c8a8", lineHeight: 1.5 }}>{L ? recette.bienfait_en : recette.bienfait_fr}</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                  {recette.ingredients.map((ing, i) => (
+                    <span key={i} style={{ background: `${recette.couleur}18`, border: `1px solid ${recette.couleur}44`, borderRadius: 20, padding: "4px 12px", fontSize: 12, color: recette.couleur, fontWeight: 600 }}>
+                      {ing}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ background: "#0a1a0e", border: `1px solid ${GOLD}33`, borderRadius: 12, padding: 12 }}>
+                  <div style={{ fontSize: 10, color: GOLD, fontWeight: 700, letterSpacing: .6, marginBottom: 6 }}>👩‍🍳 {L ? "HOW TO PREPARE" : "PRÉPARATION"}</div>
+                  <div style={{ fontSize: 12, color: "#c8a84a", lineHeight: 1.7 }}>{L ? recette.preparation_en : recette.preparation_fr}</div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Message islamique */}
           {result.message_islam && (

@@ -4,7 +4,8 @@
     "namespace": "android_app",
     "package_name": "app.vercel.vitascann.twa",
     "sha256_cert_fingerprints": [
-      "28:56:61:E0:30:1F:85:0D:0E:94:F5:5B:6F:E3:96:DB:0A:CC:DB:71:02:CE:4E:CC:CF:4D:4B:C1:CC:32:97:B0"
+      "28:56:61:E0:30:1F:85:0D:0E:94:F5:5B:6F:E3:96:DB:0A:CC:DB:71:02:CE:4E:CC:CF:4D:4B:C1:CC:32:97:B0",
+      "2C:11:F9:97:9A:99:E0:F0:71:C3:0A:8A:50:43:CE:C1:AF:2F:D5:B9:B3:09:50:D6:A2:F6:7F:4A:59:D8:6E:D8"
     ]
   }
 }]

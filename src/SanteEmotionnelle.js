@@ -13,9 +13,7 @@
 // ============================================================
 
 import { useState, useEffect, useCallback, useRef } from "react";
-
-const ANTHROPIC_KEY = process.env.REACT_APP_ANTHROPIC_KEY;
-
+import { getRecetteParCategorie } from "./recettesData";
 // ─── CLOUDINARY PERSOS RPG ───
 const RPG_CHARS = {
   low:     "https://res.cloudinary.com/dpkpzqdni/image/upload/Capture_d_%C3%A9cran_2026-05-12_160616_myin1q",
@@ -186,8 +184,8 @@ function pickQuestions(lang, lastLog) {
 function buildAnalysisPrompt(lang, questions, answers) {
   const isEn = lang === "en";
   const qa = answers.map((a, i) => `Q${i+1}: ${questions[i]}\nRéponse: ${a}`).join("\n\n");
-  const systemFR = `Tu es le coach d'intelligence émotionnelle de VitaScann. Analyse les réponses selon l'Échelle de Conscience (Hawkins). IDs: honte(20),culpabilite(30),apathie(50),peine(75),peur(100),desir(125),colere(150),fierte(175),courage(200),neutralite(250),volonte(310),acceptation(350),raison(400),amour(500),joie(540),paix(600),illumination(700). Sois honnête — ne mets PAS un niveau élevé pour faire plaisir. Retourne UNIQUEMENT un JSON valide sans markdown: {"niveau_id":"string","vibration":number,"rang":"BRONZE|ARGENT|OR|PLATINE|DIAMANT|MAÎTRE","analyse":"2-3 phrases basées sur les réponses","point_fort":"observation positive concrète","conseil":"action concrète pour aujourd'hui","alerte_mentale":boolean}`;
-  const systemEN = `You are VitaScann's emotional coach. Analyze answers using Hawkins' Scale of Consciousness. IDs: honte(20),culpabilite(30),apathie(50),peine(75),peur(100),desir(125),colere(150),fierte(175),courage(200),neutralite(250),volonte(310),acceptation(350),raison(400),amour(500),joie(540),paix(600),illumination(700). Be honest — do NOT inflate the level. Return ONLY valid JSON no markdown: {"niveau_id":"string","vibration":number,"rang":"BRONZE|ARGENT|OR|PLATINE|DIAMANT|MAÎTRE","analyse":"2-3 sentences based on answers","point_fort":"concrete positive observation","conseil":"concrete action for today","alerte_mentale":boolean}`;
+  const systemFR = `Tu es le coach d'intelligence émotionnelle de VitaScann. Analyse les réponses selon l'Échelle de Conscience (Hawkins). IDs: honte(20),culpabilite(30),apathie(50),peine(75),peur(100),desir(125),colere(150),fierte(175),courage(200),neutralite(250),volonte(310),acceptation(350),raison(400),amour(500),joie(540),paix(600),illumination(700). Sois honnête — ne mets PAS un niveau élevé pour faire plaisir. Retourne UNIQUEMENT un JSON valide sans markdown: {"niveau_id":"string","vibration":number,"rang":"BRONZE|ARGENT|OR|PLATINE|DIAMANT|MAÎTRE","analyse":"2-3 phrases basées sur les réponses","point_fort":"observation positive concrète","conseil":"action concrète pour aujourd'hui","alerte_mentale":boolean,"categorie_recette":"UNE seule valeur parmi: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux, fertilite — uniquement si alerte_mentale est false, sinon chaîne vide"}`;
+  const systemEN = `You are VitaScann's emotional coach. Analyze answers using Hawkins' Scale of Consciousness. IDs: honte(20),culpabilite(30),apathie(50),peine(75),peur(100),desir(125),colere(150),fierte(175),courage(200),neutralite(250),volonte(310),acceptation(350),raison(400),amour(500),joie(540),paix(600),illumination(700). Be honest — do NOT inflate the level. Return ONLY valid JSON no markdown: {"niveau_id":"string","vibration":number,"rang":"BRONZE|ARGENT|OR|PLATINE|DIAMANT|MAÎTRE","analyse":"2-3 sentences based on answers","point_fort":"concrete positive observation","conseil":"concrete action for today","alerte_mentale":boolean,"categorie_recette":"ONE value among: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux, fertilite — only if alerte_mentale is false, otherwise empty string"}`;
   return {
     system: isEn ? systemEN : systemFR,
     user: isEn ? `User answers:\n\n${qa}\n\nAnalyze and return JSON.` : `Réponses:\n\n${qa}\n\nAnalyse et retourne le JSON.`,
@@ -203,7 +201,7 @@ function saveLog(log) { localStorage.setItem(STORAGE_KEY, JSON.stringify(log.sli
 // ════════════════════════════════════════════════════════════
 // COMPOSANT PRINCIPAL
 // ════════════════════════════════════════════════════════════
-export default function SanteEmotionnelle({ user, onBack, onCoinsEarned, lang, profile }) {
+export default function SanteEmotionnelle({ user, onBack, onCoinsEarned, lang, profile, onMoodDecline }) {
   const L = lang === "en";
 
   // Sélection dynamique des questions au montage (Option C)
@@ -292,14 +290,17 @@ export default function SanteEmotionnelle({ user, onBack, onCoinsEarned, lang, p
     setScreen("analyzing"); setAnalyzeError(false);
     try {
       const prompt = buildAnalysisPrompt(lang, QUESTIONS, finalAnswers);
-      const res = await fetch("https://api.anthropic.com/v1/messages",{
+      const res = await fetch("/api/claude",{
         method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        headers: { "Content-Type": "application/json" },
         body:JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:800, system:prompt.system, messages:[{role:"user",content:prompt.user}] }),
       });
       const data=await res.json();
       const text=data.content?.map(b=>b.text||"").join("")||"";
-      const parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
+      let cleaned=text.replace(/```json|```/g,"").trim();
+      const fb=cleaned.indexOf("{"), lb=cleaned.lastIndexOf("}");
+      if (fb!==-1 && lb!==-1) cleaned=cleaned.slice(fb, lb+1);
+      const parsed=JSON.parse(cleaned);
       const niv=NIVEAUX_VIBRATOIRES.find(n=>n.id===parsed.niveau_id)||NIVEAUX_VIBRATOIRES[4];
       const fullResult={...parsed,niv};
       setAiResult(fullResult);
@@ -309,6 +310,14 @@ export default function SanteEmotionnelle({ user, onBack, onCoinsEarned, lang, p
       const newLog=existing?log.map(e=>e.date===today?entry:e):[entry,...log];
       setLog(newLog); saveLog(newLog);
       if(!existing&&user?.uid&&!user?.isDemo&&onCoinsEarned) onCoinsEarned(niv.xp);
+
+      // ─── Détection de baisse — 3 derniers jours en tendance descendante ───
+      if (onMoodDecline) {
+        const sorted = [...newLog].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
+        if (sorted.length===3 && sorted[0].vibration<sorted[1].vibration && sorted[1].vibration<sorted[2].vibration) {
+          onMoodDecline();
+        }
+      }
       setScreen("result");
     } catch(e){ console.error(e); setAnalyzeError(true); }
   },[lang,log,user,onCoinsEarned]);
@@ -341,9 +350,9 @@ export default function SanteEmotionnelle({ user, onBack, onCoinsEarned, lang, p
         ? `You are a compassionate mental wellness companion integrated in the VitaScann health app. Your role is to listen with empathy, provide emotional support, and offer Islamic-inspired wellness tips when relevant. You are NOT a therapist and always encourage professional help when needed. Keep responses warm, short (3-5 sentences), and actionable. Never be dismissive. If the person seems in serious distress, gently encourage them to call a crisis line.`
         : `Tu es un compagnon de bien-être mental intégré dans l'app santé VitaScann. Ton rôle est d'écouter avec empathie, offrir un soutien émotionnel, et proposer des conseils de bien-être inspirés de l'Islam quand c'est pertinent. Tu n'es PAS thérapeute et encourages toujours l'aide professionnelle quand nécessaire. Garde tes réponses chaleureuses, courtes (3-5 phrases) et actionnables. Ne minimise jamais la douleur de la personne. Si elle semble en grande détresse, encourage doucement à appeler une ligne d'écoute.`;
       const messages=newMessages.map(m=>({role:m.role==="user"?"user":"assistant",content:m.text}));
-      const res=await fetch("https://api.anthropic.com/v1/messages",{
+      const res=await fetch("/api/claude",{
         method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        headers: { "Content-Type": "application/json" },
         body:JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:400, system:systemPrompt, messages }),
       });
       const data=await res.json();
@@ -459,6 +468,30 @@ export default function SanteEmotionnelle({ user, onBack, onCoinsEarned, lang, p
             </div>
           ))}
         </div>
+
+        {/* Mini-graphique 7 jours — aperçu direct sur l'accueil */}
+        {log.length>1&&(()=>{
+          const last7=[...Array(7)].map((_,i)=>{
+            const d=new Date();d.setDate(d.getDate()-(6-i));
+            const key=d.toISOString().slice(0,10);
+            const entry=log.find(e=>e.date===key);
+            return{date:key,vibration:entry?.vibration||null};
+          });
+          const cw=280,ch=60;
+          const pts=last7.map((d,i)=>d.vibration?`${(i/6)*cw},${ch-(d.vibration/700)*ch}`:null).filter(Boolean);
+          return(
+            <button onClick={()=>setScreen("history")} style={{width:"100%",background:CARD,border:`1px solid ${BDR}`,borderRadius:16,padding:14,marginBottom:14,cursor:"pointer",textAlign:"left",fontFamily:"'Outfit',sans-serif"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div style={{fontSize:11,color:MUT,fontWeight:700,letterSpacing:.8}}>📈 {L?"LAST 7 DAYS":"7 DERNIERS JOURS"}</div>
+                <div style={{fontSize:11,color:"#c084fc"}}>{L?"Full history →":"Historique complet →"}</div>
+              </div>
+              <svg width={cw} height={ch+4} style={{display:"block"}}>
+                {pts.length>1&&<polyline points={pts.join(" ")} fill="none" stroke="#c084fc" strokeWidth="2" strokeLinejoin="round"/>}
+                {last7.map((d,i)=>d.vibration&&<circle key={i} cx={(i/6)*cw} cy={ch-(d.vibration/700)*ch} r="3" fill="#c084fc"/>)}
+              </svg>
+            </button>
+          );
+        })()}
 
         {/* Historique rapide */}
         {log.length>0&&(
@@ -584,7 +617,7 @@ export default function SanteEmotionnelle({ user, onBack, onCoinsEarned, lang, p
   // SCREEN : RÉSULTAT
   // ════════════════════════════════════════════════
   if(screen==="result"&&aiResult){
-    const {niv,analyse,point_fort,conseil,alerte_mentale}=aiResult;
+    const {niv,analyse,point_fort,conseil,alerte_mentale,categorie_recette}=aiResult;
     if(!niv) return null;
     const mtc=MTC_DATA[niv.organe]||MTC_DATA["Cœur"];
     const ri=RANG_INFO[niv.rang]||RANG_INFO["BRONZE"];
@@ -660,6 +693,37 @@ export default function SanteEmotionnelle({ user, onBack, onCoinsEarned, lang, p
               <div style={{fontSize:12,color:"#c8a060",lineHeight:1.6}}>{conseil}</div>
             </div>}
           </div>
+
+          {/* Recette santé recommandée — jamais affichée en cas d'alerte mentale */}
+          {!alerte_mentale && (() => {
+            const recette = categorie_recette
+              ? getRecetteParCategorie(categorie_recette)
+              : null;
+            if (!recette) return null;
+            return (
+              <div style={{background:`${recette.couleur}10`,border:`1.5px solid ${recette.couleur}33`,borderRadius:18,padding:18,marginBottom:14}}>
+                <div style={{fontSize:11,color:recette.couleur,fontWeight:700,letterSpacing:.8,marginBottom:10}}>🌿 {L?"RECOMMENDED RECIPE":"RECETTE RECOMMANDÉE"}</div>
+                <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12}}>
+                  <div style={{fontSize:36,lineHeight:1,flexShrink:0}}>{recette.emoji}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:700,fontSize:14,color:GOLD,marginBottom:4}}>{L?recette.titre_en:recette.titre_fr}</div>
+                    <div style={{fontSize:12,color:"#a0c8a8",lineHeight:1.5}}>{L?recette.bienfait_en:recette.bienfait_fr}</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+                  {recette.ingredients.map((ing,i)=>(
+                    <span key={i} style={{background:`${recette.couleur}18`,border:`1px solid ${recette.couleur}44`,borderRadius:20,padding:"4px 12px",fontSize:12,color:recette.couleur,fontWeight:600}}>
+                      {ing}
+                    </span>
+                  ))}
+                </div>
+                <div style={{background:"#0a1a0e",border:`1px solid ${GOLD}33`,borderRadius:12,padding:12}}>
+                  <div style={{fontSize:10,color:GOLD,fontWeight:700,letterSpacing:.6,marginBottom:6}}>👩‍🍳 {L?"HOW TO PREPARE":"PRÉPARATION"}</div>
+                  <div style={{fontSize:12,color:"#c8a84a",lineHeight:1.7}}>{L?recette.preparation_en:recette.preparation_fr}</div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* MTC */}
           <div style={{background:CARD,border:`1.5px solid ${mtc.color}33`,borderRadius:18,padding:18,marginBottom:14}}>

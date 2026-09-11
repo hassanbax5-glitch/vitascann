@@ -9,10 +9,10 @@
 // ✅ Bilingue FR / EN
 // ============================================================
 
-import { useState, useRef, useCallback } from "react";
-
-const ANTHROPIC_KEY = process.env.REACT_APP_ANTHROPIC_KEY;
-
+import { useState, useRef, useCallback, useEffect } from "react";
+import { getRecetteParCategorie } from "./recettesData";
+import { lookupBarcode } from "./openFoodFacts";
+import { Capacitor } from "@capacitor/core";
 const EM   = "#00ff88";
 const GOLD = "#e2b84a";
 const MUT  = "#4a6e52";
@@ -61,7 +61,8 @@ const SYSTEM_PROMPT_FR = `Tu es l'expert nutrition de VitaScann. On te donne une
   "additifs": ["liste d'additifs identifiés (E-numbers, colorants, conservateurs)"],
   "alternatives": ["2-3 alternatives plus saines"],
   "tibb": "conseil islamique/halal si pertinent (ex: présence de porc caché, alcool, gélatine animale, ou conseil tayyib)",
-  "pour_qui": "qui devrait éviter ce produit (diabétiques, enfants, etc.)"
+  "pour_qui": "qui devrait éviter ce produit (diabétiques, enfants, etc.)",
+  "categorie_recette": "UNE seule valeur parmi: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux, fertilite — une alternative saine maison liée au problème principal détecté dans ce produit (ex: trop de sucre → glycemie)"
 }
 Si l'image n'est pas une étiquette nutritionnelle, retourne {"erreur": "Pas une étiquette nutritionnelle"}.`;
 
@@ -88,7 +89,8 @@ const SYSTEM_PROMPT_EN = `You are VitaScann's nutrition expert. You receive a ph
   "additifs": ["list of identified additives (E-numbers, colorants, preservatives)"],
   "alternatives": ["2-3 healthier alternatives"],
   "tibb": "Islamic/halal advice if relevant (e.g. hidden pork, alcohol, animal gelatin, or tayyib advice)",
-  "pour_qui": "who should avoid this product (diabetics, children, etc.)"
+  "pour_qui": "who should avoid this product (diabetics, children, etc.)",
+  "categorie_recette": "ONE value among: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux, fertilite — a healthy homemade alternative linked to the main issue detected in this product (e.g. too much sugar → glycemie)"
 }
 If the image is not a nutritional label, return {"erreur": "Not a nutritional label"}.`;
 
@@ -99,8 +101,81 @@ export default function NutritionLabelScan({ onBack, lang }) {
   const [b64, setB64]           = useState(null);
   const [result, setResult]     = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [isNative, setIsNative] = useState(false);
   const fileRef                 = useRef(null);
   const cameraRef               = useRef(null);
+
+  useEffect(() => {
+    setIsNative(Capacitor.isNativePlatform());
+  }, []);
+
+  // ─── Analyse qualitative légère (texte seul, pas d'image) pour un produit
+  //     déjà identifié via code-barres — utilisée pour halal/tibb/recette/alertes
+  const analyzeIngredientsText = useCallback(async (offData) => {
+    const qualPrompt = L
+      ? `You are VitaScann's nutrition expert. A product was identified via barcode with these REAL nutritional values (already accurate, do not re-estimate them): ${JSON.stringify(offData.pour_100g)}. Ingredients list: "${offData.ingredients_text || "not available"}". Additives found: ${offData.additifs_bruts.join(", ") || "none"}. Based on this, return ONLY valid JSON without markdown: {"verdict":"1 sentence summarizing quality","notes_nutriments":[{"nom":"Sugars","valeur":"Xg","statut":"bon|moyen|mauvais","commentaire":"short sentence"}],"alertes":["problematic ingredients or nutrients"],"points_positifs":["positive points"],"alternatives":["2-3 healthier alternatives"],"tibb":"Islamic/halal advice if relevant (hidden pork, alcohol, animal gelatin, or tayyib advice)","pour_qui":"who should avoid this product","categorie_recette":"ONE value among: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux, fertilite"}`
+      : `Tu es l'expert nutrition de VitaScann. Un produit a été identifié via code-barres avec ces VRAIES valeurs nutritionnelles (déjà exactes, ne les réestime pas) : ${JSON.stringify(offData.pour_100g)}. Liste d'ingrédients : "${offData.ingredients_text || "non disponible"}". Additifs détectés : ${offData.additifs_bruts.join(", ") || "aucun"}. Sur cette base, retourne UNIQUEMENT un JSON valide sans markdown : {"verdict":"1 phrase résumant la qualité","notes_nutriments":[{"nom":"Sucres","valeur":"Xg","statut":"bon|moyen|mauvais","commentaire":"phrase courte"}],"alertes":["ingrédients ou nutriments problématiques"],"points_positifs":["points positifs"],"alternatives":["2-3 alternatives plus saines"],"tibb":"conseil islamique/halal si pertinent (porc caché, alcool, gélatine animale, ou conseil tayyib)","pour_qui":"qui devrait éviter ce produit","categorie_recette":"UNE seule valeur parmi: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux, fertilite"}`;
+
+    const res = await fetch("/api/claude", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 900,
+        system: qualPrompt,
+        messages: [{ role: "user", content: L ? "Analyze and return the JSON." : "Analyse et retourne le JSON." }]
+      }),
+    });
+    const data = await res.json();
+    const text = data.content?.map(b => b.text || "").join("") || "";
+    return JSON.parse(text.replace(/```json|```/g, "").trim());
+  }, [L]);
+
+  // ─── Scan code-barres (app native uniquement) ───
+  const scanBarcode = useCallback(async () => {
+    setScreen("scanning-barcode");
+    try {
+      const { BarcodeScanner } = await import("@capacitor-mlkit/barcode-scanning");
+      const { camera } = await BarcodeScanner.requestPermissions();
+      if (camera !== "granted" && camera !== "limited") {
+        setErrorMsg(L ? "Camera permission denied." : "Permission caméra refusée.");
+        setScreen("error");
+        return;
+      }
+      const { barcodes } = await BarcodeScanner.scan();
+      if (!barcodes || barcodes.length === 0) {
+        setScreen("home");
+        return;
+      }
+      const code = barcodes[0].rawValue;
+      setScreen("analyzing");
+
+      const offData = await lookupBarcode(code);
+      if (!offData) {
+        // Produit non trouvé dans la base → on bascule sur la méthode photo
+        setErrorMsg(L
+          ? "Product not found in the database. Try taking a photo of the label instead."
+          : "Produit introuvable dans la base. Essaie de prendre une photo de l'étiquette à la place.");
+        setScreen("error");
+        return;
+      }
+
+      const qualitative = await analyzeIngredientsText(offData);
+      setResult({
+        produit: offData.produit,
+        score: offData.score,
+        pour_100g: offData.pour_100g,
+        additifs: offData.additifs_bruts,
+        source: "barcode",
+        ...qualitative,
+      });
+      setScreen("result");
+    } catch (e) {
+      console.error(e);
+      setErrorMsg(L ? "Barcode scan error. Please try again." : "Erreur de scan du code-barres. Réessaye.");
+      setScreen("error");
+    }
+  }, [L, analyzeIngredientsText]);
 
   const handleFile = useCallback((file) => {
     if (!file) return;
@@ -114,18 +189,14 @@ export default function NutritionLabelScan({ onBack, lang }) {
     reader.readAsDataURL(file);
   }, []);
 
+
   const analyze = useCallback(async () => {
     if (!b64) return;
     setScreen("analyzing");
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/claude", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": ANTHROPIC_KEY,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
           max_tokens: 1500,
@@ -186,6 +257,18 @@ export default function NutritionLabelScan({ onBack, lang }) {
       </div>
 
       <div style={{ padding: "20px 20px 0" }}>
+        {/* CTA Code-barres — app native uniquement */}
+        {isNative && (
+          <button onClick={scanBarcode}
+            style={{ width: "100%", background: `linear-gradient(135deg,#1a2040,#20285a)`, border: `1.5px solid #60a5fa44`, borderRadius: 18, padding: "20px", cursor: "pointer", marginBottom: 12, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+            <span style={{ fontSize: 28 }}>📊</span>
+            <div style={{ textAlign: "left" }}>
+              <div style={{ fontWeight: 700, fontSize: 16, color: "#60a5fa" }}>{L ? "Scan barcode" : "Scanner le code-barres"}</div>
+              <div style={{ fontSize: 12, color: MUT, marginTop: 2 }}>{L ? "Faster & more precise" : "Plus rapide et plus précis"}</div>
+            </div>
+          </button>
+        )}
+
         {/* CTA Caméra */}
         <button onClick={() => cameraRef.current?.click()}
           style={{ width: "100%", background: `linear-gradient(135deg,#0a3020,#0d5030)`, border: `1.5px solid ${EM}44`, borderRadius: 18, padding: "20px", cursor: "pointer", marginBottom: 12, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
@@ -263,13 +346,17 @@ export default function NutritionLabelScan({ onBack, lang }) {
   );
 
   // ─── ANALYZING ───
-  if (screen === "analyzing") return (
+  if (screen === "analyzing" || screen === "scanning-barcode") return (
     <div style={{ minHeight: "100vh", background: "#060d08", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>
       <div style={{ position: "relative", width: 120, height: 120, marginBottom: 28 }}>
         <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: `radial-gradient(circle,${EM}22 0%,transparent 70%)`, animation: "pulse 2s ease-in-out infinite" }} />
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 52 }}>🔬</div>
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 52 }}>{screen === "scanning-barcode" ? "📊" : "🔬"}</div>
       </div>
-      <div className="serif" style={{ fontSize: 22, fontWeight: 700, color: EM, marginBottom: 10 }}>{L ? "Scanning label..." : "Scan de l'étiquette..."}</div>
+      <div className="serif" style={{ fontSize: 22, fontWeight: 700, color: EM, marginBottom: 10 }}>
+        {screen === "scanning-barcode"
+          ? (L ? "Point at the barcode..." : "Pointe vers le code-barres...")
+          : (L ? "Scanning label..." : "Scan de l'étiquette...")}
+      </div>
       <div style={{ color: MUT, fontSize: 13, lineHeight: 1.7 }}>{L ? "AI is analyzing the nutritional values, ingredients and additives." : "L'IA analyse les valeurs nutritives, ingrédients et additifs."}</div>
       <div style={{ display: "flex", gap: 8, marginTop: 24 }}>
         {[0, 1, 2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: EM, animation: `pulse 1.2s ${i * .2}s ease-in-out infinite` }} />)}
@@ -445,6 +532,37 @@ export default function NutritionLabelScan({ onBack, lang }) {
               <div style={{ fontSize: 12, color: "#b090d0", lineHeight: 1.7 }}>{result.pour_qui}</div>
             </div>
           )}
+
+          {/* Alternative maison recommandée */}
+          {(() => {
+            const recette = result.categorie_recette
+              ? getRecetteParCategorie(result.categorie_recette)
+              : null;
+            if (!recette) return null;
+            return (
+              <div style={{ background: `${recette.couleur}10`, border: `1.5px solid ${recette.couleur}33`, borderRadius: 18, padding: 18, marginBottom: 20 }}>
+                <div style={{ fontSize: 11, color: recette.couleur, fontWeight: 700, letterSpacing: .8, marginBottom: 10 }}>🌿 {L ? "HEALTHY HOMEMADE ALTERNATIVE" : "ALTERNATIVE MAISON SAINE"}</div>
+                <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+                  <div style={{ fontSize: 36, lineHeight: 1, flexShrink: 0 }}>{recette.emoji}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: GOLD, marginBottom: 4 }}>{L ? recette.titre_en : recette.titre_fr}</div>
+                    <div style={{ fontSize: 12, color: "#a0c8a8", lineHeight: 1.5 }}>{L ? recette.bienfait_en : recette.bienfait_fr}</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                  {recette.ingredients.map((ing, i) => (
+                    <span key={i} style={{ background: `${recette.couleur}18`, border: `1px solid ${recette.couleur}44`, borderRadius: 20, padding: "4px 12px", fontSize: 12, color: recette.couleur, fontWeight: 600 }}>
+                      {ing}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ background: "#0a1a0e", border: `1px solid ${GOLD}33`, borderRadius: 12, padding: 12 }}>
+                  <div style={{ fontSize: 10, color: GOLD, fontWeight: 700, letterSpacing: .6, marginBottom: 6 }}>👩‍🍳 {L ? "HOW TO PREPARE" : "PRÉPARATION"}</div>
+                  <div style={{ fontSize: 12, color: "#c8a84a", lineHeight: 1.7 }}>{L ? recette.preparation_en : recette.preparation_fr}</div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Nouveau scan */}
           <button onClick={() => { setScreen("home"); setResult(null); setPreview(null); setB64(null); }}

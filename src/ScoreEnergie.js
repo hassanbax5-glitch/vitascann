@@ -14,9 +14,7 @@
 // ============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-
-const ANTHROPIC_KEY = process.env.REACT_APP_ANTHROPIC_KEY;
-
+import { getRecetteParCategorie } from "./recettesData";
 // ─── PALETTE ───
 const EM   = "#00ff88";
 const GOLD = "#e2b84a";
@@ -261,7 +259,8 @@ Retourne UNIQUEMENT un JSON valide sans markdown:
   "message_mindset": "Message de motivation court et puissant — style coach",
   "prevision_demain": "Ce qui va se passer demain si rien ne change — sois franc",
   "score_mental": ${Math.round(score * 0.6 + (vals.stress ? (6 - vals.stress) * 8 : 0))},
-  "score_physique": ${Math.round(score * 0.4 + (vals.activite ? vals.activite * 4 : 0))}
+  "score_physique": ${Math.round(score * 0.4 + (vals.activite ? vals.activite * 4 : 0))},
+  "categorie_recette": "UNE seule valeur parmi: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux — celle qui correspond le mieux au facteur principal identifié"
 }`;
 
   const systemEN = `You are VitaScann's performance coach. Analyze daily energy data and generate ultra-precise actionable recommendations. User profile: goal=${mode}. Calculated energy score: ${score}/100.
@@ -280,7 +279,8 @@ Return ONLY valid JSON without markdown:
   "message_mindset": "Short powerful motivation — coach style",
   "prevision_demain": "What will happen tomorrow if nothing changes — be frank",
   "score_mental": ${Math.round(score * 0.6)},
-  "score_physique": ${Math.round(score * 0.4)}
+  "score_physique": ${Math.round(score * 0.4)},
+  "categorie_recette": "ONE value among: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux — whichever best matches the main factor identified"
 }`;
 
   return {
@@ -359,14 +359,17 @@ export default function ScoreEnergie({ user, onBack, onCoinsEarned, lang, profil
     const score = calcScore(finalVals);
     try {
       const prompt = buildEnergyPrompt(lang, finalVals, score, profile);
-      const res = await fetch("https://api.anthropic.com/v1/messages",{
+      const res = await fetch("/api/claude",{
         method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        headers: { "Content-Type": "application/json" },
         body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:2000,system:prompt.system,messages:[{role:"user",content:prompt.user}]}),
       });
       const data = await res.json();
       const text = data.content?.map(b=>b.text||"").join("")||"";
-      const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
+      let cleaned = text.replace(/```json|```/g,"").trim();
+      const fb = cleaned.indexOf("{"), lb = cleaned.lastIndexOf("}");
+      if (fb !== -1 && lb !== -1) cleaned = cleaned.slice(fb, lb + 1);
+      const parsed = JSON.parse(cleaned);
       const fullResult = {...parsed, score, vals: finalVals};
       setAiResult(fullResult);
 
@@ -759,6 +762,39 @@ export default function ScoreEnergie({ user, onBack, onCoinsEarned, lang, profil
               <div style={{fontSize:12,color:"#9090b8",lineHeight:1.7}}>{aiResult.prevision_demain}</div>
             </div>
           )}
+
+          {/* Recette santé recommandée */}
+          {(() => {
+            const recette = aiResult.categorie_recette
+              ? getRecetteParCategorie(aiResult.categorie_recette)
+              : null;
+            if (!recette) return null;
+            return (
+              <div style={{background:`${recette.couleur}10`,border:`1.5px solid ${recette.couleur}33`,borderRadius:18,padding:18,marginBottom:14}}>
+                <div style={{fontSize:11,color:recette.couleur,fontWeight:700,letterSpacing:.8,marginBottom:10}}>🌿 {L?"RECOMMENDED RECIPE":"RECETTE RECOMMANDÉE"}</div>
+                <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12}}>
+                  <div style={{fontSize:36,lineHeight:1,flexShrink:0}}>{recette.emoji}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:700,fontSize:14,color:GOLD,marginBottom:4}}>{L?recette.titre_en:recette.titre_fr}</div>
+                    <div style={{fontSize:12,color:"#a0c8a8",lineHeight:1.5}}>{L?recette.bienfait_en:recette.bienfait_fr}</div>
+                  </div>
+                </div>
+                {/* Ingrédients */}
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+                  {recette.ingredients.map((ing,i)=>(
+                    <span key={i} style={{background:`${recette.couleur}18`,border:`1px solid ${recette.couleur}44`,borderRadius:20,padding:"4px 12px",fontSize:12,color:recette.couleur,fontWeight:600}}>
+                      {ing}
+                    </span>
+                  ))}
+                </div>
+                {/* Préparation */}
+                <div style={{background:"#0a1a0e",border:`1px solid ${GOLD}33`,borderRadius:12,padding:12}}>
+                  <div style={{fontSize:10,color:GOLD,fontWeight:700,letterSpacing:.6,marginBottom:6}}>👩‍🍳 {L?"HOW TO PREPARE":"PRÉPARATION"}</div>
+                  <div style={{fontSize:12,color:"#c8a84a",lineHeight:1.7}}>{L?recette.preparation_en:recette.preparation_fr}</div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Détail des indicateurs */}
           <div style={{background:CARD,border:`1px solid ${BDR}`,borderRadius:18,padding:18,marginBottom:14}}>
