@@ -20,7 +20,7 @@ workflows:
       - name: Build iOS app (unsigned, verification build)
         script: |
           cd ios/App
-          xcodebuild -workspace App.xcworkspace \
+          xcodebuild -project App.xcodeproj \
             -scheme App \
             -configuration Debug \
             -sdk iphonesimulator \
