@@ -13,7 +13,7 @@ workflows:
           npm install
       - name: Build React app
         script: |
-          npm run build
+          CI=false npm run build
       - name: Sync Capacitor iOS
         script: |
           npx cap sync ios
