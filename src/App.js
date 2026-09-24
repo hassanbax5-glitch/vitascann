@@ -6004,6 +6004,8 @@ const CALI_IMG_MAP = {
   crunch_cable:    "crunch_cable",
 };
 
+const IMG = {}; // TODO: mapper vers de vraies images Cloudinary si besoin plus tard
+
 function ExerciseVisual({svgId, size=80, type="gym"}) {
   const imgKey = CALI_IMG_MAP[svgId];
   const [imgError, setImgError] = useState(false);
