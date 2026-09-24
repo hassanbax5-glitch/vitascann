@@ -2231,7 +2231,7 @@ Si zone = "Barbe" ou "Beard" → JSON :
 {"score":0-100,"urgence":"normal|attention|urgent","type_analyse":"beard","densite":"faible|moyenne|dense","zones_clairsemees":["joues","menton","moustache"],"potentiel_viking":"faible|moyen|fort|légendaire","carences":[{"nom":"Biotine","niveau":"faible","pct":35,"emoji":"🧔","signes":"zones clairsemées","aliments":["oeufs","noix","avocats"],"complement":"Biotine 5000mcg","dose":"1 gélule/matin"}],"astuces_grand_mere":["Huile de ricin + massage 5min/soir","Cannelle + miel de Manuka application 20min","Citron frais + huile d'argan 2x/semaine","Eau de rose + gingembre frais"],"positifs":["p1"],"conseil":"2 phrases croissance barbe.","prochain":"zone"}
 
 Sinon → JSON :
-{"score":0-100,"urgence":"normal|attention|urgent","carences":[{"nom":"Vitamine X","niveau":"critique|faible|limite|normal","pct":0-100,"emoji":"🟡","signes":"observation visuelle","aliments":["a1","a2","a3"],"complement":"Nom","dose":"500mg/j"}],"positifs":["p1","p2"],"conseil":"Conseil pratique en 2 phrases.","prochain":"zone suivante"}`;
+{"score":0-100,"urgence":"normal|attention|urgent","carences":[{"nom":"Vitamine X","niveau":"critique|faible|limite|normal","pct":0-100,"emoji":"🟡","signes":"observation visuelle","aliments":["a1","a2","a3"],"complement":"Nom","dose":"500mg/j"}],"positifs":["p1","p2"],"conseil":"Conseil pratique en 2 phrases.","categorie_recette":"UNE seule valeur parmi: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux, fertilite — celle qui correspond le mieux à la carence principale identifiée","prochain":"zone suivante"}`;
 
 // Prompt spécial % Gras — 3 photos (face + profil + dos) pour une analyse corporelle complète
 const BODY_FAT_MULTI_PROMPT = `Tu es VitaScann, expert en composition corporelle et morphologie. Tu reçois 3 photos (face, profil, dos) — PISTES indicatives uniquement, pas un diagnostic médical.
@@ -3866,6 +3866,36 @@ function Result({result,zone,user,profile,onNewScan,onHome,onExercises,history,t
             <div style={{fontSize:13,color:"#a0bcaa",lineHeight:1.7}}>{result.conseil}</div>
           </div>
         )}
+
+        {(() => {
+          const recette = result?.categorie_recette
+            ? getRecetteParCategorie(result.categorie_recette)
+            : null;
+          if (!recette) return null;
+          return (
+            <div style={{background:`${recette.couleur}10`,border:`1.5px solid ${recette.couleur}33`,borderRadius:18,padding:18,marginBottom:14}}>
+              <div style={{fontSize:11,color:recette.couleur,fontWeight:700,letterSpacing:.8,marginBottom:10}}>🌿 {lang==="en"?"RECOMMENDED RECIPE":"RECETTE RECOMMANDÉE"}</div>
+              <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12}}>
+                <div style={{fontSize:36,lineHeight:1,flexShrink:0}}>{recette.emoji}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:14,color:GOLD,marginBottom:4}}>{lang==="en"?recette.titre_en:recette.titre_fr}</div>
+                  <div style={{fontSize:12,color:"#a0c8a8",lineHeight:1.5}}>{lang==="en"?recette.bienfait_en:recette.bienfait_fr}</div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+                {recette.ingredients.map((ing,i)=>(
+                  <span key={i} style={{background:`${recette.couleur}18`,border:`1px solid ${recette.couleur}44`,borderRadius:20,padding:"4px 12px",fontSize:12,color:recette.couleur,fontWeight:600}}>
+                    {ing}
+                  </span>
+                ))}
+              </div>
+              <div style={{background:"#0a1a0e",border:`1px solid ${GOLD}33`,borderRadius:12,padding:12}}>
+                <div style={{fontSize:10,color:GOLD,fontWeight:700,letterSpacing:.6,marginBottom:6}}>👩‍🍳 {lang==="en"?"HOW TO PREPARE":"PRÉPARATION"}</div>
+                <div style={{fontSize:12,color:"#c8a84a",lineHeight:1.7}}>{lang==="en"?recette.preparation_en:recette.preparation_fr}</div>
+              </div>
+            </div>
+          );
+        })()}
 
         <IslamicTipsCard zone={zone} profile={profile} t={t} lang={lang}/>
 

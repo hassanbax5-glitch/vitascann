@@ -269,8 +269,13 @@ export default function NutritionLabelScan({ onBack, lang }) {
           </button>
         )}
 
-        {/* CTA Caméra */}
-        <button onClick={() => cameraRef.current?.click()}
+        {/* DEBUG TEMPORAIRE */}
+<div style={{ color: "#fff", background: "red", padding: 8, marginBottom: 10, fontSize: 12 }}>
+  DEBUG isNative: {String(isNative)} | Capacitor: {String(typeof window !== "undefined" && window.Capacitor)}
+</div>
+
+{/* CTA Caméra */}
+<button onClick={() => cameraRef.current?.click()}
           style={{ width: "100%", background: `linear-gradient(135deg,#0a3020,#0d5030)`, border: `1.5px solid ${EM}44`, borderRadius: 18, padding: "20px", cursor: "pointer", marginBottom: 12, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
           <span style={{ fontSize: 28 }}>📷</span>
           <div style={{ textAlign: "left" }}>
