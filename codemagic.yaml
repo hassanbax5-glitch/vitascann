@@ -4,7 +4,7 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 60
     integrations:
-      app_store_connect: NOM_DE_TA_CLE_API   # <-- remets EXACTEMENT le nom de ta clé Admin dans Codemagic
+      app_store_connect: VitaScann Admin
     environment:
       groups:
         - ios_signing
