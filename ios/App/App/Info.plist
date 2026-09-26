@@ -2,12 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CAPACITOR_DEBUG</key>
+	<key>NSCameraUsageDescription</key>
+	<string>VitaScann utilise la caméra pour scanner les codes-barres des produits alimentaires et analyser vos repas.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>VitaScann accède à vos photos pour vous permettre d'importer une image de repas ou de produit à analyser.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>VitaScann enregistre vos photos de repas dans votre galerie si vous le souhaitez.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>VitaScann</string>
+	<string>VitaScann</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
