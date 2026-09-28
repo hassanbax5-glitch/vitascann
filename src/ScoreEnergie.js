@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // VITASCANN — ScoreEnergie.js
 // ✅ 9 indicateurs : sommeil, stress, humeur, hydratation,
 //    alimentation, activité, temps écran, respiration, FC
@@ -359,7 +359,7 @@ export default function ScoreEnergie({ user, onBack, onCoinsEarned, lang, profil
     const score = calcScore(finalVals);
     try {
       const prompt = buildEnergyPrompt(lang, finalVals, score, profile);
-      const res = await fetch("/api/claude",{
+      const res = await fetch((window.Capacitor?.isNativePlatform?.() ? "https://vitascann.vercel.app/api/claude" : "/api/claude"),{
         method:"POST",
         headers: { "Content-Type": "application/json" },
         body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:2000,system:prompt.system,messages:[{role:"user",content:prompt.user}]}),

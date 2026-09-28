@@ -1,4 +1,4 @@
-// ============================================
+﻿// ============================================
 // SCORE DOPAMINE V2 — VitaScann
 // Détecte les addictions numériques
 // Score partageable · Viral TikTok
@@ -272,7 +272,7 @@ Réponds UNIQUEMENT en JSON valide sans aucun texte avant ou après. Format exac
 }`;
 
     try {
-      const res = await fetch("/api/claude", {
+      const res = await fetch((window.Capacitor?.isNativePlatform?.() ? "https://vitascann.vercel.app/api/claude" : "/api/claude"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

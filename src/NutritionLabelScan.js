@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // VITASCANN — NutritionLabelScan.js
 // ✅ Photo d'étiquette nutritionnelle → analyse IA complète
 // ✅ Score global 0-100 (Excellent / Bon / Passable / Éviter)
@@ -116,7 +116,7 @@ export default function NutritionLabelScan({ onBack, lang }) {
       ? `You are VitaScann's nutrition expert. A product was identified via barcode with these REAL nutritional values (already accurate, do not re-estimate them): ${JSON.stringify(offData.pour_100g)}. Ingredients list: "${offData.ingredients_text || "not available"}". Additives found: ${offData.additifs_bruts.join(", ") || "none"}. Based on this, return ONLY valid JSON without markdown: {"verdict":"1 sentence summarizing quality","notes_nutriments":[{"nom":"Sugars","valeur":"Xg","statut":"bon|moyen|mauvais","commentaire":"short sentence"}],"alertes":["problematic ingredients or nutrients"],"points_positifs":["positive points"],"alternatives":["2-3 healthier alternatives"],"tibb":"Islamic/halal advice if relevant (hidden pork, alcohol, animal gelatin, or tayyib advice)","pour_qui":"who should avoid this product","categorie_recette":"ONE value among: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux, fertilite"}`
       : `Tu es l'expert nutrition de VitaScann. Un produit a été identifié via code-barres avec ces VRAIES valeurs nutritionnelles (déjà exactes, ne les réestime pas) : ${JSON.stringify(offData.pour_100g)}. Liste d'ingrédients : "${offData.ingredients_text || "non disponible"}". Additifs détectés : ${offData.additifs_bruts.join(", ") || "aucun"}. Sur cette base, retourne UNIQUEMENT un JSON valide sans markdown : {"verdict":"1 phrase résumant la qualité","notes_nutriments":[{"nom":"Sucres","valeur":"Xg","statut":"bon|moyen|mauvais","commentaire":"phrase courte"}],"alertes":["ingrédients ou nutriments problématiques"],"points_positifs":["points positifs"],"alternatives":["2-3 alternatives plus saines"],"tibb":"conseil islamique/halal si pertinent (porc caché, alcool, gélatine animale, ou conseil tayyib)","pour_qui":"qui devrait éviter ce produit","categorie_recette":"UNE seule valeur parmi: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux, fertilite"}`;
 
-    const res = await fetch("/api/claude", {
+    const res = await fetch((window.Capacitor?.isNativePlatform?.() ? "https://vitascann.vercel.app/api/claude" : "/api/claude"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -194,7 +194,7 @@ export default function NutritionLabelScan({ onBack, lang }) {
     if (!b64) return;
     setScreen("analyzing");
     try {
-      const res = await fetch("/api/claude", {
+      const res = await fetch((window.Capacitor?.isNativePlatform?.() ? "https://vitascann.vercel.app/api/claude" : "/api/claude"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

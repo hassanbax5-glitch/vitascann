@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // VITASCANN — ModuleRichesse.js (FUSION v2)
 // 🌙 Clés spirituelles de la richesse + Dhikr & Motivation
 // Fusion de ModuleRichesse.js + MotivationModule.js
@@ -366,7 +366,7 @@ export default function ModuleRichesse({ user, profile, onBack, onCoinsEarned, l
     setLoadingAff(true);
     try {
       const system = buildAffirmationPrompt(profil, lang);
-      const res = await fetch("/api/claude", {
+      const res = await fetch((window.Capacitor?.isNativePlatform?.() ? "https://vitascann.vercel.app/api/claude" : "/api/claude"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 500, system, messages: [{ role: "user", content: "Génère l'affirmation." }] }),

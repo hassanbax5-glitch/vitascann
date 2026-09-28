@@ -127,6 +127,8 @@ const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 // ─── iOS : pas de Google Sign-In ni de paiement externe (règles App Store 4.8 et 3.1.1) ───
 const IS_IOS = typeof window !== "undefined" && window?.Capacitor?.getPlatform?.() === "ios";
+// Dans l'app installée (iOS/Android), les chemins relatifs pointent vers le téléphone : on appelle Vercel directement
+const API_BASE = (typeof window !== "undefined" && window?.Capacitor?.isNativePlatform?.()) ? "https://vitascann.vercel.app" : "";
 // ─── TRADUCTIONS ───
 const T = {
   fr: {
@@ -1055,7 +1057,7 @@ async function callGymAI(muscle, seanceData) {
   const contextMsg = seanceData ?
     `\n\nDonnées de la séance :\n${JSON.stringify(seanceData, null, 2)}\n\nBasé sur ces performances réelles, donne des conseils personnalisés.` : "";
   try {
-    const res = await fetch("/api/claude", {
+    const res = await fetch(`${API_BASE}/api/claude`, {
       method:"POST",
       headers: { "Content-Type": "application/json" },
       body:JSON.stringify({model:"claude-opus-4-5",max_tokens:2000,messages:[{role:"user",content:prompt+contextMsg}]})
@@ -3570,7 +3572,7 @@ function ChatIA({result,zone,profile,onClose,t}) {
     setLoad(true);
     try {
       const ctx = `Zone: ${zone?.label}. Score: ${result?.score}/100. Carences: ${result?.carences?.map(c=>c.nom).join(", ")||"aucune"}. Conseil: ${result?.conseil||""}. Profil: ${profile?JSON.stringify(profile):"non renseigné"}.`;
-      const res = await fetch("/api/claude",{
+      const res = await fetch(`${API_BASE}/api/claude`,{
         method:"POST",
         headers: { "Content-Type": "application/json" },
         body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:300,system:CHAT_SYSTEM,messages:[{role:"user",content:`${ctx}\n\nQuestion: ${userMsg.text}`}]})
@@ -4177,7 +4179,7 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
     try {
       const mediaType = imageData.startsWith("data:image/png") ? "image/png"
         : imageData.startsWith("data:image/webp") ? "image/webp" : "image/jpeg";
-      const res = await fetch("/api/claude", {
+      const res = await fetch(`${API_BASE}/api/claude`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4228,7 +4230,7 @@ function MealCapture({onCapture, onResult, onBack, user, onPaywall, t, lang}) {
     const totauxText = `Calories: ${tot.cal} kcal, Protéines: ${tot.prot}g, Glucides: ${tot.gluc}g, Lipides: ${tot.lip}g, Fer: ${tot.fer}mg, Vit.D: ${tot.vitD}µg, Potassium: ${tot.potass}mg, Zinc: ${tot.zinc}mg`;
     const prompt = MEAL_ANALYSE_PROMPT.replace("{ALIMENTS}", alimentsText).replace("{TOTAUX}", totauxText);
     try {
-      const res = await fetch("/api/claude", {
+      const res = await fetch(`${API_BASE}/api/claude`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4947,7 +4949,7 @@ function MealPlan({profile,onBack,user,t}) {
     setLoad(true);
     try {
       const pc = profile?`Age: ${profile.age||"?"}ans, sexe: ${profile.sexe||"?"}, objectif: ${profile.objectif||"?"}, activite: ${profile.activite||"?"}, halal: ${profile.halal?"oui":"non"}.`:"Pas de profil.";
-      const res = await fetch("/api/claude",{
+      const res = await fetch(`${API_BASE}/api/claude`,{
         method:"POST",
         headers: { "Content-Type": "application/json" },
         body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:2000,system:MEAL_PLAN_PROMPT,messages:[{role:"user",content:`Profil: ${pc} Génère un plan repas 7 jours adapté.`}]})
@@ -7638,7 +7640,7 @@ Réponds UNIQUEMENT en JSON valide avec exactement cette structure:
   "categorie_recette": "UNE seule valeur parmi: vue, digestion, coeur, energie, immunite, drainage, glycemie, cerveau, mineraux, fertilite — celle qui correspond le mieux au point à améliorer identifié"
 }`;
 
-      const resp = await fetch("/api/claude", {
+      const resp = await fetch(`${API_BASE}/api/claude`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -8338,7 +8340,7 @@ export default function VitaScann() {
     try {
       const pc=profile?`Profil : ${profile.age||"?"}ans, ${profile.sexe||"?"}, objectif: ${profile.objectif||"?"}, activité: ${profile.activite||"?"}, halal: ${profile.halal?"oui":"non"}.`:"";
       const isMultiBodyFat = zone?.id==="body_fat" && b64 && typeof b64==="object";
-      const res=await fetch("/api/claude",{
+      const res=await fetch(`${API_BASE}/api/claude`,{
         method:"POST",
         headers: { "Content-Type": "application/json" },
         body:JSON.stringify(isMultiBodyFat ? {
@@ -8390,7 +8392,7 @@ export default function VitaScann() {
     setIsMeal(true);
     try {
       const pc=profile?`Profil : ${profile.age||"?"}ans, ${profile.sexe||"?"}, objectif: ${profile.objectif||"?"}, halal: ${profile.halal?"oui":"non"}.`:"";
-      const res=await fetch("/api/claude",{
+      const res=await fetch(`${API_BASE}/api/claude`,{
         method:"POST",
         headers: { "Content-Type": "application/json" },
         body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:2000,system:MEAL_PROMPT,messages:[{role:"user",content:[

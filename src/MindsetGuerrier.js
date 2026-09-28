@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // VITASCANN — MindsetGuerrier.js
 // 🗡️ Mode Mindset Guerrier
 // ✅ 4 profils : Musulman, Entrepreneur, Sportif, Étudiant
@@ -461,7 +461,7 @@ export default function MindsetGuerrier({ user, onBack, onCoinsEarned, lang, pro
     setLoadingMsg(true);
     try {
       const prompt = buildMorningPrompt(lang, pid, currentData || data, profile);
-      const res = await fetch("/api/claude", {
+      const res = await fetch((window.Capacitor?.isNativePlatform?.() ? "https://vitascann.vercel.app/api/claude" : "/api/claude"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 600, system: prompt.system, messages: [{ role: "user", content: prompt.user }] }),
@@ -549,7 +549,7 @@ export default function MindsetGuerrier({ user, onBack, onCoinsEarned, lang, pro
       const sys = L
         ? `You're a coach for a "${p2.labelEN}" warrior. Task submitted: "${text}". First check: is this a real, specific, actionable task (not gibberish, not empty, not random characters)? Return ONLY valid JSON: {"valid":true/false,"tip":"1 short concrete tip max 20 words if valid, empty string if not"}`
         : `Tu es le coach d'un guerrier en mode "${p2.labelFR}". Tâche soumise : "${text}". Vérifie d'abord : est-ce une vraie tâche concrète et actionnable (pas du charabia, pas vide, pas des caractères random) ? Retourne UNIQUEMENT un JSON valide : {"valid":true/false,"tip":"1 conseil court max 20 mots si valide, chaîne vide sinon"}`;
-      const res = await fetch("/api/claude", {
+      const res = await fetch((window.Capacitor?.isNativePlatform?.() ? "https://vitascann.vercel.app/api/claude" : "/api/claude"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 150, system: sys, messages: [{ role: "user", content: L ? "Validate and give the tip." : "Valide et donne le conseil." }] }),

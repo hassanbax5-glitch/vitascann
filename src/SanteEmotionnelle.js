@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // VITASCANN — SanteEmotionnelle.js  v2.0
 // ✅ Check-in IA conversationnel (5 questions naturelles)
 // ✅ Claude analyse → niveau vibratoire Bronze→Maître
@@ -290,7 +290,7 @@ export default function SanteEmotionnelle({ user, onBack, onCoinsEarned, lang, p
     setScreen("analyzing"); setAnalyzeError(false);
     try {
       const prompt = buildAnalysisPrompt(lang, QUESTIONS, finalAnswers);
-      const res = await fetch("/api/claude",{
+      const res = await fetch((window.Capacitor?.isNativePlatform?.() ? "https://vitascann.vercel.app/api/claude" : "/api/claude"),{
         method:"POST",
         headers: { "Content-Type": "application/json" },
         body:JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:800, system:prompt.system, messages:[{role:"user",content:prompt.user}] }),
@@ -350,7 +350,7 @@ export default function SanteEmotionnelle({ user, onBack, onCoinsEarned, lang, p
         ? `You are a compassionate mental wellness companion integrated in the VitaScann health app. Your role is to listen with empathy, provide emotional support, and offer Islamic-inspired wellness tips when relevant. You are NOT a therapist and always encourage professional help when needed. Keep responses warm, short (3-5 sentences), and actionable. Never be dismissive. If the person seems in serious distress, gently encourage them to call a crisis line.`
         : `Tu es un compagnon de bien-être mental intégré dans l'app santé VitaScann. Ton rôle est d'écouter avec empathie, offrir un soutien émotionnel, et proposer des conseils de bien-être inspirés de l'Islam quand c'est pertinent. Tu n'es PAS thérapeute et encourages toujours l'aide professionnelle quand nécessaire. Garde tes réponses chaleureuses, courtes (3-5 phrases) et actionnables. Ne minimise jamais la douleur de la personne. Si elle semble en grande détresse, encourage doucement à appeler une ligne d'écoute.`;
       const messages=newMessages.map(m=>({role:m.role==="user"?"user":"assistant",content:m.text}));
-      const res=await fetch("/api/claude",{
+      const res=await fetch((window.Capacitor?.isNativePlatform?.() ? "https://vitascann.vercel.app/api/claude" : "/api/claude"),{
         method:"POST",
         headers: { "Content-Type": "application/json" },
         body:JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:400, system:systemPrompt, messages }),

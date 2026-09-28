@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // VITASCANN — ScoreImmunite.js
 // 🛡️ Score d'Immunité
 // ✅ 8 indicateurs clés (sommeil, nutrition, stress, sport,
@@ -328,7 +328,7 @@ export default function ScoreImmunite({ user, onBack, onCoinsEarned, lang }) {
     const score = calcScore(finalVals, INDICATEURS);
     try {
       const prompt = buildPrompt(lang, finalVals, score, INDICATEURS);
-      const res = await fetch("/api/claude", {
+      const res = await fetch((window.Capacitor?.isNativePlatform?.() ? "https://vitascann.vercel.app/api/claude" : "/api/claude"), {
         method:"POST",
         headers: { "Content-Type": "application/json" },
         body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1800,system:prompt.system,messages:[{role:"user",content:prompt.user}]}),
