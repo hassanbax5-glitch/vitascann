@@ -248,7 +248,7 @@ const T = {
     zones_free: "3 zones gratuites",
     zones_premium_locked: "9 zones Premium 🔒",
     zones_premium_zone: "Zone Premium",
-    zones_premium_price: "✨ Premium · 4,99$/mois",
+    zones_premium_price: "✨ Premium · 9,99$/mois",
     // Capture
     capture_title: "Photographier",
     capture_beard_title: "🪓 ANALYSE BARBE VIKING",
@@ -266,7 +266,7 @@ const T = {
     meal_capture_sub: "Photographiez votre assiette et obtenez :",
     meal_capture_macros: "calories · protéines · glucides · lipides",
     meal_capture_deficiencies: "et quelles carences ce repas comble.",
-    meal_unlock: "👑 Débloquer le Scan Repas — 4,99$/mois",
+    meal_unlock: "👑 Débloquer le Scan Repas — 9,99$/mois",
     meal_feature1: "📸 Analyse visuelle de n'importe quel repas",
     meal_feature2: "🔢 Calories et macros estimés",
     meal_feature3: "💊 Carences comblées",
@@ -3340,7 +3340,7 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
                 <div style={{color:MUT,fontSize:12}}>{t("db_premium_sub")}</div>
               </div>
               <div style={{marginLeft:"auto",textAlign:"right"}}>
-                <div className="serif" style={{fontSize:20,fontWeight:700,color:GOLD}}>4,99$</div>
+                <div className="serif" style={{fontSize:20,fontWeight:700,color:GOLD}}>9,99$</div>
                 <div style={{color:MUT,fontSize:10}}>/mois</div>
               </div>
             </div>
@@ -5250,12 +5250,7 @@ function Challenge({history,onBack,t,lang}) {
 
 // ─── PAYWALL ───
 function Paywall({user,onBack,onSuccess,t}) {
-  const [secs,setSecs]=useState(12*60);
   const [tab,setTab]=useState("features"); // features | beforeafter | reviews
-  useEffect(()=>{const timer=setInterval(()=>setSecs(s=>s>0?s-1:0),1000);return()=>clearInterval(timer);},[]);
-  const mm=String(Math.floor(secs/60)).padStart(2,"0");
-  const ss=String(secs%60).padStart(2,"0");
-  const urgent=secs<3*60;
   const L = t("back")==="← Back";
 
   const handleCheckout=()=>{
@@ -5279,19 +5274,6 @@ function Paywall({user,onBack,onSuccess,t}) {
     <div style={{minHeight:"100vh",paddingBottom:40,overflowY:"auto",background:"#060d08"}}>
       <div style={{padding:"52px 22px 0"}}>
         <button onClick={onBack} style={{background:"none",border:"none",color:MUT,cursor:"pointer",fontSize:13,marginBottom:16,display:"flex",alignItems:"center",gap:6}}>{t("back")}</button>
-
-        {/* Timer urgence */}
-        <div style={{background:urgent?"#1a0505":"#0f1505",border:`1.5px solid ${urgent?DANGER:GOLD}44`,borderRadius:14,padding:"12px 16px",marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div>
-            <div style={{fontSize:10,color:urgent?DANGER:GOLD,fontWeight:700,letterSpacing:1}}>{urgent?(L?"🔥 OFFER EXPIRING":"🔥 OFFRE EXPIRE"):(L?"⏰ LAUNCH OFFER":"⏰ OFFRE LANCEMENT")}</div>
-            <div style={{fontSize:28,fontWeight:700,color:urgent?DANGER:GOLD,fontVariantNumeric:"tabular-nums",animation:urgent?"pulse 1s ease infinite":undefined}}>{mm}:{ss}</div>
-          </div>
-          <div style={{textAlign:"right"}}>
-            <div style={{fontSize:11,color:MUT,textDecoration:"line-through"}}>9,99$ CAD/mois</div>
-            <div style={{fontSize:22,fontWeight:700,color:GOLD}}>4,99$<span style={{fontSize:12,fontWeight:400}}> CAD/mois</span></div>
-            <div style={{fontSize:10,color:EM,fontWeight:700}}>✅ -{L?"50% launch price":"50% tarif lancement"}</div>
-          </div>
-        </div>
 
         {/* Hero */}
         <div style={{textAlign:"center",marginBottom:24}}>
@@ -5406,8 +5388,7 @@ function Paywall({user,onBack,onSuccess,t}) {
         <div style={{background:"linear-gradient(180deg,transparent,#060d08 30%)",paddingTop:8}}>
           <div style={{textAlign:"center",marginBottom:12}}>
             <div style={{display:"flex",justifyContent:"center",alignItems:"baseline",gap:10,marginBottom:4}}>
-              <span style={{color:MUT,fontSize:14,textDecoration:"line-through"}}>9,99$</span>
-              <div className="serif" style={{fontSize:42,fontWeight:700,color:GOLD}}>4,99<span style={{fontSize:18}}> $ CAD/mois</span></div>
+              <div className="serif" style={{fontSize:42,fontWeight:700,color:GOLD}}>9,99<span style={{fontSize:18}}> $ CAD/mois</span></div>
             </div>
             <div style={{color:MUT,fontSize:12}}>{L?"per month · Cancel anytime":"par mois · Annulez quand vous voulez"}</div>
           </div>
