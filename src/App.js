@@ -127,6 +127,7 @@ const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 // ─── iOS : pas de Google Sign-In ni de paiement externe (règles App Store 4.8 et 3.1.1) ───
 const IS_IOS = typeof window !== "undefined" && window?.Capacitor?.getPlatform?.() === "ios";
+const IS_NATIVE = typeof window !== "undefined" && !!window?.Capacitor?.isNativePlatform?.();
 // Dans l'app installée (iOS/Android), les chemins relatifs pointent vers le téléphone : on appelle Vercel directement
 const API_BASE = (typeof window !== "undefined" && window?.Capacitor?.isNativePlatform?.()) ? "https://vitascann.vercel.app" : "";
 // ─── TRADUCTIONS ───
@@ -2724,7 +2725,7 @@ function Register({onSuccess,onLogin,t}) {
       <Input label={t("register_confirm")} type="password" value={f.conf} onChange={v=>setF({...f,conf:v})} placeholder={t("register_confirm_ph")} left="✅" error={errs.conf} disabled={load}/>
       <button className="bem" onClick={submit} disabled={load} style={{marginBottom:12,marginTop:4}}>{load?<Spin/>:t("register_btn")}</button>
 
-      {!IS_IOS && (<>
+      {!IS_NATIVE && (<>
       {/* Séparateur */}
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
         <div style={{flex:1,height:1,background:BDR}}/>
@@ -2837,7 +2838,7 @@ function Login({onSuccess,onRegister,onForgot,t}) {
       </div>
       <ErrorBanner msg={err} onClose={()=>setErr("")}/>
 
-      {!IS_IOS && (<>
+      {!IS_NATIVE && (<>
       {/* Google Sign-In */}
       <button onClick={loginGoogle} disabled={loadG||load}
         style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:12,background:"#fff",border:"1.5px solid #e0e0e0",borderRadius:14,padding:"14px 20px",cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:15,fontWeight:600,color:"#1a1a1a",marginBottom:16,boxShadow:"0 2px 8px rgba(0,0,0,0.08)",transition:"all .2s",opacity:loadG?0.7:1}}>
@@ -5260,17 +5261,6 @@ function Paywall({user,onBack,onSuccess,t}) {
     window.location.href=url;
   };
 
-  const BEFORE_AFTER = [
-    {name:"Karim, 24 ans",before:"Pas de programme · Stagne depuis 6 mois",after:"PPL 6j/sem · +15kg bench en 8 semaines",icon:"🏋️"},
-    {name:"Sarah, 31 ans",before:"Carence Fer & Vit D non détectée",after:"Scan ongles → supplémentation → +30% énergie",icon:"💊"},
-    {name:"Youssef, 28 ans",before:"Poids du corps jamais progressé",after:"Cali Débutant → Muscle-up en 12 semaines",icon:"🤸"},
-  ];
-
-  const REVIEWS = [
-    {name:"Mehdi R.",stars:5,text:L?"The gym program is insane. I finally know exactly what weight to use and it auto-increases every week.":"Le programme gym est incroyable. Je sais exactement quel poids mettre et ça augmente tout seul chaque semaine.",icon:"🏋️"},
-    {name:"Amira K.",stars:5,text:L?"The nail scan detected my iron deficiency before my blood test did. Unbelievable.":"Le scan ongles a détecté ma carence en fer avant ma prise de sang. Incroyable.",icon:"💅"},
-    {name:"Ibrahim T.",stars:5,text:L?"Calisthenics program is exactly what I needed. Clear progressions, illustrations for each exercise.":"Programme calisthenics exactement ce qu'il me fallait. Progressions claires, illustrations pour chaque exercice.",icon:"🤸"},
-  ];
 
   return (
     <div style={{minHeight:"100vh",paddingBottom:40,overflowY:"auto",background:"#060d08"}}>
@@ -5284,16 +5274,6 @@ function Paywall({user,onBack,onSuccess,t}) {
           <div style={{color:MUT,fontSize:14,lineHeight:1.7,maxWidth:320,margin:"0 auto"}}>
             {L?"The first app that scans your health AND builds your training program.":"La première app qui scanne ta santé ET construit ton programme d'entraînement."}
           </div>
-        </div>
-
-        {/* Tabs */}
-        <div style={{display:"flex",gap:6,marginBottom:20}}>
-          {[["features",L?"Features":"Features"],["beforeafter",L?"Before/After":"Avant/Après"],["reviews",L?"Reviews":"Avis"]].map(([k,lb])=>(
-            <button key={k} onClick={()=>setTab(k)}
-              style={{flex:1,background:tab===k?`${GOLD}18`:"transparent",border:`1.5px solid ${tab===k?GOLD:BDR}`,borderRadius:10,padding:"8px 4px",fontFamily:"'Outfit',sans-serif",fontSize:11,fontWeight:700,color:tab===k?GOLD:MUT,cursor:"pointer"}}>
-              {lb}
-            </button>
-          ))}
         </div>
 
         {/* TAB: Features */}
@@ -5318,69 +5298,6 @@ function Paywall({user,onBack,onSuccess,t}) {
                   <div style={{fontSize:11,color:MUT,marginTop:2}}>{sub}</div>
                 </div>
                 <div style={{color:EM,fontSize:14}}>✓</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* TAB: Avant/Après */}
-        {tab==="beforeafter" && (
-          <div style={{display:"flex",flexDirection:"column",gap:14,marginBottom:24}}>
-            {BEFORE_AFTER.map((ba,i)=>(
-              <div key={i} style={{background:CARD,border:`1px solid ${BDR}`,borderRadius:18,overflow:"hidden"}}>
-                <div style={{padding:"12px 16px",borderBottom:`1px solid ${BDR}`,display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:36,height:36,borderRadius:10,background:`${EM}12`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>{ba.icon}</div>
-                  <div style={{fontWeight:700,fontSize:13}}>{ba.name}</div>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr"}}>
-                  <div style={{padding:"14px 16px",borderRight:`1px solid ${BDR}`}}>
-                    <div style={{fontSize:10,color:DANGER,fontWeight:700,letterSpacing:.8,marginBottom:6}}>{L?"BEFORE":"AVANT"}</div>
-                    <div style={{fontSize:12,color:MUT,lineHeight:1.6}}>{ba.before}</div>
-                  </div>
-                  <div style={{padding:"14px 16px"}}>
-                    <div style={{fontSize:10,color:EM,fontWeight:700,letterSpacing:.8,marginBottom:6}}>{L?"AFTER":"APRÈS"}</div>
-                    <div style={{fontSize:12,color:"#a0bcaa",lineHeight:1.6}}>{ba.after}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-            <div style={{background:`${EM}08`,border:`1px solid ${EM}22`,borderRadius:14,padding:"14px 16px",textAlign:"center"}}>
-              <div style={{fontSize:13,color:EM,fontWeight:700}}>{L?"Results vary. Commitment required.":"Résultats variables. Engagement requis."}</div>
-              <div style={{fontSize:11,color:MUT,marginTop:4}}>{L?"These are real user experiences.":"Ce sont de vraies expériences utilisateurs."}</div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB: Avis */}
-        {tab==="reviews" && (
-          <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:24}}>
-            <div style={{display:"flex",alignItems:"center",gap:12,background:CARD,borderRadius:14,padding:"14px 16px",marginBottom:4}}>
-              <div style={{textAlign:"center"}}>
-                <div className="serif" style={{fontSize:40,fontWeight:700,color:GOLD}}>4.9</div>
-                <div style={{display:"flex",gap:2,justifyContent:"center"}}>{"⭐⭐⭐⭐⭐".split("").map((s,i)=><span key={i} style={{fontSize:12}}>{s}</span>)}</div>
-                <div style={{fontSize:10,color:MUT,marginTop:2}}>{L?"128 ratings":"128 avis"}</div>
-              </div>
-              <div style={{flex:1,paddingLeft:12}}>
-                {[5,4,3].map(star=>(
-                  <div key={star} style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-                    <div style={{fontSize:10,color:MUT,width:8}}>{star}</div>
-                    <div style={{flex:1,background:"#142018",borderRadius:3,height:5,overflow:"hidden"}}>
-                      <div style={{width:star===5?"82%":star===4?"13%":"5%",height:"100%",background:star===5?GOLD:star===4?WARN:MUT,borderRadius:3}}/>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {REVIEWS.map((r,i)=>(
-              <div key={i} style={{background:CARD,border:`1px solid ${BDR}`,borderRadius:14,padding:"16px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <div style={{width:32,height:32,borderRadius:8,background:`${GOLD}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>{r.icon}</div>
-                    <div style={{fontWeight:700,fontSize:13}}>{r.name}</div>
-                  </div>
-                  <div style={{fontSize:12}}>⭐⭐⭐⭐⭐</div>
-                </div>
-                <div style={{fontSize:13,color:"#a0bcaa",lineHeight:1.7,fontStyle:"italic"}}>"{r.text}"</div>
               </div>
             ))}
           </div>
