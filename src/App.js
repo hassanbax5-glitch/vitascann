@@ -23,11 +23,11 @@ import { initializeApp } from "firebase/app";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   sendPasswordResetEmail, signOut, onAuthStateChanged, updateProfile,
-  GoogleAuthProvider, signInWithPopup
+  GoogleAuthProvider, signInWithPopup, deleteUser
 } from "firebase/auth";
 import {
   getFirestore, doc, setDoc, getDoc, collection, addDoc,
-  query, where, getDocs, orderBy, serverTimestamp
+  query, where, getDocs, orderBy, serverTimestamp, deleteDoc
 } from "firebase/firestore";
 // ─── FCM — Notifications push ───
 import { initFCM, updateLastActive, listenForegroundNotifs } from "./fcmService";
@@ -125,6 +125,8 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
+// ─── iOS : pas de Google Sign-In ni de paiement externe (règles App Store 4.8 et 3.1.1) ───
+const IS_IOS = typeof window !== "undefined" && window?.Capacitor?.getPlatform?.() === "ios";
 // ─── TRADUCTIONS ───
 const T = {
   fr: {
@@ -2720,6 +2722,7 @@ function Register({onSuccess,onLogin,t}) {
       <Input label={t("register_confirm")} type="password" value={f.conf} onChange={v=>setF({...f,conf:v})} placeholder={t("register_confirm_ph")} left="✅" error={errs.conf} disabled={load}/>
       <button className="bem" onClick={submit} disabled={load} style={{marginBottom:12,marginTop:4}}>{load?<Spin/>:t("register_btn")}</button>
 
+      {!IS_IOS && (<>
       {/* Séparateur */}
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
         <div style={{flex:1,height:1,background:BDR}}/>
@@ -2758,6 +2761,7 @@ function Register({onSuccess,onLogin,t}) {
         </svg>
         S'inscrire avec Google
       </button>
+      </>)}
 
       <button className="bgh" onClick={onLogin}>{t("register_login")}</button>
     </div>
@@ -2831,6 +2835,7 @@ function Login({onSuccess,onRegister,onForgot,t}) {
       </div>
       <ErrorBanner msg={err} onClose={()=>setErr("")}/>
 
+      {!IS_IOS && (<>
       {/* Google Sign-In */}
       <button onClick={loginGoogle} disabled={loadG||load}
         style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:12,background:"#fff",border:"1.5px solid #e0e0e0",borderRadius:14,padding:"14px 20px",cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontSize:15,fontWeight:600,color:"#1a1a1a",marginBottom:16,boxShadow:"0 2px 8px rgba(0,0,0,0.08)",transition:"all .2s",opacity:loadG?0.7:1}}>
@@ -2851,6 +2856,7 @@ function Login({onSuccess,onRegister,onForgot,t}) {
         <span style={{fontSize:12,color:MUT}}>ou</span>
         <div style={{flex:1,height:1,background:BDR}}/>
       </div>
+      </>)}
 
       <Input label={t("register_email")} value={f.email} onChange={v=>setF({...f,email:v})} placeholder={t("register_email_ph")} left="✉️" disabled={load}/>
       <Input label={t("register_pass")} type="password" value={f.pass} onChange={v=>setF({...f,pass:v})} placeholder="••••••••" left="🔒" disabled={load}/>
@@ -2900,7 +2906,7 @@ function ForgotPassword({onBack,t}) {
 }
 
 // ─── PROFILE SETUP ───
-function ProfileSetup({user,onSave,onSkip,t}) {
+function ProfileSetup({user,onSave,onSkip,onDeleteAccount,t}) {
   const [p,setP] = useState({age:"",poids:"",sexe:"homme",objectif:"sante",activite:"moderee",halal:false});
   const [load,setLoad] = useState(false);
 
@@ -2950,6 +2956,9 @@ function ProfileSetup({user,onSave,onSkip,t}) {
       </div>
       <button className="bem" onClick={save} disabled={load} style={{marginBottom:12}}>{load?<Spin/>:t("save")}</button>
       <button className="bgh" onClick={onSkip}>{t("profile_skip")}</button>
+      {user && !user.isDemo && onDeleteAccount && (
+        <button onClick={onDeleteAccount} style={{width:"100%",background:"none",border:"none",color:DANGER,fontSize:13,marginTop:18,padding:10,cursor:"pointer",textDecoration:"underline"}}>Supprimer mon compte</button>
+      )}
     </div>
   );
 }
@@ -8188,7 +8197,15 @@ export default function VitaScann() {
   const t = (key) => T[lang]?.[key] || T["fr"]?.[key] || key;
 
   const [screen,setScreen]=useState("splash");
-  const [user,setUser]=useState(null);
+  const [user,setUserRaw]=useState(null);
+  // Sur iOS : accès complet (pas d'achat possible dans l'app pour l'instant)
+  const setUser=useCallback((v)=>{
+    setUserRaw(prev=>{
+      const next=typeof v==="function"?v(prev):v;
+      return (IS_IOS&&next)?{...next,plan:"premium"}:next;
+    });
+  },[]);
+  useEffect(()=>{ if(IS_IOS&&screen==="paywall") setScreen(user?"dashboard":"login"); },[screen,user]);
   const [zone,setZone]=useState(null);
   const [b64,setB64]=useState(null);
   const [prev,setPrev]=useState(null);
@@ -8435,6 +8452,27 @@ export default function VitaScann() {
     setScreen("login");
   };
 
+  const handleDeleteAccount=async()=>{
+    if(!window.confirm("Supprimer définitivement ton compte et toutes tes données ? Cette action est irréversible."))return;
+    const u=auth.currentUser;
+    if(!u)return;
+    try{
+      for(const col of ["scans","body_scans"]){
+        const snap=await getDocs(query(collection(db,col),where("userId","==",u.uid))).catch(()=>null);
+        if(snap) await Promise.all(snap.docs.map(d=>deleteDoc(d.ref).catch(()=>{})));
+      }
+      await deleteDoc(doc(db,"users",u.uid)).catch(()=>{});
+      await deleteUser(u);
+      setUser(null);setHistory([]);setProfile(null);setFamily([]);
+      setVitaCoins(0);setCoinsHistory([]);
+      setScreen("login");
+      alert("Ton compte a été supprimé.");
+    }catch(e){
+      if(e.code==="auth/requires-recent-login") alert("Par sécurité, déconnecte-toi, reconnecte-toi, puis réessaie de supprimer ton compte.");
+      else alert("Erreur lors de la suppression : "+(e.code||e.message));
+    }
+  };
+
   const handleDemo=()=>{
     if(demoUsed){setScreen("register");return;}
     setUser({uid:"demo",name:"Visiteur",email:"",plan:"free",isDemo:true});
@@ -8492,7 +8530,7 @@ export default function VitaScann() {
         {screen==="register"     && <Register onSuccess={handleAuthSuccess} onLogin={()=>setScreen("login")} t={t}/>}
         {screen==="login"        && <Login onSuccess={handleAuthSuccess} onRegister={()=>setScreen("register")} onForgot={()=>setScreen("forgot")} t={t}/>}
         {screen==="forgot"       && <ForgotPassword onBack={()=>setScreen("login")} t={t}/>}
-        {screen==="profile"      && <ProfileSetup user={user} onSave={p=>{setProfile(p);setScreen("dashboard");}} onSkip={()=>setScreen("dashboard")} t={t}/>}
+        {screen==="profile"      && <ProfileSetup user={user} onDeleteAccount={handleDeleteAccount} onSave={p=>{setProfile(p);setScreen("dashboard");}} onSkip={()=>setScreen("dashboard")} t={t}/>}
         {screen==="dashboard"    && user && <Dashboard user={user} onScan={handleScan} onMealScan={handleMealScan} onPaywall={()=>setScreen("paywall")} onLogout={handleLogout} onProfile={()=>setScreen("profile")} onFamily={()=>setScreen("family")} onChallenge={()=>setScreen("challenge")} onProgress={()=>user.plan==="premium"?setScreen("progress"):setScreen("paywall")} onMealPlan={()=>user.plan==="premium"?setScreen("mealplan"):setScreen("paywall")} onPedometer={()=>setScreen("pedometer")} onReferral={()=>setScreen("referral")} onWallet={()=>setShowWallet(true)} onGymCoach={()=>setScreen("gym_coach")} onCaliCoach={()=>setScreen("cali_coach")} onLongevite={()=>setScreen("longevite")} onNutritionScan={()=>setScreen("nutrition_scan")} onMaternite={()=>setScreen("maternite")} onBilanComplet={()=>setScreen("bilan_complet")} onMindsetGuerrier={()=>setScreen("mindset_guerrier")} onSoloLeveling={()=>setScreen("solo_leveling")} onRecettesSante={()=>setScreen("recettes_sante")} history={history} profile={profile} vitaCoins={vitaCoins} {...commonProps}/> }
         {screen==="zones"        && <ZonePick onSelect={z=>{setZone(z);setScreen("capture");}} onBack={()=>setScreen("dashboard")} user={user} onPaywall={()=>setScreen("paywall")} lang={lang} t={t} profile={profile}/>}
         {screen==="capture"      && zone && <Capture zone={zone} onCapture={(b,p)=>{setB64(b);setPrev(p);setScreen("preview");}} onBack={()=>setScreen("zones")} t={t}/>}
