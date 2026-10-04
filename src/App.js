@@ -21,7 +21,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { RECETTES, getRecetteParCategorie } from "./recettesData";
 import { initializeApp } from "firebase/app";
 import {
-  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  getAuth, initializeAuth, indexedDBLocalPersistence,
+  createUserWithEmailAndPassword, signInWithEmailAndPassword,
   sendPasswordResetEmail, signOut, onAuthStateChanged, updateProfile,
   GoogleAuthProvider, signInWithPopup, deleteUser
 } from "firebase/auth";
@@ -123,7 +124,11 @@ const firebaseConfig = {
   appId: "1:863137345831:web:caacf5989a7e9c7d947902"
 };
 const firebaseApp = initializeApp(firebaseConfig);
-const auth = getAuth(firebaseApp);
+// Dans l'app installée (iOS/Android), getAuth() charge un outil Google qui bloque la connexion sur iPhone :
+// on initialise Auth sans cet outil en natif, et normalement sur le web.
+const auth = (typeof window !== "undefined" && window?.Capacitor?.isNativePlatform?.())
+  ? initializeAuth(firebaseApp, { persistence: indexedDBLocalPersistence })
+  : getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 // ─── iOS : pas de Google Sign-In ni de paiement externe (règles App Store 4.8 et 3.1.1) ───
 const IS_IOS = typeof window !== "undefined" && window?.Capacitor?.getPlatform?.() === "ios";
