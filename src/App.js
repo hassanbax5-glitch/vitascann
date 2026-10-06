@@ -8189,7 +8189,10 @@ export default function VitaScann() {
   },[]);
 
   // Fix bouton back Android PWA
+  // Désactivé sur iPhone : pas de bouton retour, et l'ouverture de la caméra/galerie
+  // déclenchait ce handler, qui renvoyait à l'écran précédent après chaque photo.
   useEffect(()=>{
+    if (IS_IOS) return;
     const handleBack=(e)=>{
       e.preventDefault();
       if(screen==="dashboard")return;

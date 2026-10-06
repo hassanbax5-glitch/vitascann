@@ -179,15 +179,31 @@ export default function NutritionLabelScan({ onBack, lang }) {
 
   const handleFile = useCallback((file) => {
     if (!file) return;
+    // Réduit la photo (max 1568 px, JPEG) : les photos d'iPhone sont trop lourdes pour le serveur
     const reader = new FileReader();
     reader.onload = (e) => {
-      const dataUrl = e.target.result;
-      setPreview(dataUrl);
-      setB64(dataUrl.split(",")[1]);
-      setScreen("preview");
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1568;
+        let w = img.width, h = img.height;
+        if (w > MAX) { h = Math.round(h * (MAX / w)); w = MAX; }
+        if (h > MAX) { w = Math.round(w * (MAX / h)); h = MAX; }
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+        setPreview(dataUrl);
+        setB64(dataUrl.split(",")[1]);
+        setScreen("preview");
+      };
+      img.onerror = () => {
+        setErrorMsg(L ? "Could not read this photo. Try another one." : "Impossible de lire cette photo. Essaie-en une autre.");
+        setScreen("error");
+      };
+      img.src = e.target.result;
     };
     reader.readAsDataURL(file);
-  }, []);
+  }, [L]);
 
 
   const analyze = useCallback(async () => {
@@ -257,8 +273,8 @@ export default function NutritionLabelScan({ onBack, lang }) {
       </div>
 
       <div style={{ padding: "20px 20px 0" }}>
-        {/* CTA Code-barres — app native uniquement */}
-        {isNative && (
+        {/* CTA Code-barres — Android uniquement (le plugin n'est pas inclus dans l'app iPhone) */}
+        {isNative && Capacitor.getPlatform() !== "ios" && (
           <button onClick={scanBarcode}
             style={{ width: "100%", background: `linear-gradient(135deg,#1a2040,#20285a)`, border: `1.5px solid #60a5fa44`, borderRadius: 18, padding: "20px", cursor: "pointer", marginBottom: 12, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
             <span style={{ fontSize: 28 }}>📊</span>
@@ -268,11 +284,6 @@ export default function NutritionLabelScan({ onBack, lang }) {
             </div>
           </button>
         )}
-
-        {/* DEBUG TEMPORAIRE */}
-<div style={{ color: "#fff", background: "red", padding: 8, marginBottom: 10, fontSize: 12 }}>
-  DEBUG isNative: {String(isNative)} | Capacitor: {String(typeof window !== "undefined" && window.Capacitor)}
-</div>
 
 {/* CTA Caméra */}
 <button onClick={() => cameraRef.current?.click()}
