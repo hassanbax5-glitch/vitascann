@@ -204,7 +204,7 @@
 <div class="container">
 
   <div class="updated">
-    📅 Dernière mise à jour : 1er juin 2026 &nbsp;·&nbsp; Last updated: June 1, 2026
+    📅 Dernière mise à jour : 10 novembre 2026 &nbsp;·&nbsp; Last updated: November 10, 2026
   </div>
 
   <!-- Introduction -->
@@ -236,6 +236,7 @@
       <li><strong>Compte :</strong> Email, nom, photo de profil (via Google Sign-In ou inscription email)</li>
       <li><strong>Profil santé :</strong> Âge, sexe, objectif santé (optionnel)</li>
       <li><strong>Photos de scan :</strong> Images uploadées pour l'analyse IA — non stockées après analyse</li>
+      <li><strong>Questionnaires et messages :</strong> Réponses aux bilans (énergie, immunité, santé émotionnelle, etc.) et messages envoyés au chat nutritionniste IA</li>
       <li><strong>Activité physique :</strong> Nombre de pas (via accéléromètre), données d'entraînement</li>
       <li><strong>Données de progression :</strong> Historique des scans, VitaCoins, streak</li>
       <li><strong>Token de notifications :</strong> Pour l'envoi de rappels push (optionnel)</li>
@@ -257,8 +258,22 @@
       <li>Personnaliser votre expérience santé</li>
       <li>Envoyer des notifications de rappel (si autorisé)</li>
       <li>Améliorer les performances de l'application</li>
-      <li>Traiter les paiements via Stripe (plan Premium)</li>
+      <li>Traiter les paiements via Stripe (plan Premium, version web seulement)</li>
     </ul>
+  </div>
+
+  <!-- Analyse IA -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-icon">🤖</span>
+      <span class="section-title">Analyse par IA / AI Analysis (Anthropic)</span>
+    </div>
+    <p>Pour générer vos analyses, VitaScann envoie à <strong>Claude, un service d'intelligence artificielle d'Anthropic</strong> (États-Unis) : les photos que vous scannez, vos réponses aux questionnaires et les infos santé que vous entrez (âge, sexe, objectifs, symptômes), et les messages écrits au chat nutritionniste IA. Ces données servent uniquement à produire votre analyse et vos conseils.</p>
+    <p><em>To generate your analyses, VitaScann sends to <strong>Claude, an AI service by Anthropic</strong> (USA): the photos you scan, your questionnaire answers and the health info you enter (age, sex, goals, symptoms), and messages written to the AI nutritionist chat. This data is used only to produce your analysis and advice.</em></p>
+    <div class="highlight">
+      Aucune donnée n'est envoyée à Anthropic avant que vous acceptiez l'écran de consentement. Vous pouvez retirer votre accord en tout temps avec le bouton <strong>« Accord IA »</strong> sur l'accueil ; les fonctions d'analyse IA sont alors désactivées. Selon ses conditions commerciales, Anthropic n'utilise pas les données de son API pour entraîner ses modèles et ne les vend pas. Vos données de santé ne sont jamais utilisées pour de la publicité.<br><br>
+      <em>No data is sent to Anthropic before you accept the consent screen. You can withdraw consent at any time with the <strong>"Accord IA"</strong> button on the home screen; AI analysis features are then disabled. Under its commercial terms, Anthropic does not use API data to train its models and does not sell it. Your health data is never used for advertising.</em>
+    </div>
   </div>
 
   <!-- Permissions -->
@@ -286,9 +301,9 @@
     </div>
     <p>VitaScann utilise les services tiers suivants :</p>
     <ul class="privacy-list">
-      <li><strong>Firebase (Google) :</strong> Authentification et base de données — <a href="https://policies.google.com/privacy" style="color:var(--green)">Privacy Policy</a></li>
-      <li><strong>Anthropic Claude API :</strong> Analyse IA des photos et contenus — <a href="https://www.anthropic.com/privacy" style="color:var(--green)">Privacy Policy</a></li>
-      <li><strong>Stripe :</strong> Traitement des paiements — <a href="https://stripe.com/privacy" style="color:var(--green)">Privacy Policy</a></li>
+      <li><strong>Firebase (Google) :</strong> Authentification, base de données et notifications — <a href="https://policies.google.com/privacy" style="color:var(--green)">Privacy Policy</a></li>
+      <li><strong>Anthropic (Claude) :</strong> Analyse IA des photos, questionnaires et messages, avec votre consentement — <a href="https://www.anthropic.com/legal/privacy" style="color:var(--green)">Privacy Policy</a></li>
+      <li><strong>Stripe :</strong> Traitement des paiements sur la version web — <a href="https://stripe.com/privacy" style="color:var(--green)">Privacy Policy</a></li>
       <li><strong>Cloudinary :</strong> Hébergement d'images statiques (personnages RPG)</li>
       <li><strong>Vercel :</strong> Hébergement de l'application web</li>
     </ul>
@@ -320,7 +335,7 @@
       <li>Corriger vos données</li>
       <li>Supprimer votre compte et toutes vos données</li>
       <li>Exporter vos données (portabilité)</li>
-      <li>Retirer votre consentement à tout moment</li>
+      <li>Retirer votre consentement à l'analyse IA à tout moment (bouton « Accord IA »)</li>
     </ul>
     <p style="margin-top:12px">Pour exercer ces droits, contactez-nous à l'adresse ci-dessous.</p>
   </div>
