@@ -1986,134 +1986,134 @@ const CARD="#0c1810",BDR="#192c1d";
 const ISLAMIC_TIPS = {
   nails: {
     islamic: [
-      "Le Prophète ﷺ a recommandé le henné (Lawsonia) pour renforcer les ongles et les protéger.",
-      "Frotter les ongles avec de l'huile de nigelle (Habatus Sawda) nourrit et renforce naturellement.",
-      "Le miel de Sidr appliqué sur les cuticules favorise la croissance selon la médecine traditionnelle.",
+      "Le henné (Lawsonia) est mentionné dans la Sunnah ; il est traditionnellement appliqué sur les mains et les ongles.",
+      "L'huile de nigelle (Habbatus Sawda) est mentionnée dans les hadiths comme une graine bénie ; certains l'utilisent pour masser les cuticules.",
+      "Le miel est décrit dans le Coran (An-Nahl) comme une boisson aux couleurs variées, porteuse de guérison pour les gens.",
     ],
     grandma: [
-      "Tremper les ongles 10min dans de l'huile d'olive tiède + quelques gouttes de citron chaque soir.",
-      "Mélange ail écrasé + huile de coco : appliquer 15min, rincer. Renforce les ongles cassants.",
-      "Frotter les ongles avec l'intérieur d'une peau de banane — les tanins nourrissent la kératine.",
+      "Tremper les ongles 10 min dans de l'huile d'olive tiède le soir aide à hydrater les cuticules.",
+      "Masser les cuticules avec un peu d'huile de coco limite le dessèchement.",
+      "Porter des gants pour la vaisselle et le ménage protège les ongles cassants.",
     ],
   },
   eyes: {
     islamic: [
-      "Le Prophète ﷺ utilisait le kohol (antimoine) pour les yeux et recommandait de l'appliquer la nuit.",
-      "La nigelle (Habbatus Sawda) est citée dans les hadiths pour soigner de nombreux maux, dont les yeux fatigués.",
-      "Les dattes consommées chaque matin apportent du fer et de la vitamine A bénéfiques pour la vision.",
+      "Le Prophète ﷺ utilisait le kohol (ithmid) la nuit. Si tu en utilises, choisis un kohol certifié sans plomb : certains kohols traditionnels en contiennent.",
+      "La nigelle (Habbatus Sawda) est mentionnée dans les hadiths comme une graine bénie.",
+      "Les dattes, aliment de la Sunnah, s'intègrent bien à une alimentation variée, riche en fruits et légumes.",
     ],
     grandma: [
-      "Compresses de camomille froide 10min sur les yeux fatigués — anti-inflammatoire naturel.",
-      "Eau de rose pure (sans alcool) en collyre naturel pour soulager les yeux rouges.",
-      "Massages doux avec huile d'amande douce autour des yeux pour décontracter et nourrir.",
+      "Compresses fraîches 10 min sur les paupières fermées pour soulager les yeux fatigués.",
+      "Faire des pauses d'écran : toutes les 20 min, regarder au loin 20 secondes.",
+      "Ne rien mettre dans les yeux à part des gouttes vendues en pharmacie. Si un œil est rouge ou douloureux, consulte.",
     ],
   },
   skin: {
     islamic: [
-      "Le Prophète ﷺ utilisait de l'huile d'olive sur sa peau et ses cheveux — mentionné dans plusieurs hadiths.",
-      "Le miel est décrit dans le Coran (An-Nahl) comme guérison — excellent masque nourrissant pour la peau.",
-      "L'eau de Zamzam bue régulièrement est associée à une peau lumineuse selon la tradition islamique.",
+      "Le Prophète ﷺ utilisait de l'huile d'olive, mentionnée dans plusieurs hadiths, pour la peau et les cheveux.",
+      "Le miel est décrit dans le Coran (An-Nahl) comme porteur de guérison ; certains l'utilisent en masque pour la peau.",
+      "L'eau de Zamzam est bénie dans la tradition islamique ; boire assez d'eau chaque jour est bon pour tout le corps.",
     ],
     grandma: [
-      "Masque argile blanche + eau de rose + huile d'argan : 20min, 2x/semaine. Peau nette et lumineuse.",
-      "Gommage sucre de canne + huile d'olive + quelques gouttes citron — exfoliation douce maison.",
-      "Aloe vera frais appliqué directement sur la peau sèche : hydratation immédiate et durable.",
+      "Masque argile blanche + eau de rose, 15 min, 1 à 2 fois par semaine.",
+      "Hydrater la peau juste après la douche, quand elle est encore humide.",
+      "Gel d'aloe vera sur la peau sèche. Teste d'abord sur une petite zone.",
     ],
   },
   hair: {
     islamic: [
-      "Le Prophète ﷺ oignait ses cheveux d'huile et les peignait régulièrement — sunnah du soin capillaire.",
-      "L'huile de nigelle mélangée à l'huile d'olive, appliquée sur le cuir chevelu, est une pratique prophétique.",
-      "Le henné (Lawsonia) est une sunnah pour teindre et renforcer les cheveux selon les hadiths.",
+      "Le Prophète ﷺ oignait ses cheveux d'huile et les peignait régulièrement : c'est une sunnah du soin capillaire.",
+      "L'huile de nigelle mélangée à l'huile d'olive est une pratique traditionnelle pour le cuir chevelu.",
+      "Le henné (Lawsonia) est une sunnah pour teindre les cheveux.",
     ],
     grandma: [
-      "Masque œuf entier + huile d'olive + miel : 30min sous bonnet chauffant. Brillance et force exceptionnelles.",
-      "Eau de riz fermentée (rinçage final) : riche en inositol, répare la fibre capillaire abîmée.",
-      "Huile de ricin chauffée + massage cuir chevelu 10min avant shampooing : stimule la pousse.",
+      "Masque œuf + huile d'olive + miel, 30 min avant le shampooing, pour des cheveux plus doux.",
+      "Rinçage à l'eau de riz : une astuce traditionnelle pour des cheveux plus lisses.",
+      "Massage du cuir chevelu 5 min avec une huile tiède avant le lavage, pour la détente et le confort.",
     ],
   },
   tongue: {
     islamic: [
-      "Le Prophète ﷺ recommandait le siwak (bâton d'arak) pour purifier la bouche et la langue chaque matin.",
-      "La nigelle consommée avec du miel est bénéfique pour la digestion et l'hygiène buccale selon les hadiths.",
-      "Rincer la bouche avec de l'eau salée est une pratique traditionnelle islamique pour l'hygiène orale.",
+      "Le Prophète ﷺ utilisait le siwak (bâton d'arak) pour se nettoyer la bouche.",
+      "La nigelle et le miel sont tous deux mentionnés dans la tradition prophétique.",
+      "Se rincer la bouche (madhmadhah) fait partie des ablutions.",
     ],
     grandma: [
-      "Gratter doucement la langue chaque matin avec un gratte-langue en cuivre — élimine les bactéries.",
-      "Gargarisme huile de coco 5-10min à jeun (oil pulling) — détoxifie et blanchit naturellement.",
-      "Tisane gingembre + curcuma + miel le matin : anti-inflammatoire puissant pour toute la sphère ORL.",
+      "Gratter doucement la langue chaque matin avec un gratte-langue.",
+      "Bien s'hydrater dans la journée limite la bouche sèche.",
+      "Tisane gingembre + miel le matin, pour le confort de la gorge.",
     ],
   },
   feet: {
     islamic: [
       "Le Prophète ﷺ accordait une grande importance à la propreté des pieds lors des ablutions (wudhu).",
-      "Masser les pieds avec de l'huile de nigelle est recommandé pour les douleurs et la fatigue.",
-      "Le henné appliqué sur les pieds a des propriétés anti-fongiques reconnues dans la médecine traditionnelle.",
+      "Masser les pieds avec de l'huile de nigelle est une pratique traditionnelle.",
+      "Le henné est traditionnellement appliqué sur les mains et les pieds.",
     ],
     grandma: [
-      "Bain de pieds eau chaude + vinaigre de cidre + sel de mer : anti-fongique et adoucissant puissant.",
-      "Pierre ponce + huile de coco + sucre : gommage talons fissurés, appliquer après bain chaud.",
-      "Chaussettes coton imbibées d'huile d'olive la nuit : talons réparés en 1 semaine.",
+      "Bain de pieds tiède + sel de mer, puis bien sécher entre les orteils.",
+      "Pierre ponce douce sur les talons après le bain, puis une crème hydratante.",
+      "Des chaussettes en coton par-dessus une crème, la nuit, pour les talons secs.",
     ],
   },
   belly: {
     islamic: [
-      "Le Prophète ﷺ recommandait de manger en petites quantités — remplir un tiers de l'estomac seulement.",
-      "Le gingembre est mentionné dans le Coran (Al-Insan) — excellent pour la digestion et réduire l'inflammation.",
-      "Le jeûne (Sawm) pratiqué régulièrement est bénéfique pour le microbiome intestinal selon la science moderne.",
+      "Le Prophète ﷺ recommandait de ne remplir que le tiers de l'estomac : un tiers pour la nourriture, un tiers pour la boisson, un tiers pour la respiration.",
+      "Le gingembre (zanjabil) est mentionné dans le Coran (Al-Insan).",
+      "Les jeûnes volontaires du lundi et du jeudi sont une sunnah. Si tu as un problème de santé, parles-en à ton médecin avant.",
     ],
     grandma: [
-      "Tisane menthe poivrée + fenouil + anis vert après repas : carminatif naturel contre les ballonnements.",
-      "Massage ventre sens des aiguilles d'une montre avec huile de ricin tiède : stimule le transit.",
-      "Eau chaude + citron + gingembre frais à jeun : détoxifie le foie et booste le métabolisme.",
+      "Tisane menthe + fenouil après le repas, pour les ballonnements.",
+      "Masser doucement le ventre dans le sens des aiguilles d'une montre.",
+      "Un verre d'eau tiède avec du citron le matin, pour bien s'hydrater.",
     ],
   },
   scalp: {
     islamic: [
-      "Le Prophète ﷺ prenait soin de son cuir chevelu avec de l'huile — pratique rapportée dans les hadiths.",
-      "La nigelle appliquée sur le cuir chevelu est traditionnellement utilisée contre les pellicules et démangeaisons.",
-      "Se couvrir la tête (port du taqiya/hijab) protège le cuir chevelu des agressions extérieures.",
+      "Le Prophète ﷺ prenait soin de son cuir chevelu avec de l'huile, une pratique rapportée dans les hadiths.",
+      "La nigelle est traditionnellement appliquée sur le cuir chevelu.",
+      "Se couvrir la tête protège le cuir chevelu du soleil.",
     ],
     grandma: [
-      "Mélange huile d'argan + quelques gouttes d'huile essentielle de tea tree : anti-pelliculaire naturel puissant.",
-      "Jus d'oignon appliqué 30min sur le cuir chevelu : soufre organique stimule la repousse.",
-      "Vinaigre de cidre dilué (1:3) en rinçage final : rééquilibre le pH et lutte contre les démangeaisons.",
+      "Huile d'argan + 2 gouttes d'huile de tea tree (toujours diluée) en massage du cuir chevelu.",
+      "Rinçage final au vinaigre de cidre bien dilué (1 pour 3 d'eau).",
+      "Si la chute est forte ou soudaine, consulte un médecin ou un dermatologue.",
     ],
   },
   body_fat: {
     islamic: [
-      "Le Prophète ﷺ marchait régulièrement et encourageait l'activité physique — sunnah de l'exercice.",
-      "Le jeûne d'Ashura et les jeûnes volontaires du lundi/jeudi aident à réguler le métabolisme.",
-      "Manger en position assise et mastiquer lentement (sunnah) améliore la satiété et la digestion.",
+      "Le Prophète ﷺ marchait régulièrement et encourageait l'activité physique.",
+      "Les jeûnes volontaires (lundi, jeudi, Ashura) sont une sunnah. Si tu as un problème de santé, parles-en à ton médecin avant.",
+      "Manger assis et mastiquer lentement fait partie des bonnes manières de la Sunnah.",
     ],
     grandma: [
-      "Thé vert + cannelle + gingembre le matin à jeun : booste le métabolisme naturellement.",
-      "Eau chaude avec citron et poivre de Cayenne 20min avant repas : coupe-faim et brûle-graisses.",
-      "Marcher 30min après le dîner : améliore la glycémie et favorise la combustion des graisses nocturnes.",
+      "Thé vert ou tisane sans sucre à la place des boissons sucrées.",
+      "Un grand verre d'eau avant le repas.",
+      "Marcher 30 min après le souper.",
     ],
   },
   teeth: {
     islamic: [
-      "Le Prophète ﷺ utilisait le siwak (miswak) jusqu'à 5 fois par jour — antibactérien naturel prouvé.",
-      "Se rincer la bouche (madhmadhah) lors des ablutions est une sunnah qui maintient l'hygiène dentaire.",
-      "Le miel de Sidr appliqué sur les gencives est un remède traditionnel islamique contre les inflammations.",
+      "Le Prophète ﷺ a encouragé l'usage du siwak (miswak), notamment avant chaque prière.",
+      "Se rincer la bouche (madhmadhah) lors des ablutions est une sunnah.",
+      "Le miel est mentionné dans le Coran ; garde quand même le brossage après en avoir mangé.",
     ],
     grandma: [
-      "Pâte bicarbonate + quelques gouttes d'huile essentielle de clou de girofle : blanchissant et analgésique.",
-      "Rinçage eau salée tiède matin et soir : anti-inflammatoire et cicatrisant pour les gencives.",
-      "Frotter les dents avec l'intérieur d'une écorce de citron 1x/semaine : détartre et blanchit naturellement.",
+      "Rinçage à l'eau salée tiède, pour le confort des gencives.",
+      "Brosser 2 minutes, 2 fois par jour, avec un dentifrice au fluor.",
+      "Évite de frotter tes dents avec du citron : l'acide abîme l'émail.",
     ],
   },
   beard: {
     islamic: [
-      "Le Prophète ﷺ a ordonné de laisser pousser la barbe et de lui faire honneur — symbol de virilité islamique.",
-      "Oindre la barbe d'huile est une sunnah — le Prophète ﷺ utilisait de l'huile de myrte selon les hadiths.",
-      "La nigelle mélangée à l'huile d'olive appliquée sur la barbe est un remède prophétique pour la croissance.",
+      "Le Prophète ﷺ a ordonné de laisser pousser la barbe et d'en prendre soin.",
+      "Oindre la barbe d'huile est une sunnah.",
+      "La nigelle mélangée à l'huile d'olive est une pratique traditionnelle pour la barbe.",
     ],
     grandma: [
-      "Huile de ricin + huile de jojoba (50/50) : massage 5min chaque soir — résultats visibles en 4-6 semaines.",
-      "Cannelle en poudre + miel de Manuka : masque 20min, stimule la circulation sanguine du follicule.",
-      "Eau de rose + gingembre frais mixé : lotion tonique matin après lavage — anti-chute et densifiant.",
+      "Huile de jojoba ou d'argan en massage, 5 min le soir, pour une barbe plus douce.",
+      "Peigner la barbe chaque jour pour démêler et répartir l'huile.",
+      "Laver la barbe avec un nettoyant doux pour éviter les démangeaisons.",
     ],
   },
 };
@@ -2220,6 +2220,7 @@ function IslamicTipsCard({zone, profile, t, lang}) {
         </button>
       </div>
       <div style={{color:MUT,fontSize:10,marginBottom:10,fontStyle:"italic"}}>{tab==="islamic"?t("islamic_sub"):(lang==="en"?"Traditional remedies passed down through generations":"Remèdes transmis de génération en génération")}</div>
+      <div style={{color:"#8a7a50",fontSize:10,marginBottom:12}}>{lang==="en"?"Traditions and home tips, not medical advice. Test on a small area of skin first.":"Traditions et astuces maison, pas un avis médical. Teste d'abord sur une petite zone de peau."}</div>
       {list.map((tip,i)=>(
         <div key={i} style={{display:"flex",gap:10,marginBottom:i<list.length-1?12:0,paddingBottom:i<list.length-1?12:0,borderBottom:i<list.length-1?`1px solid #1a1400`:"none"}}>
           <div style={{width:28,height:28,borderRadius:8,background:tab==="islamic"?`${GOLD}12`:`${EM}10`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>
