@@ -46,6 +46,25 @@ import RecettesSante from "./RecettesSante";
 import BilanComplet from "./BilanComplet";
 import { initCapacitor, isNative, NativeHaptics, NativePush, NativeStatusBar } from "./CapacitorService";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { retirerConsentement } from "./ConsentIA";
+
+// Lit le JSON de la réponse de Claude, même s'il ajoute du texte avant ou après
+function lireJSON(texte){
+  const t=(texte||"").replace(/```json|```/g,"").trim();
+  const debut=t.indexOf("{");
+  if(debut<0) throw new Error("Réponse IA sans JSON");
+  let prof=0,dansTexte=false,echap=false;
+  for(let i=debut;i<t.length;i++){
+    const c=t[i];
+    if(echap){echap=false;continue;}
+    if(c==="\\"){echap=true;continue;}
+    if(c==='"'){dansTexte=!dansTexte;continue;}
+    if(dansTexte)continue;
+    if(c==="{")prof++;
+    else if(c==="}"){prof--;if(prof===0)return JSON.parse(t.slice(debut,i+1));}
+  }
+  return JSON.parse(t.slice(debut));
+}
 // ─── useRangAura — aura selon rang Solo Leveling ───
 const AURA_DEFS = {
   F:   { color:"#9ca3af", glow:"#9ca3af", gradient:"radial-gradient(ellipse at 50% 0%,#9ca3af08 0%,#060d08 65%)", border:"#9ca3af33", intensity:0, particles:false, animation:null, badge:"⚪ Rang F" },
@@ -1069,7 +1088,7 @@ async function callGymAI(muscle, seanceData) {
     });
     const data = await res.json();
     const text = data.content?.[0]?.text || "{}";
-    return JSON.parse(text.replace(/```json|```/g,"").trim());
+    return lireJSON(text);
   } catch { return null; }
 }
 
@@ -3114,6 +3133,7 @@ function Dashboard({user,onScan,onMealScan,onPaywall,onLogout,onProfile,onFamily
               🪙 {vitaCoins}
             </button>
             <button onClick={onLogout} style={{background:"none",border:`1px solid ${BDR}`,borderRadius:10,padding:"6px 12px",color:MUT,fontSize:12,cursor:"pointer"}}>{t("db_logout")}</button>
+            <button onClick={()=>{if(window.confirm("Retirer ton accord pour l'analyse IA ? Les scans seront désactivés tant que tu n'acceptes pas de nouveau.")){retirerConsentement();alert("Accord retiré. Les analyses IA sont désactivées.");}}} style={{background:"none",border:`1px solid ${BDR}`,borderRadius:10,padding:"6px 12px",color:MUT,fontSize:12,cursor:"pointer"}}>Accord IA</button>
           </div>
         </div>
         {profile&&(
@@ -4961,7 +4981,7 @@ function MealPlan({profile,onBack,user,t}) {
       });
       const data = await res.json();
       const text = data.content?.map(b=>b.text||"").join("")||"";
-      const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
+      const parsed = lireJSON(text);
       setPlan(parsed);
     } catch(e) { console.error(e); }
     finally { setLoad(false); }
@@ -8329,7 +8349,7 @@ const parsed=JSON.parse(nettoye.slice(debut,fin+1));      setResult(parsed);
       });
       const data=await res.json();
       const text=data.content?.map(b=>b.text||"").join("")||"";
-      const parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
+      const parsed=lireJSON(text);
       setMealResult(parsed);
       if(user?.uid&&!user?.isDemo){
         const sd={nom_repas:parsed.nom_repas,score:parsed.score_nutrition,type:"repas",calories:parsed.calories_estimees};

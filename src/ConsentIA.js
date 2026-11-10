@@ -69,7 +69,8 @@ export default function ConsentIA({ onAccepter, onRefuser }) {
         <div style={s.bloc}>
           <p style={s.sousTitre}>Ton choix</p>
           <p style={s.texte}>
-            Tu peux retirer ton accord en tout temps dans Réglages. Sans accord,
+            Tu peux retirer ton accord en tout temps avec le bouton « Accord IA »
+            sur l'accueil. Sans accord,
             les fonctions d'analyse IA restent désactivées.
           </p>
         </div>
