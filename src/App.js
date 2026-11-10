@@ -46,7 +46,6 @@ import RecettesSante from "./RecettesSante";
 import BilanComplet from "./BilanComplet";
 import { initCapacitor, isNative, NativeHaptics, NativePush, NativeStatusBar } from "./CapacitorService";
 import { LocalNotifications } from "@capacitor/local-notifications";
-
 // ─── useRangAura — aura selon rang Solo Leveling ───
 const AURA_DEFS = {
   F:   { color:"#9ca3af", glow:"#9ca3af", gradient:"radial-gradient(ellipse at 50% 0%,#9ca3af08 0%,#060d08 65%)", border:"#9ca3af33", intensity:0, particles:false, animation:null, badge:"⚪ Rang F" },
