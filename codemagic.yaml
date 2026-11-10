@@ -42,8 +42,7 @@ workflows:
       - name: Increment build number
         script: |
           cd ios/App
-          agvtool new-version -all $BUILD_NUMBER
-      - name: Build ipa for App Store distribution
+agvtool new-version -all $(($BUILD_NUMBER + 21))      - name: Build ipa for App Store distribution
         script: |
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
