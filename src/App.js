@@ -8283,8 +8283,11 @@ export default function VitaScann() {
       });
       const data=await res.json();
       const text=data.content?.map(b=>b.text||"").join("")||"";
-      const parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
-      setResult(parsed);
+const nettoye=text.replace(/```json|```/g,"").trim();
+const debut=nettoye.indexOf("{");
+let prof=0,fin=-1,dansTexte=false,echap=false;
+for(let i=debut;i<nettoye.length;i++){const c=nettoye[i];if(echap){echap=false;continue;}if(c==="\\"){echap=true;continue;}if(c==='"'){dansTexte=!dansTexte;continue;}if(dansTexte)continue;if(c==="{")prof++;else if(c==="}"){prof--;if(prof===0){fin=i;break;}}}
+const parsed=JSON.parse(nettoye.slice(debut,fin+1));      setResult(parsed);
       if(user?.uid&&!user?.isDemo){
         const sd={zone:zone?.label,score:parsed.score,urgence:parsed.urgence,carences:parsed.carences?.length||0};
         setHistory(h=>[{...sd,createdAt:{toDate:()=>new Date()}},...h]);
