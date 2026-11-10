@@ -47,6 +47,7 @@ import BilanComplet from "./BilanComplet";
 import { initCapacitor, isNative, NativeHaptics, NativePush, NativeStatusBar } from "./CapacitorService";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { retirerConsentement } from "./ConsentIA";
+import SourcesSante from "./SourcesSante";
 
 // Lit le JSON de la réponse de Claude, même s'il ajoute du texte avant ou après
 function lireJSON(texte){
@@ -3952,6 +3953,7 @@ function Result({result,zone,user,profile,onNewScan,onHome,onExercises,history,t
           style={{width:"100%",background:"linear-gradient(135deg,#1a2e20,#0f1e14)",border:`1.5px solid ${EM}55`,borderRadius:12,padding:"14px",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:700,color:EM,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           {sharing?<Spin/>:t("result_share")}
         </button>
+        <SourcesSante zoneId={zone?.id} lang={lang}/>
         {user?.plan==="premium"&&(
           <button onClick={()=>generatePDF(result,zone,user)}
             style={{width:"100%",background:"linear-gradient(135deg,#18100a,#100a06)",border:`1.5px solid ${GOLD}44`,borderRadius:12,padding:"14px",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:700,color:GOLD,cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
@@ -4700,6 +4702,7 @@ function MealResult({result, onNewScan, onHome, t, lang}) {
           </div>
         )}
 
+        <SourcesSante zoneId="nutrition" lang={lang}/>
         <button onClick={onNewScan}
           style={{width:"100%",background:`linear-gradient(135deg,${GOLD},#f59e0b)`,color:"#0a0a0a",border:"none",borderRadius:14,padding:"16px",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:700,cursor:"pointer",marginBottom:10}}>
           🍽️ {L?"New scan":"Nouveau scan"}
@@ -5014,6 +5017,7 @@ function MealPlan({profile,onBack,user,t}) {
               )}
             </div>
           ))}
+          <SourcesSante zoneId="nutrition"/>
           <button className="bgh" onClick={()=>setPlan(null)} style={{marginTop:10}}>{t("mealplan_regen")}</button>
         </div>
       )}
